@@ -259,6 +259,7 @@ abstract class OpenSpecContextTask : DefaultTask() {
         "com.google.protobuf" to "com.google.protobuf",
         "org.flywaydb.flyway" to "org.flywaydb.flyway",
         "org.liquibase.gradle" to "org.liquibase.gradle",
+        "io.gitlab.arturbosch.detekt" to "io.gitlab.arturbosch.detekt",
     )
 
     private fun resolvePluginIds(plugins: PluginContainer): Set<String> {
@@ -356,6 +357,8 @@ abstract class OpenSpecContextTask : DefaultTask() {
         "com.google.protobuf" to "Protobuf/gRPC",
         "org.flywaydb.flyway" to "Flyway",
         "org.liquibase.gradle" to "Liquibase",
+        // Quality
+        "io.gitlab.arturbosch.detekt" to "Detekt (static analysis)",
     )
 
     private fun collectPluginsAndFrameworks(proj: org.gradle.api.Project, pluginIds: MutableSet<String>, frameworks: MutableList<String>) {
@@ -420,6 +423,14 @@ abstract class OpenSpecContextTask : DefaultTask() {
             "io.grpc:grpc" to "gRPC",
             "org.jooq:jooq" to "jOOQ",
             "com.graphql-java" to "GraphQL",
+            // DI
+            "io.insert-koin:koin" to "Koin (DI)",
+            // Kotlin libraries
+            "org.jetbrains.kotlinx:kotlinx-io" to "kotlinx-io",
+            // Database
+            "org.jetbrains.exposed:exposed" to "Exposed (SQL)",
+            // Quality / Architecture
+            "com.lemonappdev:konsist" to "Konsist (architecture tests)",
         )
         for ((pattern, name) in depPatterns) {
             if (allDeps.any { it.contains(pattern) } && name !in frameworks) {
