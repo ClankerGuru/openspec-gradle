@@ -87,6 +87,13 @@ abstract class OpenSpecSyncTask : DefaultTask() {
                 }
             }
         }
+        // Also remove .openspec/ directory
+        val openspecDir = File(project.projectDir, ".openspec")
+        if (openspecDir.exists()) {
+            openspecDir.deleteRecursively()
+            logger.lifecycle("OpenSpec: Removed .openspec/ directory")
+        }
+
         logger.lifecycle("OpenSpec: Cleaned $count files")
     }
 }
