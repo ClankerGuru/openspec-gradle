@@ -5,7 +5,7 @@ on:
     tags: [ 'v*' ]
 
 permissions:
-  contents: read
+  contents: write
   checks: write
 
 jobs:
@@ -14,6 +14,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -58,3 +60,71 @@ jobs:
           ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USERNAME }}
           ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Get previous tag
+          PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | sed -n '2p')
+          
+          # Build release body
+          cat > release-notes.md << 'HEADER'
+          ## Installation
+          
+          ### Gradle Plugin Portal
+          
+          ```kotlin
+          plugins {
+              id("zone.clanker.gradle") version "$VERSION_PLACEHOLDER"
+          }
+          ```
+          
+          ### Maven Central
+          
+          ```kotlin
+          dependencies {
+              classpath("zone.clanker:openspec-gradle:$VERSION_PLACEHOLDER")
+          }
+          ```
+          
+          ### Global (zero-config)
+          
+          ```bash
+          # Clone, build, and install globally
+          git clone https://github.com/ClankerGuru/openspec-gradle.git
+          cd openspec-gradle
+          ./gradlew installGlobal
+          ```
+          
+          Then configure in `~/.gradle/gradle.properties`:
+          ```properties
+          zone.clanker.openspec.agents=github
+          ```
+          
+          HEADER
+          
+          sed -i "s/\$VERSION_PLACEHOLDER/$VERSION/g" release-notes.md
+          
+          # Add changelog if there's a previous tag
+          if [ -n "$PREV_TAG" ]; then
+            echo "## What's Changed" >> release-notes.md
+            echo "" >> release-notes.md
+            git log "${PREV_TAG}..HEAD" --pretty=format:"- %s" --no-merges >> release-notes.md
+            echo "" >> release-notes.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          generate_release_notes: true
+          append_body: true
+          files: |
+            build/libs/*.jar
