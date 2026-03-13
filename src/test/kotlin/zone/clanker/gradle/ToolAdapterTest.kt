@@ -97,13 +97,13 @@ class ToolAdapterTest {
     }
 
     @Test
-    fun `ToolAdapterRegistry supportedTools lists both tools`() {
-        assertEquals(setOf("claude", "github-copilot"), ToolAdapterRegistry.supportedTools())
+    fun `ToolAdapterRegistry supportedTools lists all tools`() {
+        assertEquals(setOf("claude", "github-copilot", "opencode"), ToolAdapterRegistry.supportedTools())
     }
 
     @Test
-    fun `ToolAdapterRegistry all returns two adapters`() {
-        assertEquals(2, ToolAdapterRegistry.all().size)
+    fun `ToolAdapterRegistry all returns three adapters`() {
+        assertEquals(3, ToolAdapterRegistry.all().size)
     }
 
     // ── Agent parsing ────────────────────────────────────
@@ -111,6 +111,16 @@ class ToolAdapterTest {
     @Test
     fun `parseAgents maps github to github-copilot`() {
         assertEquals(listOf("github-copilot"), OpenSpecSettingsPlugin.parseAgents("github"))
+    }
+
+    @Test
+    fun `parseAgents maps opencode to opencode`() {
+        assertEquals(listOf("opencode"), OpenSpecSettingsPlugin.parseAgents("opencode"))
+    }
+
+    @Test
+    fun `parseAgents handles all three agents`() {
+        assertEquals(listOf("github-copilot", "claude", "opencode"), OpenSpecSettingsPlugin.parseAgents("github,claude,opencode"))
     }
 
     @Test
@@ -142,6 +152,30 @@ class ToolAdapterTest {
     @Test
     fun `parseAgents is case-insensitive`() {
         assertEquals(listOf("github-copilot", "claude"), OpenSpecSettingsPlugin.parseAgents("GitHub,Claude"))
+    }
+
+    // ── OpenCode adapter ─────────────────────────────────
+
+    @Test
+    fun `OpenCodeAdapter command path uses opencode commands dir`() {
+        assertEquals(".opencode/commands/opsx-propose.md", OpenCodeAdapter.getCommandFilePath("propose"))
+    }
+
+    @Test
+    fun `OpenCodeAdapter skill path uses opencode skills dir`() {
+        assertEquals(".opencode/skills/test-skill/SKILL.md", OpenCodeAdapter.getSkillFilePath("test-skill"))
+    }
+
+    @Test
+    fun `OpenCodeAdapter command format has description comment`() {
+        val output = OpenCodeAdapter.formatCommandFile(sampleCommand)
+        assertTrue(output.contains("<!-- A test command -->"))
+        assertTrue(output.contains("Do the thing."))
+    }
+
+    @Test
+    fun `ToolAdapterRegistry returns OpenCodeAdapter for opencode`() {
+        assertEquals(OpenCodeAdapter, ToolAdapterRegistry.get("opencode"))
     }
 
     // ── YAML escaping ───────────────────────────────────
