@@ -17,7 +17,7 @@ Add to your `settings.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("zone.clanker.gradle") version "0.3.0"
+    id("zone.clanker.gradle") version "0.3.1"
 }
 ```
 
