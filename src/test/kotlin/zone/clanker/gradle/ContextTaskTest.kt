@@ -146,12 +146,12 @@ class ContextTaskTest {
     }
 
     @Test
-    fun `openspecSync adds openspec to gitignore`() {
+    fun `openspecSync adds openspec to global gitignore`() {
         File(testProjectDir, "build.gradle.kts").writeText("")
         gradle("openspecSync").build()
-        val gitignore = File(testProjectDir, ".gitignore")
-        assertTrue(gitignore.exists())
-        assertTrue(gitignore.readText().contains("/.openspec/"))
+        val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
+        assertTrue(globalGitignore.exists())
+        assertTrue(globalGitignore.readText().contains(".openspec/"))
     }
 
     @Test

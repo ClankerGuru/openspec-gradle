@@ -42,22 +42,23 @@ jobs:
 
       - name: Verify plugin applies cleanly
         run: |
+          PLUGIN_VERSION=$(grep '^version' build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
           ./gradlew publishToMavenLocal -PskipSigning
           mkdir -p /tmp/verify-project
-          echo 'rootProject.name = "verify"' > /tmp/verify-project/settings.gradle.kts
-          echo 'plugins { id("zone.clanker.gradle") }' > /tmp/verify-project/build.gradle.kts
           cd /tmp/verify-project
-          gradle --init-script <(cat <<'EOF'
-          initscript {
-              repositories { mavenLocal() }
-              dependencies { classpath("zone.clanker:openspec-gradle:0.1.0") }
-          }
-          allprojects {
-              if (project == rootProject) {
-                  apply<zone.clanker.gradle.OpenSpecPlugin>()
+          cat > settings.gradle.kts << SETTINGS
+          pluginManagement {
+              repositories {
+                  mavenLocal()
+                  gradlePluginPortal()
               }
           }
-          EOF
-          ) openspecSync
+          plugins {
+              id("zone.clanker.gradle") version "$PLUGIN_VERSION"
+          }
+          rootProject.name = "verify"
+          SETTINGS
+          echo "" > build.gradle.kts
+          gradle openspecSync
           echo "✅ Plugin applies and generates files"
           find .github -type f | sort
