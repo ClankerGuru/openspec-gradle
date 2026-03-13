@@ -9,20 +9,37 @@ Gradle plugin that generates Markdown skill and command files for AI coding assi
 
 Zero-config. Auto-applies via init script. Agents configured via a single Gradle property.
 
-## Setup
+## Installation
 
-Install the init script globally:
+### Option 1: Settings Plugin (per-project)
 
-```bash
-./gradlew publishToMavenLocal
-./gradlew openspecInstallGlobal
+Add to your `settings.gradle.kts`:
+
+```kotlin
+plugins {
+    id("zone.clanker.gradle") version "0.2.0"
+}
 ```
 
-This installs to `~/.gradle/init.d/openspec.init.gradle.kts` — every Gradle project on your machine now has OpenSpec tasks.
+### Option 2: Global Init Script (all projects, zero-config)
+
+Clone and install globally:
+
+```bash
+git clone https://github.com/ClankerGuru/openspec-gradle.git
+cd openspec-gradle
+./gradlew installGlobal
+```
+
+This installs to `~/.gradle/init.d/openspec.init.gradle.kts` — every Gradle project on your machine now has OpenSpec tasks. **No `plugins {}` block or `openspec {}` DSL needed in project builds.**
+
+### Option 3: Custom Gradle Distribution
+
+Use the [gradle-distribution](https://github.com/ClankerGuru/gradle-distribution) repo to bundle the plugin into a custom Gradle distribution that includes it out of the box.
 
 ## Configuration
 
-In `~/.gradle/gradle.properties`:
+In `~/.gradle/gradle.properties` (global) or your project's `gradle.properties`:
 
 ```properties
 # Which agents to generate files for (comma-separated)
@@ -38,8 +55,6 @@ zone.clanker.openspec.agents=github
 | `github,claude`   | Generates for both                           |
 | `none` or empty   | Cleans all generated files                   |
 
-**No `plugins {}` block or `openspec {}` DSL needed in project builds.**
-
 ## Tasks
 
 ```bash
@@ -49,9 +64,9 @@ gradle tasks --group=openspec
 | Task                   | Description |
 |------------------------|-------------|
 | `openspecSync`         | Generates and installs skill/command files for configured agents |
-| `openspecPropose`      | Creates a new change proposal (`--name=<name>`) |
-| `openspecApply`        | Applies a proposed change (`--name=<name>`) |
-| `openspecArchive`      | Archives a completed change (`--name=<name>`) |
+| `openspecPropose`      | Creates a new change proposal |
+| `openspecApply`        | Implements tasks from a change |
+| `openspecArchive`      | Archives a completed change |
 | `openspecClean`        | Removes all generated files |
 | `openspecInstallGlobal`| Installs the init script to `~/.gradle/init.d/` |
 
@@ -65,12 +80,40 @@ For `zone.clanker.openspec.agents=github`:
 │   ├── opsx-propose.prompt.md
 │   ├── opsx-apply.prompt.md
 │   ├── opsx-archive.prompt.md
-│   └── opsx-explore.prompt.md
+│   ├── opsx-explore.prompt.md
+│   ├── opsx-new.prompt.md
+│   ├── opsx-sync.prompt.md
+│   └── opsx-verify.prompt.md
 └── skills/
     ├── openspec-propose/SKILL.md
     ├── openspec-apply-change/SKILL.md
     ├── openspec-archive-change/SKILL.md
-    └── openspec-explore/SKILL.md
+    ├── openspec-explore/SKILL.md
+    ├── openspec-new-change/SKILL.md
+    ├── openspec-sync-specs/SKILL.md
+    └── openspec-verify-change/SKILL.md
+```
+
+For `zone.clanker.openspec.agents=claude`:
+
+```
+.claude/
+├── commands/
+│   ├── opsx-propose.md
+│   ├── opsx-apply.md
+│   ├── opsx-archive.md
+│   ├── opsx-explore.md
+│   ├── opsx-new.md
+│   ├── opsx-sync.md
+│   └── opsx-verify.md
+└── skills/
+    ├── openspec-propose/SKILL.md
+    ├── openspec-apply-change/SKILL.md
+    ├── openspec-archive-change/SKILL.md
+    ├── openspec-explore/SKILL.md
+    ├── openspec-new-change/SKILL.md
+    ├── openspec-sync-specs/SKILL.md
+    └── openspec-verify-change/SKILL.md
 ```
 
 All generated files are auto-added to `.gitignore`.
