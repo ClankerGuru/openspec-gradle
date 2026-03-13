@@ -17,12 +17,18 @@ object GlobalGitignore {
         "# OpenSpec generated files (managed by openspec-gradle plugin)",
         "# These are per-developer — different devs use different AI agents.",
         ".openspec/",
+        "# GitHub Copilot",
         ".github/prompts/opsx-*",
         ".github/skills/openspec-*",
+        "# Claude Code",
         ".claude/commands/opsx/",
         ".claude/skills/openspec-*",
-        ".codex/prompts/opsx-*",
+        "# Codex",
+        ".codex/skills/opsx-*",
         ".codex/skills/openspec-*",
+        "# OpenCode",
+        ".opencode/commands/opsx-*",
+        ".opencode/skills/openspec-*",
     )
 
     /**
