@@ -3,7 +3,7 @@ plugins {
     `java-gradle-plugin`
     `maven-publish`
     signing
-    id("com.gradle.plugin-publish") version "1.3.1"
+    id("com.gradle.plugin-publish") version "2.1.0"
     id("com.gradleup.nmcp") version "1.4.4"
     id("com.gradleup.nmcp.aggregation") version "1.4.4"
 }
@@ -31,15 +31,15 @@ dependencies {
 }
 
 gradlePlugin {
-    website.set("https://github.com/ClankerGuru/openspec-gradle")
-    vcsUrl.set("https://github.com/ClankerGuru/openspec-gradle")
+    website = "https://github.com/ClankerGuru/openspec-gradle"
+    vcsUrl = "https://github.com/ClankerGuru/openspec-gradle"
     plugins {
-        create("openspec") {
+        register("openspec") {
             id = "zone.clanker.gradle"
             implementationClass = "zone.clanker.gradle.OpenSpecSettingsPlugin"
             displayName = "OpenSpec Gradle Plugin"
             description = "Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the Gradle build model (dependencies, module graph, frameworks) and generates command/skill files for AI coding assistants. Supports GitHub Copilot, Claude Code, Codex, and OpenCode. Zero-config via init script — no plugins block or DSL required."
-            tags.set(listOf("ai", "copilot", "claude", "codex", "opencode", "openspec", "kotlin", "android", "skills", "prompts", "coding-assistant", "context"))
+            tags = listOf("ai", "copilot", "claude", "codex", "opencode", "openspec", "kotlin", "android", "skills", "prompts", "coding-assistant", "context")
         }
     }
 }
