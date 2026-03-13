@@ -37,6 +37,7 @@ class InitScriptTest {
     @Test
     fun `generated init script uses settings plugin`() {
         val script = generateInitScript("0.1.0")
+        assertTrue(script.contains("beforeSettings {"))
         assertTrue(script.contains("apply<zone.clanker.gradle.OpenSpecSettingsPlugin>()"))
     }
 

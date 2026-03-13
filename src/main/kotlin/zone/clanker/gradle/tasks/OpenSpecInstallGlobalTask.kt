@@ -75,7 +75,9 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
             |    }
             |}
             |
-            |apply<zone.clanker.gradle.OpenSpecSettingsPlugin>()
+            |beforeSettings {
+            |    apply<zone.clanker.gradle.OpenSpecSettingsPlugin>()
+            |}
             |""".trimMargin() + "\n"
     }
 }
