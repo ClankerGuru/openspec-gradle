@@ -318,20 +318,42 @@ abstract class OpenSpecContextTask : DefaultTask() {
         "org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper" to "org.jetbrains.kotlin.jvm",
         "org.jetbrains.kotlin.gradle.plugin.KotlinAndroidPluginWrapper" to "org.jetbrains.kotlin.android",
         "org.jetbrains.kotlin.allopen.gradle.SpringGradleSubplugin" to "org.jetbrains.kotlin.plugin.spring",
+        // Android
+        "com.android.build.gradle.AppPlugin" to "com.android.application",
+        "com.android.build.gradle.LibraryPlugin" to "com.android.library",
+        "com.android.build.gradle.DynamicFeaturePlugin" to "com.android.dynamic-feature",
+        "dagger.hilt.android.plugin.HiltGradlePlugin" to "com.google.dagger.hilt.android",
+        "com.google.devtools.ksp.gradle.KspGradleSubplugin" to "com.google.devtools.ksp",
+        "org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin" to "org.jetbrains.kotlin.kapt",
+        // Compose
+        "org.jetbrains.kotlin.compose.ComposeCompilerGradleSubplugin" to "org.jetbrains.kotlin.plugin.compose",
+        "org.jetbrains.compose.ComposePlugin" to "org.jetbrains.compose",
+        // KMP
+        "org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper" to "org.jetbrains.kotlin.multiplatform",
     )
 
     // ── Framework Detection ──
 
     private val FRAMEWORK_MAP = mapOf(
-        "org.springframework.boot" to "Spring Boot",
-        "org.jetbrains.kotlin.jvm" to "Kotlin (JVM)",
-        "org.jetbrains.kotlin.android" to "Kotlin (Android)",
+        // Android
         "com.android.application" to "Android Application",
         "com.android.library" to "Android Library",
-        "org.jetbrains.compose" to "Compose Desktop",
+        "com.android.dynamic-feature" to "Android Dynamic Feature",
+        "com.google.dagger.hilt.android" to "Hilt (DI)",
+        "com.google.devtools.ksp" to "KSP (Kotlin Symbol Processing)",
+        "androidx.navigation.safeargs.kotlin" to "Navigation SafeArgs",
+        // Kotlin
+        "org.jetbrains.kotlin.jvm" to "Kotlin (JVM)",
+        "org.jetbrains.kotlin.android" to "Kotlin (Android)",
+        "org.jetbrains.kotlin.multiplatform" to "Kotlin Multiplatform (KMP)",
+        "org.jetbrains.kotlin.plugin.serialization" to "Kotlin Serialization",
+        "org.jetbrains.kotlin.plugin.compose" to "Kotlin Compose Compiler",
+        "org.jetbrains.kotlin.kapt" to "KAPT (annotation processing)",
+        "org.jetbrains.compose" to "Compose Multiplatform",
+        // Server
+        "org.springframework.boot" to "Spring Boot",
         "io.ktor" to "Ktor",
         "com.google.protobuf" to "Protobuf/gRPC",
-        "org.jetbrains.kotlin.plugin.serialization" to "Kotlin Serialization",
         "org.flywaydb.flyway" to "Flyway",
         "org.liquibase.gradle" to "Liquibase",
     )
@@ -348,9 +370,42 @@ abstract class OpenSpecContextTask : DefaultTask() {
         }
     }
 
-    /** Detect frameworks from dependency coordinates (catches things like Flyway added as a dep, not a plugin) */
+    /** Detect frameworks from dependency coordinates */
     private fun detectFrameworksFromDeps(allDeps: List<String>, frameworks: MutableList<String>) {
         val depPatterns = mapOf(
+            // Android / UI
+            "androidx.compose.ui:ui" to "Jetpack Compose",
+            "androidx.compose.material3" to "Material 3",
+            "androidx.compose.material:" to "Material 2 (legacy)",
+            "androidx.navigation:navigation-compose" to "Navigation Compose",
+            "androidx.navigation:navigation-fragment" to "Navigation (Fragment, legacy)",
+            "androidx.hilt:hilt-navigation-compose" to "Hilt Navigation Compose",
+            "com.google.dagger:hilt-android" to "Hilt (DI)",
+            "com.google.dagger:dagger" to "Dagger (DI, legacy)",
+            "io.reactivex.rxjava3:rxjava" to "RxJava 3 (legacy reactive)",
+            "io.reactivex.rxjava2:rxjava" to "RxJava 2 (legacy reactive)",
+            "io.reactivex.rxjava3:rxandroid" to "RxAndroid (legacy reactive)",
+            "io.reactivex.rxjava2:rxandroid" to "RxAndroid (legacy reactive)",
+            "androidx.lifecycle:lifecycle-viewmodel-compose" to "ViewModel Compose",
+            "androidx.lifecycle:lifecycle-viewmodel-ktx" to "ViewModel KTX",
+            "androidx.lifecycle:lifecycle-livedata" to "LiveData (legacy, prefer Flow)",
+            "androidx.room:room-runtime" to "Room (local DB)",
+            "androidx.room:room-ktx" to "Room KTX",
+            "androidx.datastore:datastore" to "DataStore",
+            "androidx.work:work-runtime" to "WorkManager",
+            "com.squareup.retrofit2:retrofit" to "Retrofit (HTTP)",
+            "com.squareup.okhttp3:okhttp" to "OkHttp",
+            "com.squareup.moshi:moshi" to "Moshi (JSON)",
+            "com.google.code.gson:gson" to "Gson (JSON, legacy)",
+            "org.jetbrains.kotlinx:kotlinx-coroutines" to "Kotlin Coroutines",
+            "org.jetbrains.kotlinx:kotlinx-serialization" to "Kotlin Serialization",
+            "com.jakewharton.timber:timber" to "Timber (logging)",
+            "io.coil-kt:coil" to "Coil (image loading)",
+            "com.github.bumptech.glide:glide" to "Glide (image loading, legacy)",
+            "com.squareup.picasso:picasso" to "Picasso (image loading, legacy)",
+            // Kotlin Multiplatform
+            "org.jetbrains.kotlinx:kotlinx-coroutines-core" to "Kotlin Coroutines",
+            // Server
             "org.flywaydb:flyway" to "Flyway",
             "org.liquibase:liquibase" to "Liquibase",
             "spring-boot-starter-web" to "Spring Web (REST)",
@@ -360,7 +415,8 @@ abstract class OpenSpecContextTask : DefaultTask() {
             "spring-boot-starter-data-mongodb" to "Spring Data MongoDB",
             "spring-boot-starter-data-redis" to "Spring Data Redis",
             "testcontainers" to "Testcontainers",
-            "io.ktor:ktor" to "Ktor",
+            "io.ktor:ktor-client" to "Ktor Client",
+            "io.ktor:ktor-server" to "Ktor Server",
             "io.grpc:grpc" to "gRPC",
             "org.jooq:jooq" to "jOOQ",
             "com.graphql-java" to "GraphQL",
@@ -449,52 +505,137 @@ abstract class OpenSpecContextTask : DefaultTask() {
 
     private fun generateHints(frameworks: List<String>): List<String> {
         val hints = mutableListOf<String>()
+        val isAndroid = frameworks.any { it.startsWith("Android") }
+        val hasCompose = "Jetpack Compose" in frameworks || "Compose Multiplatform" in frameworks
+        val hasRxJava = frameworks.any { it.contains("RxJava") || it.contains("RxAndroid") }
+        val hasCoroutines = "Kotlin Coroutines" in frameworks
+        val hasHilt = frameworks.any { it.contains("Hilt") }
+        val hasDagger = "Dagger (DI, legacy)" in frameworks && !hasHilt
+        val hasNavCompose = "Navigation Compose" in frameworks
+        val hasNavFragment = "Navigation (Fragment, legacy)" in frameworks
+        val hasLiveData = "LiveData (legacy, prefer Flow)" in frameworks
+        val hasRoom = frameworks.any { it.contains("Room") }
+        val hasKMP = "Kotlin Multiplatform (KMP)" in frameworks
 
+        // ── Android ──
+        if (isAndroid) {
+            if (hasCompose && hasRxJava) {
+                hints.add("⚡ MIGRATION IN PROGRESS: Legacy Android (RxJava, XML) → Modern (Compose, Coroutines)")
+                hints.add("Legacy code uses RxJava + XML layouts. New code should use Compose + Coroutines/Flow")
+                hints.add("Migration strategy: new screens in Compose, refactor existing screens incrementally")
+            } else if (hasCompose) {
+                hints.add("Jetpack Compose UI → @Composable functions, unidirectional data flow, State hoisting")
+            } else {
+                hints.add("Legacy Android UI → XML layouts, Activities/Fragments, View Binding or DataBinding")
+            }
+
+            if (hasRxJava && hasCoroutines) {
+                hints.add("RxJava + Coroutines coexist → migrate RxJava chains to Flow/suspend functions incrementally")
+                hints.add("Use kotlinx-coroutines-rx3 bridge for interop during migration")
+            } else if (hasRxJava) {
+                hints.add("RxJava present → Observable/Single/Completable patterns. Migration target: Kotlin Flow + suspend")
+            }
+
+            if (hasHilt) {
+                hints.add("Hilt DI → @HiltAndroidApp, @AndroidEntryPoint, @Inject, @HiltViewModel")
+            } else if (hasDagger) {
+                hints.add("Dagger (legacy) → consider migrating to Hilt for simpler Android DI")
+            }
+
+            if (hasNavCompose) {
+                hints.add("Navigation Compose → NavHost, composable() routes, type-safe navigation")
+            } else if (hasNavFragment) {
+                hints.add("Navigation Fragment (legacy) → nav_graph.xml, Fragment destinations. Migration target: Navigation Compose")
+            }
+
+            if (hasLiveData && hasCoroutines) {
+                hints.add("LiveData present → migrate to StateFlow/SharedFlow for new ViewModels")
+            } else if (hasLiveData) {
+                hints.add("LiveData present → migration target: Kotlin StateFlow + Coroutines")
+            }
+
+            if (hasRoom) {
+                hints.add("Room DB → @Entity, @Dao, @Database. Migrations via Migration class or auto-migration")
+            }
+
+            if ("Glide (image loading, legacy)" in frameworks || "Picasso (image loading, legacy)" in frameworks) {
+                val legacy = if ("Glide (image loading, legacy)" in frameworks) "Glide" else "Picasso"
+                hints.add("$legacy present → migration target: Coil (Compose-native image loading)")
+            }
+
+            if ("Gson (JSON, legacy)" in frameworks) {
+                hints.add("Gson present → migration target: Kotlin Serialization or Moshi")
+            }
+
+            // Android source conventions
+            hints.add("Android source layout: src/main/java (or kotlin), src/main/res (layouts, drawables, values)")
+        }
+
+        // ── Kotlin Multiplatform ──
+        if (hasKMP) {
+            hints.add("Kotlin Multiplatform → shared code in commonMain, platform-specific in androidMain/iosMain etc.")
+            hints.add("KMP: expect/actual declarations for platform-specific implementations")
+            if ("Ktor Client" in frameworks) {
+                hints.add("Ktor Client in KMP → shared HTTP layer across platforms")
+            }
+            if ("Kotlin Serialization" in frameworks) {
+                hints.add("KMP + Kotlin Serialization → shared data models across platforms")
+            }
+        }
+
+        // ── Compose Multiplatform ──
+        if ("Compose Multiplatform" in frameworks) {
+            hints.add("Compose Multiplatform → shared UI in commonMain, platform-specific in androidMain/desktopMain/iosMain")
+        }
+
+        // ── Ktor ──
+        if ("Ktor Server" in frameworks) {
+            hints.add("Ktor Server → routing DSL, application modules, install() for features")
+        }
+        if ("Ktor Client" in frameworks && !hasKMP) {
+            hints.add("Ktor Client → HTTP client, can replace Retrofit")
+        }
+
+        // ── Spring ──
         if ("Spring Boot" in frameworks) {
-            hints.add("Spring Boot project → controller/service/repository pattern")
+            hints.add("Spring Boot → controller/service/repository pattern")
         }
         if ("Spring Web (REST)" in frameworks) {
-            hints.add("Spring Web → REST controllers with @RequestMapping/@GetMapping etc.")
+            hints.add("Spring Web → REST controllers with @RequestMapping/@GetMapping")
         }
         if ("Spring Data JPA" in frameworks) {
-            hints.add("Spring Data JPA → JPA entities (@Entity), Spring Data repositories")
+            hints.add("Spring Data JPA → @Entity classes, Spring Data repositories")
         }
         if ("Spring Security" in frameworks) {
             hints.add("Spring Security → new endpoints may need auth rules, check SecurityConfig")
         }
         if ("Spring WebFlux (Reactive)" in frameworks) {
-            hints.add("Spring WebFlux → reactive/non-blocking, use Mono/Flux not blocking calls")
+            hints.add("Spring WebFlux → reactive, use Mono/Flux not blocking calls")
         }
         if ("Flyway" in frameworks || "Liquibase" in frameworks) {
-            hints.add("Database migrations present → schema changes REQUIRE migration files, never modify entities without a migration")
+            hints.add("Database migrations → schema changes REQUIRE migration files")
         }
         if ("Spring Data JPA" in frameworks && ("Flyway" in frameworks || "Liquibase" in frameworks)) {
-            hints.add("JPA + migrations → entity changes need: 1) migration file 2) entity update 3) test")
+            hints.add("JPA + migrations → entity changes need: 1) migration 2) entity update 3) test")
         }
-        if (frameworks.any { it.startsWith("Android") }) {
-            hints.add("Android project → activities/fragments, AndroidManifest.xml, resource-based UI or Compose")
-        }
-        if ("Compose Desktop" in frameworks) {
-            hints.add("Compose Desktop → declarative UI with @Composable functions")
-        }
-        if ("Ktor" in frameworks) {
-            hints.add("Ktor → routing DSL, application modules, install() for features")
-        }
+
+        // ── General ──
         if ("Protobuf/gRPC" in frameworks || "gRPC" in frameworks) {
             hints.add("Protobuf/gRPC → .proto files generate code, never edit generated sources")
         }
-        if ("Kotlin Serialization" in frameworks) {
+        if ("Kotlin Serialization" in frameworks && !hasKMP) {
             hints.add("Kotlin Serialization → @Serializable data classes, not Jackson/Gson")
         }
         if ("Testcontainers" in frameworks) {
-            hints.add("Testcontainers → integration tests use Docker, ensure Docker is running")
+            hints.add("Testcontainers → integration tests need Docker running")
         }
         if ("jOOQ" in frameworks) {
             hints.add("jOOQ → type-safe SQL from generated code, regenerate after schema changes")
         }
         if ("GraphQL" in frameworks) {
-            hints.add("GraphQL → schema-first or code-first, check for .graphql schema files")
+            hints.add("GraphQL → check for .graphql schema files")
         }
+
         return hints
     }
 }
