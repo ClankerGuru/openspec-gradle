@@ -43,6 +43,12 @@ abstract class OpenSpecSyncTask : DefaultTask() {
             return
         }
 
+        // Clean files from tools that are no longer active
+        val removedCount = cleanInactiveTools(toolList)
+        if (removedCount > 0) {
+            logger.lifecycle("OpenSpec: Removed $removedCount files from inactive tools")
+        }
+
         logger.lifecycle("OpenSpec: Generating files for tools: ${toolList.joinToString(", ")}")
 
         val skills = SkillGenerator.generate(buildDir, toolList)
@@ -116,6 +122,46 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         }
     }
 
+    /**
+     * Removes generated files for tools that are NOT in the active list.
+     * Also cleans up empty parent directories left behind.
+     */
+    private fun cleanInactiveTools(activeTools: List<String>): Int {
+        val activeSet = activeTools.toSet()
+        val inactiveTools = ToolAdapterRegistry.supportedTools().filter { it !in activeSet }
+        var count = 0
+        for (toolId in inactiveTools) {
+            val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+            for (cmd in TemplateRegistry.getCommandTemplates()) {
+                val file = File(project.projectDir, adapter.getCommandFilePath(cmd.id))
+                if (file.exists()) { file.delete(); count++ }
+                pruneEmptyParents(file.parentFile)
+            }
+            for (skill in TemplateRegistry.getSkillTemplates()) {
+                val file = File(project.projectDir, adapter.getSkillFilePath(skill.dirName))
+                if (file.exists()) { file.delete(); count++ }
+                pruneEmptyParents(file.parentFile)
+            }
+        }
+        return count
+    }
+
+    /**
+     * Removes empty directories up to (but not including) the project dir.
+     */
+    private fun pruneEmptyParents(dir: File?) {
+        var current = dir
+        val projectDir = project.projectDir
+        while (current != null && current != projectDir && current.startsWith(projectDir)) {
+            if (current.exists() && current.isDirectory && current.list()?.isEmpty() == true) {
+                current.delete()
+                current = current.parentFile
+            } else {
+                break
+            }
+        }
+    }
+
     private fun cleanAll() {
         var count = 0
         for (toolId in ToolAdapterRegistry.supportedTools()) {
@@ -126,12 +172,8 @@ abstract class OpenSpecSyncTask : DefaultTask() {
             }
             for (skill in TemplateRegistry.getSkillTemplates()) {
                 val file = File(project.projectDir, adapter.getSkillFilePath(skill.dirName))
-                if (file.exists()) {
-                    file.delete()
-                    val parent = file.parentFile
-                    if (parent.exists() && parent.list()?.isEmpty() == true) parent.delete()
-                    count++
-                }
+                if (file.exists()) { file.delete(); count++ }
+                pruneEmptyParents(file.parentFile)
             }
         }
         logger.lifecycle("OpenSpec: Cleaned $count files")

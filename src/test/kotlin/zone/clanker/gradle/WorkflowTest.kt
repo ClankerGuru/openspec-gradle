@@ -86,6 +86,30 @@ class WorkflowTest {
     }
 
     @Test
+    fun `sync removes files when agent is removed from config`() {
+        // First sync with github + claude
+        gradle("openspecSync", "-Pzone.clanker.openspec.agents=github,claude").build()
+        assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists(), "Copilot file should exist")
+        assertTrue(File(testProjectDir, ".claude/commands/opsx/propose.md").exists(), "Claude file should exist")
+
+        // Re-sync with only github — claude files should be removed
+        val result = gradle("openspecSync", "-Pzone.clanker.openspec.agents=github").build()
+        assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists(), "Copilot file should still exist")
+        assertFalse(File(testProjectDir, ".claude/commands/opsx/propose.md").exists(), "Claude file should be removed")
+        assertTrue(result.output.contains("Removed") && result.output.contains("inactive tools"))
+    }
+
+    @Test
+    fun `sync cleans empty parent directories after removing agent`() {
+        gradle("openspecSync", "-Pzone.clanker.openspec.agents=github,claude").build()
+        assertTrue(File(testProjectDir, ".claude/commands/opsx").exists())
+
+        gradle("openspecSync", "-Pzone.clanker.openspec.agents=github").build()
+        // The .claude/commands/opsx/ dir and parents should be pruned if empty
+        assertFalse(File(testProjectDir, ".claude/commands/opsx").exists(), "opsx dir should be pruned")
+    }
+
+    @Test
     fun `full lifecycle - sync, propose, apply, archive, clean`() {
         gradle("openspecSync").build()
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())

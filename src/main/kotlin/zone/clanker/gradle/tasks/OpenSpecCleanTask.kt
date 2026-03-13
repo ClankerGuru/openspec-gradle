@@ -29,25 +29,30 @@ abstract class OpenSpecCleanTask : DefaultTask() {
 
             for (cmd in TemplateRegistry.getCommandTemplates()) {
                 val file = File(project.projectDir, adapter.getCommandFilePath(cmd.id))
-                if (file.exists()) {
-                    file.delete()
-                    count++
-                }
+                if (file.exists()) { file.delete(); count++ }
+                pruneEmptyParents(file.parentFile)
             }
 
             for (skill in TemplateRegistry.getSkillTemplates()) {
                 val file = File(project.projectDir, adapter.getSkillFilePath(skill.dirName))
-                if (file.exists()) {
-                    file.delete()
-                    val parent = file.parentFile
-                    if (parent.exists() && parent.list()?.isEmpty() == true) {
-                        parent.delete()
-                    }
-                    count++
-                }
+                if (file.exists()) { file.delete(); count++ }
+                pruneEmptyParents(file.parentFile)
             }
         }
 
         logger.lifecycle("OpenSpec: Cleaned $count generated files")
+    }
+
+    private fun pruneEmptyParents(dir: File?) {
+        var current = dir
+        val projectDir = project.projectDir
+        while (current != null && current != projectDir && current.startsWith(projectDir)) {
+            if (current.exists() && current.isDirectory && current.list()?.isEmpty() == true) {
+                current.delete()
+                current = current.parentFile
+            } else {
+                break
+            }
+        }
     }
 }
