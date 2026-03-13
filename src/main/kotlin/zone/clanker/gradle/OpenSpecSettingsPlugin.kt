@@ -53,6 +53,25 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecSyncTask) {
                     task.tools.set(extension.tools)
                     task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
+                    task.dependsOn("openspecContext")
+                }
+            })
+
+            project.tasks.register("openspecContext", OpenSpecContextTask::class.java).configure(object : org.gradle.api.Action<OpenSpecContextTask> {
+                override fun execute(task: OpenSpecContextTask) {
+                    // Collect build files as inputs
+                    val rootDir = project.rootProject.projectDir
+                    task.buildFiles.from(
+                        project.rootProject.fileTree(rootDir, object : org.gradle.api.Action<org.gradle.api.file.ConfigurableFileTree> {
+                            override fun execute(ft: org.gradle.api.file.ConfigurableFileTree) {
+                                ft.include("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+                                    "gradle.properties", "*.lockfile", "gradle/libs.versions.toml")
+                                ft.include("**/build.gradle", "**/build.gradle.kts", "**/gradle.properties")
+                                ft.exclude("build/", "**/build/", ".gradle/", "**/.gradle/")
+                            }
+                        })
+                    )
+                    task.contextFile.set(project.layout.projectDirectory.file(".openspec/context.md"))
                 }
             })
 
