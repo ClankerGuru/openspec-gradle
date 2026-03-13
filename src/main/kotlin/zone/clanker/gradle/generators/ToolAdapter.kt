@@ -101,10 +101,29 @@ object GitHubCopilotAdapter : ToolAdapter {
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
 }
 
+object OpenCodeAdapter : ToolAdapter {
+    override val toolId = "opencode"
+    // OpenCode reads commands from .opencode/commands/*.md (project-level)
+    override fun getCommandFilePath(commandId: String) = ".opencode/commands/opsx-$commandId.md"
+    override fun formatCommandFile(content: CommandContent) = buildString {
+        // OpenCode commands are plain markdown with a description comment at the top
+        appendLine("<!-- ${content.description} -->")
+        appendLine()
+        append(content.body)
+        appendLine()
+    }
+    // OpenCode doesn't have a skills directory — it reads opencode.md at project root
+    // We put skills in .opencode/skills/ for organization (OpenCode won't auto-load these,
+    // but they can be referenced from opencode.md or used as context)
+    override fun getSkillFilePath(skillDirName: String) = ".opencode/skills/$skillDirName/SKILL.md"
+    override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
+}
+
 object ToolAdapterRegistry {
     private val adapters = mapOf(
         "claude" to ClaudeAdapter,
-        "github-copilot" to GitHubCopilotAdapter
+        "github-copilot" to GitHubCopilotAdapter,
+        "opencode" to OpenCodeAdapter
     )
 
     fun get(toolId: String): ToolAdapter? = adapters[toolId]

@@ -17,7 +17,7 @@ Add to your `settings.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("zone.clanker.gradle") version "0.2.0"
+    id("zone.clanker.gradle") version "0.3.0"
 }
 ```
 
@@ -50,10 +50,11 @@ zone.clanker.openspec.agents=github
 
 | Value             | Effect                                      |
 |-------------------|---------------------------------------------|
-| `github`          | Generates GitHub Copilot files (`.github/`)  |
-| `claude`          | Generates Claude Code files (`.claude/`)     |
-| `github,claude`   | Generates for both                           |
-| `none` or empty   | Cleans all generated files                   |
+| `github`          | Generates GitHub Copilot files (`.github/`)   |
+| `claude`          | Generates Claude Code files (`.claude/`)      |
+| `opencode`        | Generates OpenCode/Crush files (`.opencode/`) |
+| `github,claude`   | Generates for multiple (comma-separated)      |
+| `none` or empty   | Cleans all generated files                    |
 
 ## Tasks
 
@@ -98,6 +99,28 @@ For `zone.clanker.openspec.agents=claude`:
 
 ```
 .claude/
+├── commands/
+│   ├── opsx-propose.md
+│   ├── opsx-apply.md
+│   ├── opsx-archive.md
+│   ├── opsx-explore.md
+│   ├── opsx-new.md
+│   ├── opsx-sync.md
+│   └── opsx-verify.md
+└── skills/
+    ├── openspec-propose/SKILL.md
+    ├── openspec-apply-change/SKILL.md
+    ├── openspec-archive-change/SKILL.md
+    ├── openspec-explore/SKILL.md
+    ├── openspec-new-change/SKILL.md
+    ├── openspec-sync-specs/SKILL.md
+    └── openspec-verify-change/SKILL.md
+```
+
+For `zone.clanker.openspec.agents=opencode`:
+
+```
+.opencode/
 ├── commands/
 │   ├── opsx-propose.md
 │   ├── opsx-apply.md

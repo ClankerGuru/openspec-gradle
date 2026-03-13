@@ -29,6 +29,8 @@ abstract class OpenSpecSyncTask : DefaultTask() {
 
     @TaskAction
     fun sync() {
+        // Ensure .openspec/ is in .gitignore
+        ensureOpenspecGitignore()
         val buildDir = outputDir.get()
         buildDir.deleteRecursively()
         buildDir.mkdirs()
@@ -101,6 +103,16 @@ abstract class OpenSpecSyncTask : DefaultTask() {
             val target = File(projectDir, generated.relativePath)
             target.parentFile.mkdirs()
             generated.file.copyTo(target, overwrite = true)
+        }
+    }
+
+    private fun ensureOpenspecGitignore() {
+        val gitignoreFile = File(project.projectDir, ".gitignore")
+        val entry = "/.openspec/"
+        val existing = if (gitignoreFile.exists()) gitignoreFile.readLines().map { it.trim() }.toSet() else emptySet()
+        if (entry !in existing) {
+            val prefix = if (!gitignoreFile.exists() || gitignoreFile.readText().isNotBlank()) "\n" else ""
+            gitignoreFile.appendText("${prefix}# OpenSpec context (auto-generated)\n$entry\n")
         }
     }
 
