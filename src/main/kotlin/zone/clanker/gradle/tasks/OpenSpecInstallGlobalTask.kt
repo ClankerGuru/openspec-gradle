@@ -1,5 +1,6 @@
 package zone.clanker.gradle.tasks
 
+import zone.clanker.gradle.generators.GlobalGitignore
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
@@ -31,6 +32,9 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
         val version = pluginVersion.get()
 
         initScript.writeText(generateInitScript(version))
+
+        // Ensure OpenSpec patterns in global gitignore
+        GlobalGitignore.ensurePatterns(logger)
 
         // Ensure default property exists in gradle.properties
         val gradleProps = File(gradleHome, "gradle.properties")
