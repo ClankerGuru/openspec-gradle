@@ -48,6 +48,7 @@ jobs:
           reporter: java-junit
 
       - name: Publish to Gradle Plugin Portal
+        continue-on-error: true
         run: ./gradlew publishPlugins
         env:
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
@@ -55,6 +56,7 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Publish to Maven Central
+        continue-on-error: true
         run: ./gradlew publishAggregationToCentralPortal
         env:
           ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USERNAME }}
