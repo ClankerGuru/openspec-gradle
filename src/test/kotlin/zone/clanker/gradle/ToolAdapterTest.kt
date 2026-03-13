@@ -98,12 +98,12 @@ class ToolAdapterTest {
 
     @Test
     fun `ToolAdapterRegistry supportedTools lists all tools`() {
-        assertEquals(setOf("claude", "github-copilot", "opencode"), ToolAdapterRegistry.supportedTools())
+        assertEquals(setOf("claude", "github-copilot", "codex", "opencode"), ToolAdapterRegistry.supportedTools())
     }
 
     @Test
-    fun `ToolAdapterRegistry all returns three adapters`() {
-        assertEquals(3, ToolAdapterRegistry.all().size)
+    fun `ToolAdapterRegistry all returns four adapters`() {
+        assertEquals(4, ToolAdapterRegistry.all().size)
     }
 
     // ── Agent parsing ────────────────────────────────────
@@ -152,6 +152,37 @@ class ToolAdapterTest {
     @Test
     fun `parseAgents is case-insensitive`() {
         assertEquals(listOf("github-copilot", "claude"), OpenSpecSettingsPlugin.parseAgents("GitHub,Claude"))
+    }
+
+    // ── Codex adapter ────────────────────────────────────
+
+    @Test
+    fun `CodexAdapter command path uses codex skills dir`() {
+        // Codex unifies commands as skills
+        assertEquals(".codex/skills/opsx-propose/SKILL.md", CodexAdapter.getCommandFilePath("propose"))
+    }
+
+    @Test
+    fun `CodexAdapter skill path uses codex skills dir`() {
+        assertEquals(".codex/skills/test-skill/SKILL.md", CodexAdapter.getSkillFilePath("test-skill"))
+    }
+
+    @Test
+    fun `CodexAdapter command format has YAML frontmatter`() {
+        val output = CodexAdapter.formatCommandFile(sampleCommand)
+        assertTrue(output.startsWith("---\n"))
+        assertTrue(output.contains("name: opsx-test-cmd"))
+        assertTrue(output.contains("description:"))
+    }
+
+    @Test
+    fun `ToolAdapterRegistry returns CodexAdapter for codex`() {
+        assertEquals(CodexAdapter, ToolAdapterRegistry.get("codex"))
+    }
+
+    @Test
+    fun `parseAgents maps codex to codex`() {
+        assertEquals(listOf("codex"), OpenSpecSettingsPlugin.parseAgents("codex"))
     }
 
     // ── OpenCode adapter ─────────────────────────────────

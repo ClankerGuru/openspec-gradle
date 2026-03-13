@@ -38,8 +38,8 @@ gradlePlugin {
             id = "zone.clanker.gradle"
             implementationClass = "zone.clanker.gradle.OpenSpecSettingsPlugin"
             displayName = "OpenSpec Gradle Plugin"
-            description = "Settings plugin that generates Markdown skill and command files for AI coding assistants (GitHub Copilot, Claude Code, OpenCode/Crush). Auto-applies to root project via init script."
-            tags.set(listOf("ai", "copilot", "claude", "opencode", "openspec", "skills", "prompts", "coding-assistant"))
+            description = "Settings plugin that generates Markdown skill and command files for AI coding assistants (GitHub Copilot, Claude Code, OpenAI Codex, OpenCode/Crush). Auto-applies to root project via init script."
+            tags.set(listOf("ai", "copilot", "claude", "codex", "opencode", "openspec", "skills", "prompts", "coding-assistant"))
         }
     }
 }

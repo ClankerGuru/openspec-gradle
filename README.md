@@ -52,6 +52,7 @@ zone.clanker.openspec.agents=github
 |-------------------|---------------------------------------------|
 | `github`          | Generates GitHub Copilot files (`.github/`)   |
 | `claude`          | Generates Claude Code files (`.claude/`)      |
+| `codex`           | Generates OpenAI Codex files (`.codex/`)      |
 | `opencode`        | Generates OpenCode/Crush files (`.opencode/`) |
 | `github,claude`   | Generates for multiple (comma-separated)      |
 | `none` or empty   | Cleans all generated files                    |

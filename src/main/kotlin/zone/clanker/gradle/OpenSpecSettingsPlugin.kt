@@ -25,6 +25,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
         private val AGENT_MAP = mapOf(
             "github" to "github-copilot",
             "claude" to "claude",
+            "codex" to "codex",
             "opencode" to "opencode"
         )
 
