@@ -38,8 +38,8 @@ gradlePlugin {
             id = "zone.clanker.gradle"
             implementationClass = "zone.clanker.gradle.OpenSpecSettingsPlugin"
             displayName = "OpenSpec Gradle Plugin"
-            description = "Settings plugin that generates Markdown skill and command files for AI coding assistants (GitHub Copilot, Claude Code, OpenAI Codex, OpenCode/Crush). Auto-applies to root project via init script."
-            tags.set(listOf("ai", "copilot", "claude", "codex", "opencode", "openspec", "skills", "prompts", "coding-assistant"))
+            description = "Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the Gradle build model (dependencies, module graph, frameworks) and generates command/skill files for AI coding assistants. Supports GitHub Copilot, Claude Code, Codex, and OpenCode. Zero-config via init script — no plugins block or DSL required."
+            tags.set(listOf("ai", "copilot", "claude", "codex", "opencode", "openspec", "kotlin", "android", "skills", "prompts", "coding-assistant", "context"))
         }
     }
 }
@@ -70,7 +70,7 @@ publishing {
     publications.withType<MavenPublication> {
         pom {
             name.set("OpenSpec Gradle Plugin")
-            description.set("Generates Markdown skill and command files for AI coding assistants (GitHub Copilot, Claude Code)")
+            description.set("Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the build model and generates AI assistant command/skill files.")
             url.set("https://github.com/ClankerGuru/openspec-gradle")
             licenses {
                 license {
