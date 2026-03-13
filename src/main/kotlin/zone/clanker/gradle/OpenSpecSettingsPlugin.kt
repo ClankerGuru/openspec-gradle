@@ -29,6 +29,23 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             "opencode" to "opencode"
         )
 
+        /**
+         * Reads a property directly from the project's gradle.properties file.
+         * Used as fallback when findProperty() doesn't see project-level properties
+         * (e.g. when applied via init script beforeSettings).
+         */
+        private fun readProjectGradleProperty(projectDir: File, key: String): String? {
+            val propsFile = File(projectDir, "gradle.properties")
+            if (!propsFile.exists()) return null
+            return try {
+                val props = java.util.Properties()
+                propsFile.inputStream().use { props.load(it) }
+                props.getProperty(key)?.trim()
+            } catch (_: Exception) {
+                null
+            }
+        }
+
         fun parseAgents(value: String): List<String> {
             if (value.isBlank() || value == "none") return emptyList()
             return value.split(",")
@@ -47,9 +64,14 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             val extension = project.extensions.create("openspec", OpenSpecExtension::class.java)
 
             // Resolve agents lazily via provider so project-level gradle.properties is visible
-            // even when applied from an init script (beforeSettings)
+            // even when applied from an init script (beforeSettings).
+            // Falls back to reading the project's gradle.properties file directly
+            // since findProperty() may not see project-level properties from init scripts.
             val toolsProvider = project.provider {
-                val agentsProp = project.findProperty("zone.clanker.openspec.agents")?.toString()?.trim() ?: "github"
+                val prop = "zone.clanker.openspec.agents"
+                val agentsProp = project.findProperty(prop)?.toString()?.trim()
+                    ?: readProjectGradleProperty(project.projectDir, prop)
+                    ?: "github"
                 parseAgents(agentsProp)
             }
             extension.tools.set(toolsProvider)
