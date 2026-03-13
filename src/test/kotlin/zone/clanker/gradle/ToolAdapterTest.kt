@@ -93,17 +93,17 @@ class ToolAdapterTest {
     @Test
     fun `ToolAdapterRegistry returns null for unknown tool`() {
         assertNull(ToolAdapterRegistry.get("vim"))
-        assertNull(ToolAdapterRegistry.get("cursor"))
+        assertNull(ToolAdapterRegistry.get("vscode"))
     }
 
     @Test
     fun `ToolAdapterRegistry supportedTools lists all tools`() {
-        assertEquals(setOf("claude", "github-copilot", "opencode"), ToolAdapterRegistry.supportedTools())
+        assertEquals(setOf("claude", "github-copilot", "cursor", "codex", "opencode", "crush"), ToolAdapterRegistry.supportedTools())
     }
 
     @Test
-    fun `ToolAdapterRegistry all returns three adapters`() {
-        assertEquals(3, ToolAdapterRegistry.all().size)
+    fun `ToolAdapterRegistry all returns six adapters`() {
+        assertEquals(6, ToolAdapterRegistry.all().size)
     }
 
     // ── Agent parsing ────────────────────────────────────
@@ -119,8 +119,16 @@ class ToolAdapterTest {
     }
 
     @Test
-    fun `parseAgents handles all three agents`() {
-        assertEquals(listOf("github-copilot", "claude", "opencode"), OpenSpecSettingsPlugin.parseAgents("github,claude,opencode"))
+    fun `parseAgents handles all agents`() {
+        assertEquals(
+            listOf("github-copilot", "claude", "cursor", "codex", "opencode", "crush"),
+            OpenSpecSettingsPlugin.parseAgents("github,claude,cursor,codex,opencode,crush")
+        )
+    }
+
+    @Test
+    fun `parseAgents maps copilot alias to github-copilot`() {
+        assertEquals(listOf("github-copilot"), OpenSpecSettingsPlugin.parseAgents("copilot"))
     }
 
     @Test
@@ -146,7 +154,7 @@ class ToolAdapterTest {
 
     @Test
     fun `parseAgents ignores unknown values`() {
-        assertEquals(listOf("github-copilot"), OpenSpecSettingsPlugin.parseAgents("github,cursor,vim"))
+        assertEquals(listOf("github-copilot"), OpenSpecSettingsPlugin.parseAgents("github,vim,emacs"))
     }
 
     @Test
@@ -167,15 +175,75 @@ class ToolAdapterTest {
     }
 
     @Test
-    fun `OpenCodeAdapter command format has description comment`() {
+    fun `OpenCodeAdapter command format has description frontmatter`() {
         val output = OpenCodeAdapter.formatCommandFile(sampleCommand)
-        assertTrue(output.contains("<!-- A test command -->"))
+        assertTrue(output.startsWith("---\n"))
+        assertTrue(output.contains("description:"))
         assertTrue(output.contains("Do the thing."))
     }
 
     @Test
     fun `ToolAdapterRegistry returns OpenCodeAdapter for opencode`() {
         assertEquals(OpenCodeAdapter, ToolAdapterRegistry.get("opencode"))
+    }
+
+    // ── Cursor adapter ─────────────────────────────────
+
+    @Test
+    fun `CursorAdapter command path uses cursor commands dir`() {
+        assertEquals(".cursor/commands/opsx-propose.md", CursorAdapter.getCommandFilePath("propose"))
+    }
+
+    @Test
+    fun `CursorAdapter command format has name id category description frontmatter`() {
+        val output = CursorAdapter.formatCommandFile(sampleCommand)
+        assertTrue(output.startsWith("---\n"))
+        assertTrue(output.contains("name: /opsx-test-cmd"))
+        assertTrue(output.contains("id: opsx-test-cmd"))
+        assertTrue(output.contains("category: Testing"))
+        assertTrue(output.contains("description:"))
+    }
+
+    // ── Codex adapter ────────────────────────────────────
+
+    @Test
+    fun `CodexAdapter command path uses codex prompts dir`() {
+        assertEquals(".codex/prompts/opsx-propose.md", CodexAdapter.getCommandFilePath("propose"))
+    }
+
+    @Test
+    fun `CodexAdapter command format has description and argument-hint`() {
+        val output = CodexAdapter.formatCommandFile(sampleCommand)
+        assertTrue(output.startsWith("---\n"))
+        assertTrue(output.contains("description:"))
+        assertTrue(output.contains("argument-hint: command arguments"))
+    }
+
+    @Test
+    fun `CodexAdapter skill path uses codex skills dir`() {
+        assertEquals(".codex/skills/test-skill/SKILL.md", CodexAdapter.getSkillFilePath("test-skill"))
+    }
+
+    // ── Crush adapter ────────────────────────────────────
+
+    @Test
+    fun `CrushAdapter command path uses crush commands opsx dir`() {
+        assertEquals(".crush/commands/opsx/propose.md", CrushAdapter.getCommandFilePath("propose"))
+    }
+
+    @Test
+    fun `CrushAdapter command format has full frontmatter like Claude`() {
+        val output = CrushAdapter.formatCommandFile(sampleCommand)
+        assertTrue(output.startsWith("---\n"))
+        assertTrue(output.contains("name:"))
+        assertTrue(output.contains("description:"))
+        assertTrue(output.contains("category: Testing"))
+        assertTrue(output.contains("tags: [test, unit]"))
+    }
+
+    @Test
+    fun `CrushAdapter skill path uses crush skills dir`() {
+        assertEquals(".crush/skills/test-skill/SKILL.md", CrushAdapter.getSkillFilePath("test-skill"))
     }
 
     // ── YAML escaping ───────────────────────────────────

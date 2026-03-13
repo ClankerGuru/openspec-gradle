@@ -24,8 +24,12 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
 
         private val AGENT_MAP = mapOf(
             "github" to "github-copilot",
+            "copilot" to "github-copilot",
             "claude" to "claude",
-            "opencode" to "opencode"
+            "cursor" to "cursor",
+            "codex" to "codex",
+            "opencode" to "opencode",
+            "crush" to "crush"
         )
 
         fun parseAgents(value: String): List<String> {
