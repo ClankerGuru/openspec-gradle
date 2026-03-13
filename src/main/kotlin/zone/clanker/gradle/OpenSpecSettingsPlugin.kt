@@ -46,10 +46,13 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
 
             val extension = project.extensions.create("openspec", OpenSpecExtension::class.java)
 
-            // Resolve agents from gradle property: zone.clanker.openspec.agents=github,claude
-            val agentsProp = project.findProperty("zone.clanker.openspec.agents")?.toString()?.trim() ?: "github"
-            val tools = parseAgents(agentsProp)
-            extension.tools.set(tools)
+            // Resolve agents lazily via provider so project-level gradle.properties is visible
+            // even when applied from an init script (beforeSettings)
+            val toolsProvider = project.provider {
+                val agentsProp = project.findProperty("zone.clanker.openspec.agents")?.toString()?.trim() ?: "github"
+                parseAgents(agentsProp)
+            }
+            extension.tools.set(toolsProvider)
 
             project.tasks.register("openspecSync", OpenSpecSyncTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSyncTask> {
                 override fun execute(task: OpenSpecSyncTask) {
