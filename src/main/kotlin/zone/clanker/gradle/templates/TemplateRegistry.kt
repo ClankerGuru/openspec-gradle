@@ -9,37 +9,25 @@ import zone.clanker.gradle.generators.SkillContent
  */
 object TemplateRegistry {
 
-    fun getCommandTemplates(profile: String): List<CommandContent> {
-        val core = listOf(
-            proposeCommand(),
-            applyCommand(),
-            archiveCommand(),
-            exploreCommand()
-        )
-        return if (profile == "expanded") {
-            core + listOf(
-                newCommand(),
-                syncCommand(),
-                verifyCommand()
-            )
-        } else core
-    }
+    fun getCommandTemplates(): List<CommandContent> = listOf(
+        proposeCommand(),
+        applyCommand(),
+        archiveCommand(),
+        exploreCommand(),
+        newCommand(),
+        syncCommand(),
+        verifyCommand()
+    )
 
-    fun getSkillTemplates(profile: String): List<SkillContent> {
-        val core = listOf(
-            proposeSkill(),
-            applySkill(),
-            archiveSkill(),
-            exploreSkill()
-        )
-        return if (profile == "expanded") {
-            core + listOf(
-                newSkill(),
-                syncSkill(),
-                verifySkill()
-            )
-        } else core
-    }
+    fun getSkillTemplates(): List<SkillContent> = listOf(
+        proposeSkill(),
+        applySkill(),
+        archiveSkill(),
+        exploreSkill(),
+        newSkill(),
+        syncSkill(),
+        verifySkill()
+    )
 
     // ── Propose ──────────────────────────────────────────
 

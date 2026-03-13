@@ -10,10 +10,9 @@ object SkillGenerator {
 
     fun generate(
         buildDir: File,
-        tools: List<String>,
-        profile: String
+        tools: List<String>
     ): List<GeneratedFile> {
-        val skills = TemplateRegistry.getSkillTemplates(profile)
+        val skills = TemplateRegistry.getSkillTemplates()
         val generated = mutableListOf<GeneratedFile>()
 
         for (toolId in tools) {

@@ -10,10 +10,9 @@ object CommandGenerator {
 
     fun generate(
         buildDir: File,
-        tools: List<String>,
-        profile: String
+        tools: List<String>
     ): List<GeneratedFile> {
-        val commands = TemplateRegistry.getCommandTemplates(profile)
+        val commands = TemplateRegistry.getCommandTemplates()
         val generated = mutableListOf<GeneratedFile>()
 
         for (toolId in tools) {

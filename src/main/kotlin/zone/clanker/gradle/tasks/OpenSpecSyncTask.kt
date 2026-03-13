@@ -20,9 +20,6 @@ abstract class OpenSpecSyncTask : DefaultTask() {
     abstract val tools: ListProperty<String>
 
     @get:Input
-    abstract val profile: Property<String>
-
-    @get:Input
     abstract val outputDir: Property<File>
 
     init {
@@ -37,19 +34,17 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         buildDir.mkdirs()
 
         val toolList = tools.get()
-        val prof = profile.get()
 
         if (toolList.isEmpty()) {
             logger.lifecycle("OpenSpec: No agents configured (zone.clanker.openspec.agents=none). Cleaning generated files.")
-            cleanAll(prof)
+            cleanAll()
             return
         }
 
         logger.lifecycle("OpenSpec: Generating files for tools: ${toolList.joinToString(", ")}")
-        logger.lifecycle("OpenSpec: Profile: $prof")
 
-        val skills = SkillGenerator.generate(buildDir, toolList, prof)
-        val commands = CommandGenerator.generate(buildDir, toolList, prof)
+        val skills = SkillGenerator.generate(buildDir, toolList)
+        val commands = CommandGenerator.generate(buildDir, toolList)
         val allFiles = skills + commands
 
         logger.lifecycle("OpenSpec: Generated ${allFiles.size} files into ${buildDir.relativeTo(project.projectDir)}")
@@ -109,15 +104,15 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         }
     }
 
-    private fun cleanAll(prof: String) {
+    private fun cleanAll() {
         var count = 0
         for (toolId in ToolAdapterRegistry.supportedTools()) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
-            for (cmd in TemplateRegistry.getCommandTemplates(prof)) {
+            for (cmd in TemplateRegistry.getCommandTemplates()) {
                 val file = File(project.projectDir, adapter.getCommandFilePath(cmd.id))
                 if (file.exists()) { file.delete(); count++ }
             }
-            for (skill in TemplateRegistry.getSkillTemplates(prof)) {
+            for (skill in TemplateRegistry.getSkillTemplates()) {
                 val file = File(project.projectDir, adapter.getSkillFilePath(skill.dirName))
                 if (file.exists()) {
                     file.delete()

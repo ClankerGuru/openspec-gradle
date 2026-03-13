@@ -52,7 +52,6 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             project.tasks.register("openspecSync", OpenSpecSyncTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSyncTask> {
                 override fun execute(task: OpenSpecSyncTask) {
                     task.tools.set(extension.tools)
-                    task.profile.set(extension.profile)
                     task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
                 }
             })
@@ -64,7 +63,6 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             project.tasks.register("openspecClean", OpenSpecCleanTask::class.java).configure(object : org.gradle.api.Action<OpenSpecCleanTask> {
                 override fun execute(task: OpenSpecCleanTask) {
                     task.tools.set(extension.tools)
-                    task.profile.set(extension.profile)
                 }
             })
 
@@ -72,7 +70,6 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecInstallGlobalTask) {
                     task.pluginVersion.set(PLUGIN_VERSION)
                     task.tools.set(extension.tools)
-                    task.profile.set(extension.profile)
                     val publishTask = project.tasks.findByName("publishToMavenLocal")
                     if (publishTask != null) {
                         task.dependsOn(publishTask)
