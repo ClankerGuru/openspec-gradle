@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class OpenSpecPluginTest {
@@ -90,20 +91,33 @@ class OpenSpecPluginTest {
     }
 
     @Test
-    fun `openspecSync creates gitignore`() {
+    fun `openspecSync updates global gitignore`() {
         gradle("openspecSync").build()
-        val gitignore = File(testProjectDir, ".gitignore")
-        assertTrue(gitignore.exists())
-        assertTrue(gitignore.readText().contains("/.github/prompts/opsx-propose.prompt.md"))
+        val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
+        assertTrue(globalGitignore.exists(), "Global gitignore should be created")
+        val content = globalGitignore.readText()
+        assertTrue(content.contains(".openspec/"), "Should contain .openspec/ pattern")
+        assertTrue(content.contains(".github/prompts/opsx-*"), "Should contain copilot pattern")
+        assertTrue(content.contains(".claude/commands/opsx/"), "Should contain claude pattern")
     }
 
     @Test
-    fun `gitignore is idempotent`() {
+    fun `global gitignore is idempotent`() {
         gradle("openspecSync").build()
-        val first = File(testProjectDir, ".gitignore").readText()
+        val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
+        val first = globalGitignore.readText()
         gradle("openspecSync").build()
-        val second = File(testProjectDir, ".gitignore").readText()
+        val second = globalGitignore.readText()
         assertEquals(first, second)
+    }
+
+    @Test
+    fun `openspecSync does not modify project gitignore`() {
+        gradle("openspecSync").build()
+        val projectGitignore = File(testProjectDir, ".gitignore")
+        if (projectGitignore.exists()) {
+            assertFalse(projectGitignore.readText().contains("opsx-"), "Should not add entries to project .gitignore")
+        }
     }
 
     @Test
