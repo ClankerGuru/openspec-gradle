@@ -1,6 +1,7 @@
 package zone.clanker.gradle.tasks
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
@@ -51,8 +52,19 @@ abstract class OpenSpecContextTask : DefaultTask() {
         // ── VCS ──
         appendGitInfo(sb, root.projectDir)
 
-        // ── Modules (multi-project) ──
+        // ── Module Tree Diagram ──
         val subprojects = root.subprojects
+        val includedBuilds = project.gradle.includedBuilds
+        if (subprojects.isNotEmpty() || includedBuilds.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Module Tree")
+            sb.appendLine()
+            sb.appendLine("```")
+            appendModuleTree(sb, root, subprojects, includedBuilds)
+            sb.appendLine("```")
+        }
+
+        // ── Modules (multi-project) ──
         if (subprojects.isNotEmpty()) {
             sb.appendLine()
             sb.appendLine("## Modules (${subprojects.size})")
@@ -95,7 +107,6 @@ abstract class OpenSpecContextTask : DefaultTask() {
         }
 
         // ── Included Builds ──
-        val includedBuilds = project.gradle.includedBuilds
         if (includedBuilds.isNotEmpty()) {
             sb.appendLine()
             sb.appendLine("## Included Builds")
@@ -145,6 +156,24 @@ abstract class OpenSpecContextTask : DefaultTask() {
                 sb.appendLine("- $f")
             }
         }
+
+        // ── Architecture Patterns (from code structure) ──
+        val archPatterns = mutableListOf<String>()
+        detectArchitecturePatterns(root, archPatterns)
+        subprojects.sortedBy { it.path }.forEach { detectArchitecturePatterns(it, archPatterns) }
+        val distinctPatterns = archPatterns.distinct()
+        if (distinctPatterns.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Architecture Patterns")
+            sb.appendLine()
+            for (p in distinctPatterns) {
+                sb.appendLine("- $p")
+            }
+        }
+
+        // ── Package Structure ──
+        appendPackageStructure(sb, root)
+        subprojects.sortedBy { it.path }.forEach { appendPackageStructure(sb, it) }
 
         // ── Architecture Hints ──
         val hints = generateHints(distinctFrameworks)
@@ -423,6 +452,37 @@ abstract class OpenSpecContextTask : DefaultTask() {
             "io.grpc:grpc" to "gRPC",
             "org.jooq:jooq" to "jOOQ",
             "com.graphql-java" to "GraphQL",
+            // MVI / Unidirectional
+            "org.orbit-mvi:orbit-" to "Orbit MVI",
+            "com.arkivanov.mvikotlin:" to "MVIKotlin",
+            "com.slack.circuit:circuit-" to "Circuit (Slack)",
+            "com.freeletics.mad:" to "FlowRedux / MAD",
+            "org.reduxkotlin:" to "Redux Kotlin",
+            "com.arkivanov.decompose:" to "Decompose",
+            "cafe.adriel.voyager:" to "Voyager",
+            "pro.respawn.flowmvi:" to "FlowMVI",
+            // State Management
+            "app.cash.molecule:" to "Molecule (Compose + Flow)",
+            "app.cash.turbine:" to "Turbine (Flow testing)",
+            // DI
+            "org.koin:koin-" to "Koin",
+            "io.insert-koin:koin-" to "Koin",
+            "me.tatarka.inject:" to "kotlin-inject",
+            "software.amazon.lastmile.kotlin.inject.anvil:" to "kotlin-inject-anvil",
+            // Networking
+            "de.jensklingenberg.ktorfit:" to "Ktorfit",
+            "com.apollographql.apollo:" to "Apollo GraphQL",
+            "com.apollographql.apollo3:" to "Apollo GraphQL",
+            // Database
+            "app.cash.sqldelight:" to "SQLDelight",
+            "io.realm.kotlin:" to "Realm Kotlin",
+            // Image Loading
+            "io.coil-kt.coil3:" to "Coil 3",
+            "media.kamel:" to "Kamel (KMP image loading)",
+            // Testing
+            "io.kotest:" to "Kotest",
+            "io.mockk:" to "MockK",
+            "org.jetbrains.kotlinx:kotlinx-coroutines-test" to "Coroutines Test",
         )
         for ((pattern, name) in depPatterns) {
             if (allDeps.any { it.contains(pattern) } && name !in frameworks) {
@@ -431,18 +491,108 @@ abstract class OpenSpecContextTask : DefaultTask() {
         }
     }
 
+    // ── Module Tree Diagram ──
+
+    private fun appendModuleTree(
+        sb: StringBuilder,
+        root: Project,
+        subprojects: Set<Project>,
+        includedBuilds: Collection<org.gradle.api.initialization.IncludedBuild>
+    ) {
+        sb.appendLine(root.name)
+
+        // Build a tree structure from project paths
+        data class TreeNode(val name: String, val path: String, val pluginLabel: String?, val children: MutableList<TreeNode> = mutableListOf())
+
+        val rootNode = TreeNode(root.name, ":", null)
+        val nodeMap = mutableMapOf(":" to rootNode)
+
+        for (sub in subprojects.sortedBy { it.path }) {
+            val parts = sub.path.removePrefix(":").split(":")
+            var parentPath = ":"
+            for (i in parts.indices) {
+                val currentPath = ":" + parts.subList(0, i + 1).joinToString(":")
+                if (currentPath !in nodeMap) {
+                    val pluginIds = resolvePluginIds(sub.plugins).filter { !it.startsWith("org.gradle.") }
+                    val label = if (i == parts.size - 1) {
+                        // Detect the "type" plugin for display
+                        val typePlugin = pluginIds.firstOrNull { it in setOf(
+                            "com.android.application", "com.android.library", "com.android.dynamic-feature",
+                            "org.jetbrains.kotlin.jvm", "org.jetbrains.kotlin.multiplatform",
+                            "java", "java-library", "application"
+                        ) }
+                        typePlugin
+                    } else null
+                    val node = TreeNode(parts[i], currentPath, label)
+                    nodeMap[parentPath]?.children?.add(node)
+                    nodeMap[currentPath] = node
+                }
+                parentPath = currentPath
+            }
+        }
+
+        // Render tree
+        fun renderTree(node: TreeNode, prefix: String, isLast: Boolean, isRoot: Boolean) {
+            if (!isRoot) {
+                val connector = if (isLast) "└── " else "├── "
+                val pluginSuffix = if (node.pluginLabel != null) " (${node.pluginLabel})" else ""
+                sb.appendLine("$prefix$connector${node.path}$pluginSuffix")
+            }
+            val childPrefix = if (isRoot) "" else prefix + (if (isLast) "    " else "│   ")
+            val allItems = node.children.toMutableList()
+            for ((i, child) in allItems.withIndex()) {
+                val lastChild = i == allItems.size - 1 && (isRoot || includedBuilds.isEmpty() || !isRoot)
+                renderTree(child, childPrefix, lastChild && !(isRoot && includedBuilds.isNotEmpty()), false)
+            }
+            if (isRoot) {
+                for ((i, ib) in includedBuilds.withIndex()) {
+                    val connector = if (i == includedBuilds.size - 1) "└── " else "├── "
+                    sb.appendLine("$connector[included] ${ib.name}/")
+                }
+            }
+        }
+
+        renderTree(rootNode, "", true, true)
+    }
+
     // ── Source Sets ──
 
-    private fun appendSourceSets(sb: StringBuilder, proj: org.gradle.api.Project, root: org.gradle.api.Project) {
+    private fun appendSourceSets(sb: StringBuilder, proj: Project, root: Project) {
         try {
             val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java) ?: return
             val sourceSets = javaExt.sourceSets
             val label = if (proj == root && root.subprojects.isEmpty()) "Source Sets" else "Source Sets (${proj.path})"
             val entries = mutableListOf<String>()
             sourceSets.forEach { ss ->
-                val dirs = ss.allSource.srcDirs.filter { it.exists() }
-                if (dirs.isNotEmpty()) {
-                    entries.add("- **${ss.name}:** ${dirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                val kotlinDirs = ss.allSource.srcDirs.filter { it.exists() && it.path.contains("kotlin") }
+                val javaDirs = ss.allSource.srcDirs.filter { it.exists() && it.path.contains("java") && !it.path.contains("kotlin") }
+                val resourceDirs = ss.resources.srcDirs.filter { it.exists() }
+                val allExistingDirs = ss.allSource.srcDirs.filter { it.exists() }
+
+                if (allExistingDirs.isNotEmpty() || resourceDirs.isNotEmpty()) {
+                    // Count files
+                    val ktCount = allExistingDirs.sumOf { dir -> dir.walkTopDown().count { it.extension == "kt" } }
+                    val javaCount = allExistingDirs.sumOf { dir -> dir.walkTopDown().count { it.extension == "java" } }
+                    val fileCountParts = mutableListOf<String>()
+                    if (ktCount > 0) fileCountParts.add("$ktCount .kt")
+                    if (javaCount > 0) fileCountParts.add("$javaCount .java")
+                    val fileCountStr = if (fileCountParts.isNotEmpty()) " (${fileCountParts.joinToString(", ")})" else ""
+
+                    entries.add("- **${ss.name}**$fileCountStr")
+                    if (kotlinDirs.isNotEmpty()) {
+                        entries.add("  - Kotlin: ${kotlinDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
+                    if (javaDirs.isNotEmpty()) {
+                        entries.add("  - Java: ${javaDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
+                    if (resourceDirs.isNotEmpty()) {
+                        entries.add("  - Resources: ${resourceDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
+                    // If dirs don't match kotlin/java patterns, list them generically
+                    val otherDirs = allExistingDirs.filter { it !in kotlinDirs && it !in javaDirs }
+                    if (otherDirs.isNotEmpty() && kotlinDirs.isEmpty() && javaDirs.isEmpty()) {
+                        entries.add("  - Sources: ${otherDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
                 }
             }
             if (entries.isNotEmpty()) {
@@ -450,6 +600,78 @@ abstract class OpenSpecContextTask : DefaultTask() {
                 sb.appendLine("## $label")
                 sb.appendLine()
                 entries.forEach { sb.appendLine(it) }
+            }
+        } catch (_: Exception) {}
+    }
+
+    // ── Package Structure Detection ──
+
+    private fun appendPackageStructure(sb: StringBuilder, proj: Project) {
+        try {
+            val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java) ?: return
+            val mainSS = javaExt.sourceSets.findByName("main") ?: return
+            val srcDirs = mainSS.allSource.srcDirs.filter { it.exists() }
+            if (srcDirs.isEmpty()) return
+
+            // Collect all package paths
+            val packages = mutableSetOf<String>()
+            for (srcDir in srcDirs) {
+                srcDir.walkTopDown()
+                    .filter { it.isFile && (it.extension == "kt" || it.extension == "java") }
+                    .forEach { file ->
+                        val rel = file.parentFile.relativeTo(srcDir).path.replace(File.separatorChar, '.')
+                        if (rel.isNotBlank() && rel != ".") {
+                            packages.add(rel)
+                        }
+                    }
+            }
+            if (packages.isEmpty()) return
+
+            // Find base package (longest common prefix by segments)
+            val allSegments = packages.map { it.split(".") }
+            val baseSegments = mutableListOf<String>()
+            if (allSegments.isNotEmpty()) {
+                val minLen = allSegments.minOf { it.size }
+                for (i in 0 until minLen) {
+                    val seg = allSegments[0][i]
+                    if (allSegments.all { it[i] == seg }) {
+                        baseSegments.add(seg)
+                    } else break
+                }
+            }
+            val basePackage = baseSegments.joinToString(".")
+
+            val label = if (proj == proj.rootProject && proj.rootProject.subprojects.isEmpty()) "Package Structure" else "Package Structure (${proj.path})"
+            sb.appendLine()
+            sb.appendLine("## $label")
+            sb.appendLine()
+            if (basePackage.isNotBlank()) {
+                sb.appendLine("- **Base package:** `$basePackage`")
+            }
+
+            // Detect patterns
+            val relPackages = packages.map {
+                if (basePackage.isNotBlank()) it.removePrefix("$basePackage.").ifBlank { it } else it
+            }.filter { it.isNotBlank() && it != basePackage }
+
+            val hasFeaturePattern = relPackages.any { it.startsWith("feature.") || it.startsWith("features.") }
+            val hasLayerPattern = relPackages.any { p ->
+                p.split(".").first() in setOf("data", "domain", "presentation", "ui")
+            }
+            if (hasFeaturePattern) sb.appendLine("- **Pattern:** Feature modules (`feature.*`)")
+            if (hasLayerPattern) sb.appendLine("- **Pattern:** Layer-based (`data`, `domain`, `presentation`, `ui`)")
+
+            // Package tree at depth 3
+            val treePackages = packages.map { pkg ->
+                val segments = pkg.split(".")
+                segments.take(baseSegments.size + 3).joinToString(".")
+            }.distinct().sorted()
+
+            if (treePackages.isNotEmpty()) {
+                sb.appendLine("- **Packages:**")
+                for (pkg in treePackages) {
+                    sb.appendLine("  - `$pkg`")
+                }
             }
         } catch (_: Exception) {}
     }
@@ -504,6 +726,174 @@ abstract class OpenSpecContextTask : DefaultTask() {
         }
     }
 
+    // ── Architecture Pattern Detection (from code structure) ──
+
+    private fun detectArchitecturePatterns(proj: Project, patterns: MutableList<String>) {
+        try {
+            val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java) ?: return
+            val srcDirs = mutableListOf<File>()
+            javaExt.sourceSets.forEach { ss ->
+                srcDirs.addAll(ss.allSource.srcDirs.filter { it.exists() })
+            }
+            if (srcDirs.isEmpty()) return
+
+            // Collect all .kt and .java filenames (without extension) and relative package paths
+            val fileNames = mutableListOf<String>()
+            val packagePaths = mutableSetOf<String>()
+            for (srcDir in srcDirs) {
+                srcDir.walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "java") }.forEach { file ->
+                    fileNames.add(file.nameWithoutExtension)
+                    val rel = file.parentFile.relativeTo(srcDir).path.replace(File.separatorChar, '/')
+                    if (rel.isNotBlank() && rel != ".") {
+                        packagePaths.add(rel)
+                    }
+                }
+            }
+            if (fileNames.isEmpty()) return
+
+            // Count suffix patterns
+            fun countSuffix(suffix: String) = fileNames.count { it.endsWith(suffix) }
+
+            val viewModels = countSuffix("ViewModel")
+            val states = countSuffix("State")
+            val uiStates = countSuffix("UiState")
+            val intents = countSuffix("Intent")
+            val events = countSuffix("Event")
+            val presenters = countSuffix("Presenter")
+            val views = countSuffix("View")
+            val screens = countSuffix("Screen")
+            val components = countSuffix("Component")
+            val repositories = countSuffix("Repository")
+            val useCases = countSuffix("UseCase")
+            val reducers = countSuffix("Reducer")
+            val actions = countSuffix("Action")
+            val stores = countSuffix("Store")
+            val middlewares = countSuffix("Middleware")
+            val sideEffects = countSuffix("SideEffect")
+            val interactors = countSuffix("Interactor")
+            val gateways = countSuffix("Gateway")
+            val dataSources = countSuffix("DataSource")
+            val mappers = countSuffix("Mapper")
+            val transformers = countSuffix("Transformer")
+
+            val label = if (proj == proj.rootProject && proj.rootProject.subprojects.isEmpty()) "" else " in ${proj.path}"
+
+            // ── Class naming pattern detection ──
+
+            // MVI: ViewModel + State + Intent/Event
+            if (viewModels > 0 && states > 0 && (intents > 0 || events > 0)) {
+                val intentLabel = if (intents > 0) "$intents *Intent" else "$events *Event"
+                patterns.add("Code structure suggests MVI pattern$label (found $viewModels *ViewModel + $states *State + $intentLabel files)")
+            }
+            // MVVM with state: ViewModel + UiState but no Intent
+            else if (viewModels > 0 && uiStates > 0 && intents == 0) {
+                patterns.add("Code structure suggests MVVM with state$label (found $viewModels *ViewModel + $uiStates *UiState files)")
+            }
+
+            // Redux/MVI: Reducer + Action/Store
+            if (reducers > 0 && (actions > 0 || stores > 0)) {
+                val extras = listOfNotNull(
+                    if (actions > 0) "$actions *Action" else null,
+                    if (stores > 0) "$stores *Store" else null
+                ).joinToString(" + ")
+                patterns.add("Code structure suggests Redux/MVI pattern$label (found $reducers *Reducer + $extras files)")
+            }
+
+            // MVP: Presenter + View
+            if (presenters > 0 && views > 0 && screens == 0) {
+                patterns.add("Code structure suggests MVP pattern$label (found $presenters *Presenter + $views *View files)")
+            }
+
+            // Circuit-style: Presenter + Screen
+            if (presenters > 0 && screens > 0) {
+                patterns.add("Code structure suggests Circuit-style pattern$label (found $presenters *Presenter + $screens *Screen files)")
+            }
+
+            // Component-based (Decompose-style): Component + Screen
+            if (components > 0 && screens > 0 && presenters == 0) {
+                patterns.add("Code structure suggests component-based architecture$label (found $components *Component + $screens *Screen files)")
+            }
+
+            // Clean Architecture: Repository + UseCase
+            if (repositories > 0 && useCases > 0) {
+                patterns.add("Code structure suggests Clean Architecture layers$label (found $repositories *Repository + $useCases *UseCase files)")
+            }
+
+            // Side effect handling
+            if (middlewares > 0 || sideEffects > 0) {
+                val count = middlewares + sideEffects
+                val types = listOfNotNull(
+                    if (middlewares > 0) "$middlewares *Middleware" else null,
+                    if (sideEffects > 0) "$sideEffects *SideEffect" else null
+                ).joinToString(" + ")
+                patterns.add("Side effect handling detected$label ($types files)")
+            }
+
+            // Interactor pattern
+            if (interactors > 0) {
+                patterns.add("Interactor pattern detected$label ($interactors *Interactor files)")
+            }
+
+            // Data layer abstractions
+            if (gateways > 0 || dataSources > 0) {
+                val types = listOfNotNull(
+                    if (gateways > 0) "$gateways *Gateway" else null,
+                    if (dataSources > 0) "$dataSources *DataSource" else null
+                ).joinToString(" + ")
+                patterns.add("Data layer abstraction detected$label ($types files)")
+            }
+
+            // Data mapping
+            if (mappers > 0 || transformers > 0) {
+                val count = mappers + transformers
+                val types = listOfNotNull(
+                    if (mappers > 0) "$mappers *Mapper" else null,
+                    if (transformers > 0) "$transformers *Transformer" else null
+                ).joinToString(" + ")
+                patterns.add("Data mapping layer detected$label ($types files)")
+            }
+
+            // ── Package structure pattern detection ──
+            val topLevelDirs = packagePaths.map { it.split("/").last() }.toSet()
+            val allPathSegments = packagePaths.flatMap { it.split("/") }.toSet()
+
+            val layerDirs = setOf("data", "domain", "presentation", "ui").filter { it in allPathSegments }
+            if (layerDirs.size >= 2) {
+                patterns.add("Package layout indicates layered architecture$label (${layerDirs.joinToString(", ")} packages found)")
+            }
+
+            // Feature modules
+            val featurePkgs = packagePaths.filter { it.startsWith("feature/") || it.startsWith("features/") || it.contains("/feature/") || it.contains("/features/") }
+            if (featurePkgs.isNotEmpty()) {
+                // Extract feature names
+                val featureNames = featurePkgs.mapNotNull { path ->
+                    val parts = path.split("/")
+                    val idx = parts.indexOfFirst { it == "feature" || it == "features" }
+                    if (idx >= 0 && idx + 1 < parts.size) parts[idx + 1] else null
+                }.distinct().sorted()
+                if (featureNames.isNotEmpty()) {
+                    patterns.add("Feature-based modules detected$label: ${featureNames.joinToString(", ")}")
+                }
+            }
+
+            // Shared/core/common modules
+            val sharedDirs = setOf("core", "common", "shared").filter { it in allPathSegments }
+            if (sharedDirs.isNotEmpty()) {
+                patterns.add("Shared module pattern detected$label (${sharedDirs.joinToString(", ")} packages found)")
+            }
+
+            // DI module
+            if ("di" in allPathSegments || "inject" in allPathSegments) {
+                patterns.add("Dependency injection module detected$label")
+            }
+
+            // Navigation layer
+            if ("navigation" in allPathSegments || "routing" in allPathSegments) {
+                patterns.add("Navigation layer detected$label")
+            }
+        } catch (_: Exception) {}
+    }
+
     // ── Architecture Hints ──
 
     private fun generateHints(frameworks: List<String>): List<String> {
@@ -513,64 +903,63 @@ abstract class OpenSpecContextTask : DefaultTask() {
         val hasRxJava = frameworks.any { it.contains("RxJava") || it.contains("RxAndroid") }
         val hasCoroutines = "Kotlin Coroutines" in frameworks
         val hasHilt = frameworks.any { it.contains("Hilt") }
-        val hasDagger = "Dagger (DI, legacy)" in frameworks && !hasHilt
+        val hasDagger = frameworks.any { it.contains("Dagger") } && !hasHilt
         val hasNavCompose = "Navigation Compose" in frameworks
-        val hasNavFragment = "Navigation (Fragment, legacy)" in frameworks
-        val hasLiveData = "LiveData (legacy, prefer Flow)" in frameworks
+        val hasNavFragment = frameworks.any { it.contains("Navigation") && it.contains("Fragment") }
+        val hasLiveData = frameworks.any { it.contains("LiveData") }
         val hasRoom = frameworks.any { it.contains("Room") }
         val hasKMP = "Kotlin Multiplatform (KMP)" in frameworks
 
+        // ── Architecture Pattern Detection ──
+        val hasMVI = frameworks.any { it in setOf("Orbit MVI", "MVIKotlin", "FlowMVI", "FlowRedux / MAD", "Redux Kotlin") }
+        val hasCircuit = "Circuit (Slack)" in frameworks
+        val hasDecompose = "Decompose" in frameworks
+
+        if (hasCircuit) {
+            hints.add("Circuit → Presenter + UI split, Navigator for routing, Screen as unit of composition")
+        } else if (hasDecompose) {
+            hints.add("Decompose → Component-based lifecycle, ChildStack for navigation, platform-agnostic")
+        }
+
+        if (hasMVI) {
+            hints.add("Unidirectional architecture → State, Event/Intent, SideEffect pattern")
+            hints.add("Screen = pure function of State. Actions dispatch Intents. Side effects are isolated.")
+        } else if (hasCompose && hasCoroutines && !hasCircuit) {
+            hints.add("Compose + Flow → likely MVI/UDA pattern with StateFlow in ViewModel")
+        }
+
         // ── Android ──
         if (isAndroid) {
-            if (hasCompose && hasRxJava) {
-                hints.add("⚡ MIGRATION IN PROGRESS: Legacy Android (RxJava, XML) → Modern (Compose, Coroutines)")
-                hints.add("Legacy code uses RxJava + XML layouts. New code should use Compose + Coroutines/Flow")
-                hints.add("Migration strategy: new screens in Compose, refactor existing screens incrementally")
-            } else if (hasCompose) {
+            if (hasCompose) {
                 hints.add("Jetpack Compose UI → @Composable functions, unidirectional data flow, State hoisting")
             } else {
-                hints.add("Legacy Android UI → XML layouts, Activities/Fragments, View Binding or DataBinding")
+                hints.add("Android View system → XML layouts, Activities/Fragments, View Binding or DataBinding")
             }
 
-            if (hasRxJava && hasCoroutines) {
-                hints.add("RxJava + Coroutines coexist → migrate RxJava chains to Flow/suspend functions incrementally")
-                hints.add("Use kotlinx-coroutines-rx3 bridge for interop during migration")
-            } else if (hasRxJava) {
-                hints.add("RxJava present → Observable/Single/Completable patterns. Migration target: Kotlin Flow + suspend")
+            if (hasRxJava) {
+                hints.add("RxJava → Observable/Single/Completable reactive patterns")
             }
 
             if (hasHilt) {
                 hints.add("Hilt DI → @HiltAndroidApp, @AndroidEntryPoint, @Inject, @HiltViewModel")
             } else if (hasDagger) {
-                hints.add("Dagger (legacy) → consider migrating to Hilt for simpler Android DI")
+                hints.add("Dagger DI → @Component, @Module, @Inject")
             }
 
             if (hasNavCompose) {
                 hints.add("Navigation Compose → NavHost, composable() routes, type-safe navigation")
             } else if (hasNavFragment) {
-                hints.add("Navigation Fragment (legacy) → nav_graph.xml, Fragment destinations. Migration target: Navigation Compose")
+                hints.add("Navigation Component → nav_graph.xml, Fragment destinations")
             }
 
-            if (hasLiveData && hasCoroutines) {
-                hints.add("LiveData present → migrate to StateFlow/SharedFlow for new ViewModels")
-            } else if (hasLiveData) {
-                hints.add("LiveData present → migration target: Kotlin StateFlow + Coroutines")
+            if (hasLiveData) {
+                hints.add("LiveData → observable data holder for UI state")
             }
 
             if (hasRoom) {
                 hints.add("Room DB → @Entity, @Dao, @Database. Migrations via Migration class or auto-migration")
             }
 
-            if ("Glide (image loading, legacy)" in frameworks || "Picasso (image loading, legacy)" in frameworks) {
-                val legacy = if ("Glide (image loading, legacy)" in frameworks) "Glide" else "Picasso"
-                hints.add("$legacy present → migration target: Coil (Compose-native image loading)")
-            }
-
-            if ("Gson (JSON, legacy)" in frameworks) {
-                hints.add("Gson present → migration target: Kotlin Serialization or Moshi")
-            }
-
-            // Android source conventions
             hints.add("Android source layout: src/main/java (or kotlin), src/main/res (layouts, drawables, values)")
         }
 
