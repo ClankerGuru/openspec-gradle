@@ -7,13 +7,10 @@ Implement tasks from an OpenSpec change.
 1. **Select the change**
 
    If a name is provided, use it. Otherwise:
+   - Run `./gradlew opsx-status` to see all proposals and their progress
    - Infer from conversation context if the user mentioned a change
    - Auto-select if only one active change exists
-   - If ambiguous, list available changes:
-     ```bash
-     find openspec/changes -maxdepth 1 -mindepth 1 -type d -not -name archive
-     ```
-     Use the **AskUserQuestion tool** to let the user select.
+   - If ambiguous, let the user select
 
    Always announce: "Using change: <name>".
 
@@ -29,53 +26,59 @@ Implement tasks from an OpenSpec change.
    - `openspec/changes/<name>/design.md`
    - `openspec/changes/<name>/tasks.md`
 
+   Also read project context: `.openspec/context.md` (run `./gradlew opsx-context` if missing)
+
    **Handle states:**
    - If required artifacts are missing: show message, suggest creating them first
-   - If all tasks are complete: congratulate, suggest archive
+   - If all tasks are complete: congratulate, suggest `./gradlew opsx-archive --name=<name>`
    - Otherwise: proceed to implementation
 
 4. **Show current progress**
 
-   Display:
+   Run `./gradlew opsx-status --proposal=<name>` or display from parsed tasks.md:
    - Schema being used
    - Progress: "N/M tasks complete"
-   - Remaining tasks overview
+   - Remaining tasks with their codes
 
 5. **Implement tasks (loop until done or blocked)**
 
    For each pending task:
-   - Show which task is being worked on
+   - Show which task is being worked on (include task code, e.g., `aua-3`)
+   - Check dependencies: if task has `→ depends:` on incomplete tasks, skip it
    - Make the code changes required
    - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
+   - Mark task complete: `./gradlew opsx-<code> --set=done` or update checkbox in tasks.md
    - Continue to next task
 
    **Pause if:**
    - Task is unclear → ask for clarification
+   - Task is blocked by dependencies → move to next unblocked task
    - Implementation reveals a design issue → suggest updating artifacts
    - Error or blocker encountered → report and wait for guidance
    - User interrupts
 
 6. **On completion or pause, show status**
 
-   Display:
+   Run `./gradlew opsx-status --proposal=<name>` to display:
    - Tasks completed this session
-   - Overall progress: "N/M tasks complete"
-   - If all done: suggest archive
+   - Overall progress
+   - If all done: suggest `./gradlew opsx-archive --name=<name>`
    - If paused: explain why and wait for guidance
 
 **Guardrails**
 - Keep going through tasks until done or blocked
 - Always read context files before starting
+- Respect task dependencies — don't implement a task whose deps aren't done
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
-- Update task checkbox immediately after completing each task
-- Pause on errors, blockers, or unclear requirements - don't guess
+- Update task status immediately after completing each task (via Gradle or checkbox)
+- Pause on errors, blockers, or unclear requirements — don't guess
 
 **Fluid Workflow Integration**
 
 This skill supports the "actions on a change" model:
 
 - **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
-- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly
+- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts — not phase-locked, work fluidly
+- **Gradle tasks track state**: Use `./gradlew opsx-status` anytime to see where things stand

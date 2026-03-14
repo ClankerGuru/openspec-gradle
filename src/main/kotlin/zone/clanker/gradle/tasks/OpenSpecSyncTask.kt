@@ -24,8 +24,10 @@ abstract class OpenSpecSyncTask : DefaultTask() {
     abstract val outputDir: Property<File>
 
     init {
-        group = "openspec"
-        description = "Generates Markdown skill and command files for configured AI coding assistants (e.g. Claude Code, GitHub Copilot) and installs them into their tool-specific directories. Updates prompts to match the current plugin version. Run this after changing the openspec {} configuration or upgrading the plugin."
+        group = "opsx"
+        description = "[tool] Agent file generator. Generates skill/command files for configured AI agents. " +
+            "Use when: After config change or plugin upgrade. " +
+            "Chain: opsx-context for project metadata."
     }
 
     @TaskAction

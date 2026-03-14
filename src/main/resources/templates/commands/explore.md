@@ -79,7 +79,7 @@ You have full context of the OpenSpec system. Use it naturally, don't force it.
 
 At the start, quickly check what exists:
 ```bash
-find openspec/changes -maxdepth 1 -mindepth 1 -type d -not -name archive
+./gradlew opsx-status
 ```
 
 This tells you:

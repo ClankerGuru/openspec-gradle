@@ -13,7 +13,7 @@ Start a new change using the artifact-driven approach.
 
 2. **Create the change directory**
    ```bash
-   mkdir -p openspec/changes/<name>
+   ./gradlew opsx-propose --name=<name>
    ```
 
 3. **Create `.openspec.yaml`** with change metadata:

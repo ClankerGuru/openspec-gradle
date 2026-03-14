@@ -15,8 +15,9 @@ abstract class OpenSpecCleanTask : DefaultTask() {
     abstract val tools: ListProperty<String>
 
     init {
-        group = "openspec"
-        description = "Removes all generated OpenSpec skill and command files from AI tool directories (.github/, .claude/). Use this to clean up before switching tools or uninstalling the plugin. Does not remove user-created content in openspec/changes/."
+        group = "opsx"
+        description = "[tool] Remove all generated OpenSpec files. " +
+            "Use when: Switching agents, uninstalling, or cleaning up."
     }
 
     @TaskAction

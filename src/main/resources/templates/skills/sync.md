@@ -8,7 +8,7 @@ Sync delta specs from a change to main specs.
 
    List available changes:
    ```bash
-   find openspec/changes -maxdepth 1 -mindepth 1 -type d -not -name archive
+   ./gradlew opsx-status
    ```
 
 2. **Find delta specs** in `openspec/changes/<name>/specs/*/spec.md`

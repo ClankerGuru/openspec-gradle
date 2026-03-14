@@ -50,7 +50,7 @@ Depending on what the user brings, you might:
 
 Check for existing changes at the start:
 ```bash
-find openspec/changes -maxdepth 1 -mindepth 1 -type d -not -name archive
+./gradlew opsx-status
 ```
 
 If changes exist, read their artifacts for context and reference them naturally.

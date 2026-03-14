@@ -16,8 +16,11 @@ abstract class OpenSpecApplyTask : DefaultTask() {
     }
 
     init {
-        group = "openspec"
-        description = "Applies a proposed change by reading the tasks.md checklist from openspec/changes/<name>/ and guiding the AI assistant through implementation. Marks tasks as completed and tracks progress. Use --name=<change-name> to target a specific proposal."
+        group = "opsx"
+        description = "[tool] Apply a proposed change. " +
+            "Options: --name=<change-name>. " +
+            "Use when: Ready to implement a proposal. " +
+            "Chain: opsx-status to check progress."
     }
 
     @TaskAction
@@ -57,13 +60,13 @@ abstract class OpenSpecApplyTask : DefaultTask() {
             logger.lifecycle("")
             logger.lifecycle("  Read the context files and implement the remaining tasks.")
         } else {
-            logger.lifecycle("  All tasks complete! Run: ./gradlew openspecArchive --name=$name")
+            logger.lifecycle("  All tasks complete! Run: ./gradlew opsx-archive --name=$name")
         }
     }
 
     private fun autoSelectChange(changesRoot: File): String {
         if (!changesRoot.exists()) {
-            throw org.gradle.api.GradleException("No changes found. Run: ./gradlew openspecPropose --name=my-change")
+            throw org.gradle.api.GradleException("No changes found. Run: ./gradlew opsx-propose --name=my-change")
         }
         val changes = changesRoot.listFiles { f -> f.isDirectory && f.name != "archive" }?.toList() ?: emptyList()
         return when {

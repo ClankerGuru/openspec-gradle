@@ -1,6 +1,7 @@
 package zone.clanker.gradle
 
 import zone.clanker.gradle.tasks.*
+import zone.clanker.gradle.tracking.ProposalScanner
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
@@ -30,12 +31,9 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
         )
 
         /**
-         * Reads a property directly from the project's gradle.properties file.
-         * Used as fallback when findProperty() doesn't see project-level properties
-         * (e.g. when applied via init script beforeSettings).
+         * Reads a property from a gradle.properties file.
          */
-        private fun readProjectGradleProperty(projectDir: File, key: String): String? {
-            val propsFile = File(projectDir, "gradle.properties")
+        private fun readGradleProperty(propsFile: File, key: String): String? {
             if (!propsFile.exists()) return null
             return try {
                 val props = java.util.Properties()
@@ -69,22 +67,50 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             // since findProperty() may not see project-level properties from init scripts.
             val toolsProvider = project.provider {
                 val prop = "zone.clanker.openspec.agents"
+                // Resolution order: -P flag > project gradle.properties > global ~/.gradle/gradle.properties > default
                 val agentsProp = project.findProperty(prop)?.toString()?.trim()
-                    ?: readProjectGradleProperty(project.projectDir, prop)
+                    ?: readGradleProperty(File(project.projectDir, "gradle.properties"), prop)
+                    ?: readGradleProperty(File(System.getProperty("user.home"), ".gradle/gradle.properties"), prop)
                     ?: "github"
                 parseAgents(agentsProp)
             }
             extension.tools.set(toolsProvider)
 
-            project.tasks.register("openspecSync", OpenSpecSyncTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSyncTask> {
-                override fun execute(task: OpenSpecSyncTask) {
-                    task.tools.set(extension.tools)
-                    task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
-                    task.dependsOn("openspecContext")
+            project.tasks.register("opsx").configure(object : org.gradle.api.Action<org.gradle.api.Task> {
+                override fun execute(task: org.gradle.api.Task) {
+                    task.group = "opsx"
+                    task.description = "List all OpenSpec tasks — the AI tool catalog for this project."
+                    task.doLast(object : org.gradle.api.Action<org.gradle.api.Task> {
+                    override fun execute(t: org.gradle.api.Task) {
+                        val tasks = t.project.tasks
+                            .filter { task -> task.name.startsWith("opsx-") && task.group == "opsx" }
+                            .sortedBy { task -> task.name }
+                        val maxLen = tasks.maxOfOrNull { task -> task.name.length } ?: 0
+                        println("")
+                        println("OpenSpec v$PLUGIN_VERSION — AI tool catalog")
+                        println("─".repeat(60))
+                        for (task in tasks) {
+                            val desc = task.description ?: ""
+                            println("  ${task.name.padEnd(maxLen + 2)} $desc")
+                        }
+                        println("")
+                        println("Run any task:  ./gradlew <task-name>")
+                        println("Full details:  ./gradlew help --task <task-name>")
+                        println("")
+                    }
+                })
                 }
             })
 
-            project.tasks.register("openspecContext", OpenSpecContextTask::class.java).configure(object : org.gradle.api.Action<OpenSpecContextTask> {
+            project.tasks.register("opsx-sync", OpenSpecSyncTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSyncTask> {
+                override fun execute(task: OpenSpecSyncTask) {
+                    task.tools.set(extension.tools)
+                    task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
+                    task.dependsOn("opsx-context")
+                }
+            })
+
+            project.tasks.register("opsx-context", OpenSpecContextTask::class.java).configure(object : org.gradle.api.Action<OpenSpecContextTask> {
                 override fun execute(task: OpenSpecContextTask) {
                     // Collect build files as inputs
                     val rootDir = project.rootProject.projectDir
@@ -102,17 +128,24 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 }
             })
 
-            project.tasks.register("openspecPropose", OpenSpecProposeTask::class.java)
-            project.tasks.register("openspecApply", OpenSpecApplyTask::class.java)
-            project.tasks.register("openspecArchive", OpenSpecArchiveTask::class.java)
+            project.tasks.register("opsx-propose", OpenSpecProposeTask::class.java)
+            project.tasks.register("opsx-apply", OpenSpecApplyTask::class.java)
+            project.tasks.register("opsx-archive", OpenSpecArchiveTask::class.java)
 
-            project.tasks.register("openspecClean", OpenSpecCleanTask::class.java).configure(object : org.gradle.api.Action<OpenSpecCleanTask> {
+            // Dashboard task
+            project.tasks.register("opsx-status", OpenSpecStatusTask::class.java)
+
+            // Dynamic task registration from proposals
+            registerProposalTasks(project)
+
+            project.tasks.register("opsx-clean", OpenSpecCleanTask::class.java).configure(object : org.gradle.api.Action<OpenSpecCleanTask> {
                 override fun execute(task: OpenSpecCleanTask) {
                     task.tools.set(extension.tools)
                 }
             })
 
-            project.tasks.register("openspecInstallGlobal", OpenSpecInstallGlobalTask::class.java).configure(object : org.gradle.api.Action<OpenSpecInstallGlobalTask> {
+            // Register global gitignore for proposals
+            project.tasks.register("opsx-install", OpenSpecInstallGlobalTask::class.java).configure(object : org.gradle.api.Action<OpenSpecInstallGlobalTask> {
                 override fun execute(task: OpenSpecInstallGlobalTask) {
                     task.pluginVersion.set(PLUGIN_VERSION)
                     task.tools.set(extension.tools)
@@ -122,6 +155,30 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     }
                 }
             })
+        }
+
+        /**
+         * Dynamically register Gradle tasks for each task item in all proposals.
+         * Scans openspec/changes/ at configuration time.
+         */
+        private fun registerProposalTasks(project: Project) {
+            val proposals = ProposalScanner.scan(project.projectDir)
+            for (proposal in proposals) {
+                for (taskItem in proposal.flatten()) {
+                    if (taskItem.code.isBlank()) continue
+                    val taskName = "opsx-${taskItem.code}"
+                    // Avoid duplicate registration
+                    if (project.tasks.findByName(taskName) != null) continue
+                    project.tasks.register(taskName, OpenSpecTaskItemTask::class.java)
+                        .configure(object : org.gradle.api.Action<OpenSpecTaskItemTask> {
+                            override fun execute(task: OpenSpecTaskItemTask) {
+                                task.taskCode.set(taskItem.code)
+                                task.proposalName.set(proposal.name)
+                                task.description = "[task] ${taskItem.status.icon} ${taskItem.code}: ${taskItem.description}"
+                            }
+                        })
+                }
+            }
         }
     }
 }

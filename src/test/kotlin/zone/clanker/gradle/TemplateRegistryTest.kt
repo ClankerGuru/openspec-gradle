@@ -52,8 +52,8 @@ class TemplateRegistryTest {
     @Test
     fun `apply command contains task tracking instructions`() {
         val apply = TemplateRegistry.getCommandTemplates().first { it.id == "apply" }
-        assertTrue(apply.body.contains("- [ ]"))
-        assertTrue(apply.body.contains("- [x]"))
+        assertTrue(apply.body.contains("opsx-status"))
+        assertTrue(apply.body.contains("--set=done"))
     }
 
     @Test
