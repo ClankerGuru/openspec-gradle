@@ -1,26 +1,10 @@
 #!/bin/bash
-# Pre-commit hook: run build (compile + validatePlugins + test) before commiting
+# Pre-commit hook: run full build before committing
 # Install: git config core.hooksPath .githooks
 
-# Ensure JAVA_HOME is set (SDKMAN or fallback)
-if [ -z "$JAVA_HOME" ]; then
-    if [ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
-        source "$HOME/.sdkman/bin/sdkman-init.sh"
-    elif [ -d "/data/.sdkman/candidates/java/current" ]; then
-        export JAVA_HOME="/data/.sdkman/candidates/java/current"
-        export PATH="$JAVA_HOME/bin:$PATH"
-    fi
-fi
+set -e
 
 echo "Running ./gradlew build before commit..."
 ./gradlew --no-daemon build
-exit_code=$?
-
-if [ $exit_code -ne 0 ]; then
-    echo ""
-    echo "❌ Build failed. Commit aborted."
-    echo "Fix the issues and try again."
-    exit 1
-fi
 
 echo "✅ Build passed. Committing..."
