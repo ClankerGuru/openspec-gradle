@@ -1,12 +1,15 @@
 #!/bin/bash
-# Pre-push hook: runs the same checks CI will run
+# Pre-push hook: runs build (compile + validatePlugins + test) before pushing.
 # Install: git config core.hooksPath .githooks
 
-set -e
+echo "Running ./gradlew build before push..."
+./gradlew --no-daemon build
 
-echo "🔍 Running pre-push checks (same as CI)..."
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Build failed. Push aborted."
+    echo "Fix the issues and try again."
+    exit 1
+fi
 
-# Run validatePlugins + check (includes test)
-./gradlew validatePlugins check jar
-
-echo "✅ All checks passed. Pushing..."
+echo "✅ Build passed. Pushing..."
