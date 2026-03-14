@@ -4,11 +4,11 @@
 
 **Gradle as a dynamic context engine for AI coding agents.**
 
-Inspired by [OpenSpec](https://github.com/Fission-AI/OpenSpec). Built for the JVM.
+Inspired by [OpenSpec](https://github.com/Fission-AI/OpenSpec). Built on Gradle.
 
-Your Gradle build already knows everything about your project — the dependency tree, the module graph, the plugin stack, the framework versions. It's a structured, queryable model that updates every time you sync. So why is your AI agent still running `grep` and `cat` to figure out what's going on?
+OpenSpec is great — but it generates context using shell commands: `grep`, `cat`, `find`. That works, but your build tool already knows more about your project than any shell script ever will. Resolved dependencies, module relationships, plugin metadata, framework versions, task graphs — Gradle has all of it, structured and queryable.
 
-openspec-gradle treats **Gradle as the engine**. Every task is a structured query. Every output is dynamic context — generated on demand, never committed, always fresh. You don't describe your project to your agent. Gradle does it for you.
+openspec-gradle lets **Gradle provide the context**. Instead of scraping files, your AI agent gets its knowledge from the build model — the same source of truth that compiles, tests, and ships your code. Every output is dynamic, generated on demand, and never committed.
 
 > *We Gradle'd the prompt.* 🤖
 
