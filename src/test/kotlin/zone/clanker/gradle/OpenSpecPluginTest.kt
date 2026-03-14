@@ -34,8 +34,8 @@ class OpenSpecPluginTest {
 
     @Test
     fun `default config generates github-copilot files only`() {
-        val result = gradle("openspecSync").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecSync")?.outcome)
+        val result = gradle("opsx-sync").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-sync")?.outcome)
 
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
         assertTrue(File(testProjectDir, ".github/skills/openspec-propose/SKILL.md").exists())
@@ -44,8 +44,8 @@ class OpenSpecPluginTest {
 
     @Test
     fun `openspec agents=github,claude generates for both`() {
-        val result = gradle("openspecSync", "-Pzone.clanker.openspec.agents=github,claude").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecSync")?.outcome)
+        val result = gradle("opsx-sync", "-Pzone.clanker.openspec.agents=github,claude").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-sync")?.outcome)
 
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
         assertTrue(File(testProjectDir, ".claude/commands/opsx/propose.md").exists())
@@ -53,8 +53,8 @@ class OpenSpecPluginTest {
 
     @Test
     fun `openspec agents=claude generates only claude files`() {
-        val result = gradle("openspecSync", "-Pzone.clanker.openspec.agents=claude").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecSync")?.outcome)
+        val result = gradle("opsx-sync", "-Pzone.clanker.openspec.agents=claude").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-sync")?.outcome)
 
         assertTrue(File(testProjectDir, ".claude/commands/opsx/propose.md").exists())
         assertTrue(!File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
@@ -62,39 +62,39 @@ class OpenSpecPluginTest {
 
     @Test
     fun `openspec agents=none cleans existing files`() {
-        gradle("openspecSync", "-Pzone.clanker.openspec.agents=github,claude").build()
+        gradle("opsx-sync", "-Pzone.clanker.openspec.agents=github,claude").build()
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
         assertTrue(File(testProjectDir, ".claude/commands/opsx/propose.md").exists())
 
-        val result = gradle("openspecSync", "-Pzone.clanker.openspec.agents=none").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecSync")?.outcome)
+        val result = gradle("opsx-sync", "-Pzone.clanker.openspec.agents=none").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-sync")?.outcome)
 
         assertTrue(!File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
         assertTrue(!File(testProjectDir, ".claude/commands/opsx/propose.md").exists())
     }
 
     @Test
-    fun `openspecPropose creates change directory`() {
-        val result = gradle("openspecPropose", "--name=test-change").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecPropose")?.outcome)
+    fun `opsx-propose creates change directory`() {
+        val result = gradle("opsx-propose", "--name=test-change").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-propose")?.outcome)
         assertTrue(File(testProjectDir, "openspec/changes/test-change/proposal.md").exists())
         assertTrue(File(testProjectDir, "openspec/changes/test-change/design.md").exists())
         assertTrue(File(testProjectDir, "openspec/changes/test-change/tasks.md").exists())
     }
 
     @Test
-    fun `openspecClean removes generated files`() {
-        gradle("openspecSync").build()
+    fun `opsx-clean removes generated files`() {
+        gradle("opsx-sync").build()
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
 
-        val result = gradle("openspecClean").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecClean")?.outcome)
+        val result = gradle("opsx-clean").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-clean")?.outcome)
         assertTrue(!File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
     }
 
     @Test
-    fun `openspecSync updates global gitignore`() {
-        gradle("openspecSync").build()
+    fun `opsx-sync updates global gitignore`() {
+        gradle("opsx-sync").build()
         val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
         assertTrue(globalGitignore.exists(), "Global gitignore should be created")
         val content = globalGitignore.readText()
@@ -105,17 +105,17 @@ class OpenSpecPluginTest {
 
     @Test
     fun `global gitignore is idempotent`() {
-        gradle("openspecSync").build()
+        gradle("opsx-sync").build()
         val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
         val first = globalGitignore.readText()
-        gradle("openspecSync").build()
+        gradle("opsx-sync").build()
         val second = globalGitignore.readText()
         assertEquals(first, second)
     }
 
     @Test
-    fun `openspecSync does not modify project gitignore`() {
-        gradle("openspecSync").build()
+    fun `opsx-sync does not modify project gitignore`() {
+        gradle("opsx-sync").build()
         val projectGitignore = File(testProjectDir, ".gitignore")
         if (projectGitignore.exists()) {
             assertFalse(projectGitignore.readText().contains("opsx-"), "Should not add entries to project .gitignore")
@@ -123,13 +123,13 @@ class OpenSpecPluginTest {
     }
 
     @Test
-    fun `tasks are in openspec group`() {
-        val result = gradle("tasks", "--group=openspec").build()
+    fun `tasks are in opsx group`() {
+        val result = gradle("tasks", "--group=opsx").build()
         val output = result.output
-        assertTrue(output.contains("openspecSync"))
-        assertTrue(output.contains("openspecPropose"))
-        assertTrue(output.contains("openspecApply"))
-        assertTrue(output.contains("openspecArchive"))
-        assertTrue(output.contains("openspecClean"))
+        assertTrue(output.contains("opsx-sync"))
+        assertTrue(output.contains("opsx-propose"))
+        assertTrue(output.contains("opsx-apply"))
+        assertTrue(output.contains("opsx-archive"))
+        assertTrue(output.contains("opsx-clean"))
     }
 }

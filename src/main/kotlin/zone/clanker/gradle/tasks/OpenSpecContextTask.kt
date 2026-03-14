@@ -20,7 +20,7 @@ abstract class OpenSpecContextTask : DefaultTask() {
     abstract val contextFile: RegularFileProperty
 
     init {
-        group = "openspec"
+        group = "opsx"
         description = "[tool] Project context generator. " +
             "Output: .openspec/context.md. " +
             "Use when: You need project metadata, plugins, frameworks, dependencies, git info. " +

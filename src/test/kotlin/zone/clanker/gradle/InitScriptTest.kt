@@ -56,8 +56,8 @@ class InitScriptTest {
     }
 
     @Test
-    fun `openspecInstallGlobal task is registered`() {
-        val result = gradle("tasks", "--group=openspec").build()
-        assertTrue(result.output.contains("openspecInstallGlobal"))
+    fun `opsx-install task is registered`() {
+        val result = gradle("tasks", "--group=opsx").build()
+        assertTrue(result.output.contains("opsx-install"))
     }
 }

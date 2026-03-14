@@ -18,19 +18,19 @@ abstract class OpenSpecProposeTask : DefaultTask() {
     }
 
     init {
-        group = "openspec"
+        group = "opsx"
         description = "[tool] Create a new spec-driven change proposal. " +
             "Output: openspec/changes/<name>/ with proposal.md, design.md, tasks.md. " +
             "Options: --name=<kebab-case-name>. " +
             "Use when: Starting a new feature, fix, or refactor. " +
-            "Chain: Fill in artifacts → openspecApply --name=<name> to implement."
+            "Chain: Fill in artifacts → opsx-apply --name=<name> to implement."
     }
 
     @TaskAction
     fun propose() {
         val name = changeName.ifEmpty {
             throw org.gradle.api.GradleException(
-                "Change name required. Use: ./gradlew openspecPropose --name=my-change"
+                "Change name required. Use: ./gradlew opsx-propose --name=my-change"
             )
         }
 
@@ -99,6 +99,6 @@ abstract class OpenSpecProposeTask : DefaultTask() {
         logger.lifecycle("  - design.md (how)")
         logger.lifecycle("  - tasks.md (implementation steps)")
         logger.lifecycle("")
-        logger.lifecycle("Fill in the artifacts, then run: ./gradlew openspecApply --name=$name")
+        logger.lifecycle("Fill in the artifacts, then run: ./gradlew opsx-apply --name=$name")
     }
 }

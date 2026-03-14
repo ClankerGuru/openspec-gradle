@@ -26,7 +26,7 @@ abstract class OpenSpecStatusTask : DefaultTask() {
     abstract val proposal: Property<String>
 
     init {
-        group = "openspec"
+        group = "opsx"
         description = "[tool] Proposal dashboard. " +
             "Options: --proposal=<name>. " +
             "Use when: Check proposal progress, find active tasks. " +

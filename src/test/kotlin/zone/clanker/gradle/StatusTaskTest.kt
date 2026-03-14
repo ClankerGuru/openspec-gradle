@@ -37,39 +37,39 @@ class StatusTaskTest {
     }
 
     @Test
-    fun `openspecStatus runs with no proposals`() {
-        val result = gradle("openspecStatus").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecStatus")?.outcome)
+    fun `opsx-status runs with no proposals`() {
+        val result = gradle("opsx-status").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-status")?.outcome)
         assertTrue(result.output.contains("No proposals found"))
     }
 
     @Test
-    fun `openspecStatus shows dashboard with proposals`() {
+    fun `opsx-status shows dashboard with proposals`() {
         createProposal("my-feature", """
             - [ ] `mf-1` First task
             - [x] `mf-2` Done task
             - [ ] `mf-3` Third task
         """.trimIndent())
 
-        val result = gradle("openspecStatus").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecStatus")?.outcome)
+        val result = gradle("opsx-status").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-status")?.outcome)
         assertTrue(result.output.contains("OpenSpec Dashboard"))
         assertTrue(result.output.contains("my-feature"))
         assertTrue(result.output.contains("1/3"))
     }
 
     @Test
-    fun `openspecStatus with --proposal filter`() {
+    fun `opsx-status with --proposal filter`() {
         createProposal("alpha", "- [ ] `a-1` Alpha task")
         createProposal("beta", "- [ ] `b-1` Beta task")
 
-        val result = gradle("openspecStatus", "--proposal=alpha").build()
+        val result = gradle("opsx-status", "--proposal=alpha").build()
         assertTrue(result.output.contains("alpha"))
         assertFalse(result.output.contains("beta"))
     }
 
     @Test
-    fun `openspecStatus shows multiple proposals with progress`() {
+    fun `opsx-status shows multiple proposals with progress`() {
         createProposal("feature-a", """
             - [x] `fa-1` Done
             - [x] `fa-2` Done
@@ -81,7 +81,7 @@ class StatusTaskTest {
             - [ ] `fb-3` Todo
         """.trimIndent())
 
-        val result = gradle("openspecStatus").build()
+        val result = gradle("opsx-status").build()
         assertTrue(result.output.contains("feature-a"))
         assertTrue(result.output.contains("feature-b"))
         assertTrue(result.output.contains("2/2"), "Should show feature-a as 2/2 done")

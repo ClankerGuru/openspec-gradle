@@ -33,77 +33,77 @@ class WorkflowTest {
     }
 
     @Test
-    fun `openspecPropose without name fails with clear message`() {
-        val result = gradle("openspecPropose").buildAndFail()
+    fun `opsx-propose without name fails with clear message`() {
+        val result = gradle("opsx-propose").buildAndFail()
         assertTrue(result.output.contains("Change name required"))
     }
 
     @Test
-    fun `openspecArchive with non-existent change fails`() {
-        val result = gradle("openspecArchive", "--name=does-not-exist").buildAndFail()
+    fun `opsx-archive with non-existent change fails`() {
+        val result = gradle("opsx-archive", "--name=does-not-exist").buildAndFail()
         assertTrue(result.output.contains("not found"))
     }
 
     @Test
-    fun `openspecPropose on existing change fails`() {
-        gradle("openspecPropose", "--name=dup").build()
-        val result = gradle("openspecPropose", "--name=dup").buildAndFail()
+    fun `opsx-propose on existing change fails`() {
+        gradle("opsx-propose", "--name=dup").build()
+        val result = gradle("opsx-propose", "--name=dup").buildAndFail()
         assertTrue(result.output.contains("already exists"))
     }
 
     @Test
-    fun `openspecClean when no files exist succeeds`() {
-        val result = gradle("openspecClean").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecClean")?.outcome)
+    fun `opsx-clean when no files exist succeeds`() {
+        val result = gradle("opsx-clean").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-clean")?.outcome)
         assertTrue(result.output.contains("Cleaned 0 generated files"))
     }
 
     @Test
-    fun `openspecApply with no changes fails`() {
-        val result = gradle("openspecApply").buildAndFail()
+    fun `opsx-apply with no changes fails`() {
+        val result = gradle("opsx-apply").buildAndFail()
         assertTrue(result.output.contains("No changes found") || result.output.contains("not found"))
     }
 
     @Test
-    fun `openspecApply auto-selects single change`() {
-        gradle("openspecPropose", "--name=only-one").build()
-        val result = gradle("openspecApply").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecApply")?.outcome)
+    fun `opsx-apply auto-selects single change`() {
+        gradle("opsx-propose", "--name=only-one").build()
+        val result = gradle("opsx-apply").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-apply")?.outcome)
         assertTrue(result.output.contains("only-one"))
     }
 
     @Test
-    fun `openspecApply with multiple changes fails without name`() {
-        gradle("openspecPropose", "--name=change-a").build()
-        gradle("openspecPropose", "--name=change-b").build()
-        val result = gradle("openspecApply").buildAndFail()
+    fun `opsx-apply with multiple changes fails without name`() {
+        gradle("opsx-propose", "--name=change-a").build()
+        gradle("opsx-propose", "--name=change-b").build()
+        val result = gradle("opsx-apply").buildAndFail()
         assertTrue(result.output.contains("Multiple changes found"))
     }
 
     @Test
     fun `sync with agents=none generates no files`() {
-        val result = gradle("openspecSync", "-Pzone.clanker.openspec.agents=none").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecSync")?.outcome)
+        val result = gradle("opsx-sync", "-Pzone.clanker.openspec.agents=none").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-sync")?.outcome)
         assertTrue(result.output.contains("No agents configured") || result.output.contains("Cleaned"))
     }
 
     @Test
     fun `full lifecycle - sync, propose, apply, archive, clean`() {
-        gradle("openspecSync").build()
+        gradle("opsx-sync").build()
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
 
-        gradle("openspecPropose", "--name=lifecycle-test").build()
+        gradle("opsx-propose", "--name=lifecycle-test").build()
         val changeDir = File(testProjectDir, "openspec/changes/lifecycle-test")
         assertTrue(changeDir.exists())
         assertTrue(File(changeDir, "proposal.md").exists())
 
-        val applyResult = gradle("openspecApply", "--name=lifecycle-test").build()
+        val applyResult = gradle("opsx-apply", "--name=lifecycle-test").build()
         assertTrue(applyResult.output.contains("lifecycle-test"))
 
-        gradle("openspecArchive", "--name=lifecycle-test").build()
+        gradle("opsx-archive", "--name=lifecycle-test").build()
         assertFalse(changeDir.exists())
 
-        gradle("openspecClean").build()
+        gradle("opsx-clean").build()
         assertFalse(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
     }
 }

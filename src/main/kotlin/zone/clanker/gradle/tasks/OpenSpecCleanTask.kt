@@ -15,7 +15,7 @@ abstract class OpenSpecCleanTask : DefaultTask() {
     abstract val tools: ListProperty<String>
 
     init {
-        group = "openspec"
+        group = "opsx"
         description = "[tool] Remove all generated OpenSpec files. " +
             "Use when: Switching agents, uninstalling, or cleaning up."
     }

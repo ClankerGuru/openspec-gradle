@@ -32,7 +32,7 @@ abstract class OpenSpecTaskItemTask : DefaultTask() {
     abstract val setStatus: Property<String>
 
     init {
-        group = "openspec"
+        group = "opsx"
         // Description is set dynamically during registration
     }
 

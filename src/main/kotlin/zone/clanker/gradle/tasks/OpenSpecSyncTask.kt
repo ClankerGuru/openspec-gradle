@@ -24,10 +24,10 @@ abstract class OpenSpecSyncTask : DefaultTask() {
     abstract val outputDir: Property<File>
 
     init {
-        group = "openspec"
+        group = "opsx"
         description = "[tool] Agent file generator. Generates skill/command files for configured AI agents. " +
             "Use when: After config change or plugin upgrade. " +
-            "Chain: openspecContext for project metadata."
+            "Chain: opsx-context for project metadata."
     }
 
     @TaskAction

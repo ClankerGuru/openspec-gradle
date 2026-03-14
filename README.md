@@ -51,7 +51,7 @@ plugins {
 Then run:
 
 ```bash
-./gradlew openspecSync
+./gradlew opsx-sync
 ```
 
 ### Option 2: Global Init Script (all projects)
@@ -91,13 +91,13 @@ Setting `none` removes all generated files (including `.openspec/context.md`).
 
 | Task | Description |
 |---|---|
-| `openspecSync` | Generate and install skill/command files for configured agents |
-| `openspecContext` | Generate `.openspec/context.md` — project metadata, dependencies, architecture hints |
-| `openspecPropose --name=<name>` | Create a new change proposal with auto-generated task codes |
-| `openspecApply --name=<name>` | Mark a proposed change as ready for implementation |
-| `openspecArchive --name=<name>` | Archive a completed change |
-| `openspecClean` | Remove all generated files and `.openspec/` directory |
-| `openspecInstallGlobal` | Install the init script to `~/.gradle/init.d/` |
+| `opsx-sync` | Generate and install skill/command files for configured agents |
+| `opsx-context` | Generate `.openspec/context.md` — project metadata, dependencies, architecture hints |
+| `opsx-propose --name=<name>` | Create a new change proposal with auto-generated task codes |
+| `opsx-apply --name=<name>` | Mark a proposed change as ready for implementation |
+| `opsx-archive --name=<name>` | Archive a completed change |
+| `opsx-clean` | Remove all generated files and `.openspec/` directory |
+| `opsx-install` | Install the init script to `~/.gradle/init.d/` |
 
 ### Task Tracking
 
@@ -105,8 +105,8 @@ Every task item in a proposal's `tasks.md` becomes a Gradle task:
 
 | Task | Description |
 |---|---|
-| `openspecStatus` | Dashboard — shows all proposals with progress bars |
-| `openspecStatus --proposal=<name>` | Filter dashboard to a single proposal |
+| `opsx-status` | Dashboard — shows all proposals with progress bars |
+| `opsx-status --proposal=<name>` | Filter dashboard to a single proposal |
 | `opsx-<code>` | Show status of a specific task (e.g., `opsx-ttd-1`) |
 | `opsx-<code> --set=done` | Mark a task as done |
 | `opsx-<code> --set=progress` | Mark a task as in-progress |
@@ -116,10 +116,10 @@ Every task item in a proposal's `tasks.md` becomes a Gradle task:
 
 ```bash
 # Create a proposal
-./gradlew openspecPropose --name=add-user-auth
+./gradlew opsx-propose --name=add-user-auth
 
 # Check the dashboard
-./gradlew openspecStatus
+./gradlew opsx-status
 
 # Start working on a task
 ./gradlew opsx-aua-1 --set=progress
@@ -128,7 +128,7 @@ Every task item in a proposal's `tasks.md` becomes a Gradle task:
 ./gradlew opsx-aua-1 --set=done
 
 # Check progress
-./gradlew openspecStatus --proposal=add-user-auth
+./gradlew opsx-status --proposal=add-user-auth
 ```
 
 #### Task Codes
@@ -155,7 +155,7 @@ When all children of a parent task are marked done, the parent is automatically 
 
 ## Project Context
 
-`openspecContext` generates `.openspec/context.md` — a cached snapshot of what Gradle knows about your project:
+`opsx-context` generates `.openspec/context.md` — a cached snapshot of what Gradle knows about your project:
 
 - **Project metadata** — name, group, version, Gradle/Java/Kotlin versions
 - **Module graph** — inter-module dependencies with configurations
@@ -172,11 +172,11 @@ Cached via `@CacheableTask` — only regenerates when build files change.
 All tasks follow the `[tool]` description convention, making `./gradlew tasks --group openspec` a self-describing tool catalog for AI agents:
 
 ```
-openspecContext  [tool] Project context generator.
+opsx-context  [tool] Project context generator.
                 Output: .openspec/context.md.
                 Use when: You need project metadata, plugins, frameworks.
 
-openspecStatus  [tool] Proposal dashboard.
+opsx-status  [tool] Proposal dashboard.
                 Use when: Check proposal progress, find active tasks.
                 Chain: opsx-<code> --set=done to work on a task.
 ```

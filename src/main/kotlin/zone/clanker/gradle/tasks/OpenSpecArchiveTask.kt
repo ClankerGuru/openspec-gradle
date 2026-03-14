@@ -17,7 +17,7 @@ abstract class OpenSpecArchiveTask : DefaultTask() {
     }
 
     init {
-        group = "openspec"
+        group = "opsx"
         description = "[tool] Archive a completed change to openspec/changes/archive/. " +
             "Options: --name=<change-name>. " +
             "Use when: A proposal is fully implemented."
@@ -28,7 +28,7 @@ abstract class OpenSpecArchiveTask : DefaultTask() {
         val changesRoot = File(project.projectDir, "openspec/changes")
         val name = changeName.ifEmpty {
             throw org.gradle.api.GradleException(
-                "Change name required. Use: ./gradlew openspecArchive --name=my-change"
+                "Change name required. Use: ./gradlew opsx-archive --name=my-change"
             )
         }
 

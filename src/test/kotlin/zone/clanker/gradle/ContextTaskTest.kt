@@ -33,15 +33,15 @@ class ContextTaskTest {
     @Test
     fun `task generates context md`() {
         File(testProjectDir, "build.gradle.kts").writeText("")
-        val result = gradle("openspecContext").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecContext")?.outcome)
+        val result = gradle("opsx-context").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-context")?.outcome)
         assertTrue(contextFile().exists())
     }
 
     @Test
     fun `context includes project name`() {
         File(testProjectDir, "build.gradle.kts").writeText("")
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         val content = contextFile().readText()
         assertTrue(content.contains("**Name:**"))
     }
@@ -52,7 +52,7 @@ class ContextTaskTest {
             group = "com.example"
             version = "1.2.3"
         """.trimIndent())
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         val content = contextFile().readText()
         assertTrue(content.contains("com.example"))
         assertTrue(content.contains("1.2.3"))
@@ -69,7 +69,7 @@ class ContextTaskTest {
                 implementation("com.google.guava:guava:33.0.0-jre")
             }
         """.trimIndent())
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         val content = contextFile().readText()
         assertTrue(content.contains("guava"))
     }
@@ -80,7 +80,7 @@ class ContextTaskTest {
             plugins { java }
         """.trimIndent())
         File(testProjectDir, "src/main/java").mkdirs()
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         val content = contextFile().readText()
         assertTrue(content.contains("Source Sets"))
         assertTrue(content.contains("main"))
@@ -91,7 +91,7 @@ class ContextTaskTest {
         File(testProjectDir, "build.gradle.kts").writeText("""
             plugins { java }
         """.trimIndent())
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         val content = contextFile().readText()
         assertTrue(content.contains("Plugins") || content.contains("java"))
     }
@@ -116,7 +116,7 @@ class ContextTaskTest {
                 implementation(project(":core"))
             }
         """.trimIndent())
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         val content = contextFile().readText()
         assertTrue(content.contains("Modules"))
         assertTrue(content.contains(":core"))
@@ -128,27 +128,27 @@ class ContextTaskTest {
         // Verify the task class has @CacheableTask annotation
         // (actual UP-TO-DATE behavior depends on file system watching which may not work in temp dirs)
         File(testProjectDir, "build.gradle.kts").writeText("")
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         assertTrue(contextFile().exists())
         // Second run should at minimum succeed
-        val result = gradle("openspecContext").build()
-        val outcome = result.task(":openspecContext")?.outcome
+        val result = gradle("opsx-context").build()
+        val outcome = result.task(":opsx-context")?.outcome
         assertTrue(outcome == TaskOutcome.UP_TO_DATE || outcome == TaskOutcome.FROM_CACHE || outcome == TaskOutcome.SUCCESS,
             "Task should complete successfully but was $outcome")
     }
 
     @Test
-    fun `openspecSync depends on openspecContext`() {
+    fun `opsx-sync depends on opsx-context`() {
         File(testProjectDir, "build.gradle.kts").writeText("")
-        val result = gradle("openspecSync").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecContext")?.outcome)
+        val result = gradle("opsx-sync").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-context")?.outcome)
         assertTrue(contextFile().exists())
     }
 
     @Test
-    fun `openspecSync adds openspec to global gitignore`() {
+    fun `opsx-sync adds openspec to global gitignore`() {
         File(testProjectDir, "build.gradle.kts").writeText("")
-        gradle("openspecSync").build()
+        gradle("opsx-sync").build()
         val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
         assertTrue(globalGitignore.exists())
         assertTrue(globalGitignore.readText().contains(".openspec/"))
@@ -157,7 +157,7 @@ class ContextTaskTest {
     @Test
     fun `context includes gradle version`() {
         File(testProjectDir, "build.gradle.kts").writeText("")
-        gradle("openspecContext").build()
+        gradle("opsx-context").build()
         val content = contextFile().readText()
         assertTrue(content.contains("Gradle:"))
     }

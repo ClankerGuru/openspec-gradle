@@ -18,7 +18,7 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
     abstract val tools: ListProperty<String>
 
     init {
-        group = "openspec"
+        group = "opsx"
         description = "[tool] Install plugin globally via init script. " +
             "Use when: Setting up the plugin on a new machine or updating."
     }
@@ -58,7 +58,7 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
     companion object {
         fun generateInitScript(version: String): String = """
             |// OpenSpec Gradle Init Script
-            |// Installed by: ./gradlew openspecInstallGlobal
+            |// Installed by: ./gradlew opsx-install
             |// To uninstall, delete this file.
             |//
             |// Configure agents in ~/.gradle/gradle.properties:
