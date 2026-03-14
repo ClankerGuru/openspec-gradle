@@ -18,7 +18,9 @@ abstract class OpenSpecArchiveTask : DefaultTask() {
 
     init {
         group = "openspec"
-        description = "Archives a completed change by moving its artifacts from openspec/changes/<name>/ to openspec/changes/archive/<date>-<name>/. Preserves the full history of proposals, specs, and implementation decisions for future reference. Use --name=<change-name> to archive a specific change."
+        description = "[tool] Archive a completed change to openspec/changes/archive/. " +
+            "Options: --name=<change-name>. " +
+            "Use when: A proposal is fully implemented."
     }
 
     @TaskAction

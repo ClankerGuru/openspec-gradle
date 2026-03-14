@@ -3,6 +3,7 @@ package zone.clanker.gradle.tasks
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
+import zone.clanker.gradle.tracking.TaskCodeGenerator
 import java.io.File
 import java.time.LocalDate
 
@@ -18,7 +19,11 @@ abstract class OpenSpecProposeTask : DefaultTask() {
 
     init {
         group = "openspec"
-        description = "Creates a new spec-driven change proposal under openspec/changes/<name>/ with scaffolded artifacts: proposal.md (intent and scope), specs/ (requirements and scenarios), design.md (technical approach), and tasks.md (implementation checklist). Use --name=<kebab-case-name> to specify the change."
+        description = "[tool] Create a new spec-driven change proposal. " +
+            "Output: openspec/changes/<name>/ with proposal.md, design.md, tasks.md. " +
+            "Options: --name=<kebab-case-name>. " +
+            "Use when: Starting a new feature, fix, or refactor. " +
+            "Chain: Fill in artifacts → openspecApply --name=<name> to implement."
     }
 
     @TaskAction
@@ -76,19 +81,20 @@ abstract class OpenSpecProposeTask : DefaultTask() {
             |
         """.trimMargin())
 
-        // Create tasks.md template
+        // Create tasks.md template with task code prefix
+        val prefix = TaskCodeGenerator.prefix(name)
         File(changesDir, "tasks.md").writeText("""
             |# Tasks: $name
             |
             |## Implementation Tasks
             |
-            |- [ ] Task 1: Description
-            |- [ ] Task 2: Description
-            |- [ ] Task 3: Description
+            |- [ ] `$prefix-1` Task 1: Description
+            |- [ ] `$prefix-2` Task 2: Description
+            |- [ ] `$prefix-3` Task 3: Description
             |
         """.trimMargin())
 
-        logger.lifecycle("OpenSpec: Created change '$name' at openspec/changes/$name/")
+        logger.lifecycle("OpenSpec: Created change '$name' at openspec/changes/$name/ (prefix: $prefix)")
         logger.lifecycle("  - proposal.md (what & why)")
         logger.lifecycle("  - design.md (how)")
         logger.lifecycle("  - tasks.md (implementation steps)")

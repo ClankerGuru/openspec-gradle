@@ -19,7 +19,8 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
 
     init {
         group = "openspec"
-        description = "Publishes the plugin to mavenLocal and installs an init script to ~/.gradle/init.d/ that automatically applies the OpenSpec plugin to all Gradle projects. Configure agents via zone.clanker.openspec.agents property in ~/.gradle/gradle.properties."
+        description = "[tool] Install plugin globally via init script. " +
+            "Use when: Setting up the plugin on a new machine or updating."
     }
 
     @TaskAction

@@ -21,7 +21,10 @@ abstract class OpenSpecContextTask : DefaultTask() {
 
     init {
         group = "openspec"
-        description = "Generates .openspec/context.md with project metadata, dependencies, module graph, and architecture hints extracted from Gradle."
+        description = "[tool] Project context generator. " +
+            "Output: .openspec/context.md. " +
+            "Use when: You need project metadata, plugins, frameworks, dependencies, git info. " +
+            "Chain: Read output for project understanding."
     }
 
     @TaskAction

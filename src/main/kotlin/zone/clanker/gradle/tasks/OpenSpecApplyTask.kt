@@ -17,7 +17,10 @@ abstract class OpenSpecApplyTask : DefaultTask() {
 
     init {
         group = "openspec"
-        description = "Applies a proposed change by reading the tasks.md checklist from openspec/changes/<name>/ and guiding the AI assistant through implementation. Marks tasks as completed and tracks progress. Use --name=<change-name> to target a specific proposal."
+        description = "[tool] Apply a proposed change. " +
+            "Options: --name=<change-name>. " +
+            "Use when: Ready to implement a proposal. " +
+            "Chain: openspecStatus to check progress."
     }
 
     @TaskAction
