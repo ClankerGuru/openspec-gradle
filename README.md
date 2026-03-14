@@ -12,7 +12,7 @@ openspec-gradle lets **Gradle provide the context**. Instead of scraping files, 
 
 > *We Gradle'd the prompt.* 🤖
 
-Works with **GitHub Copilot**, **Claude Code**, **OpenAI Codex**, and **OpenCode**.
+Works with **GitHub Copilot**, **Claude Code**, **OpenAI Codex**, **OpenCode**, and **Crush**.
 
 ---
 
@@ -156,7 +156,7 @@ zone.clanker.openspec.agents=claude
 | `github` | GitHub Copilot | `.github/prompts/` · `.github/skills/` |
 | `claude` | Claude Code | `.claude/commands/` · `.claude/skills/` |
 | `codex` | OpenAI Codex | `.codex/skills/` |
-| `opencode` | OpenCode | `.opencode/commands/` · `.opencode/skills/` |
+| `opencode` | OpenCode / Crush | `.opencode/commands/` · `.opencode/skills/` |
 
 Combine: `github,claude` · Per-project overrides global · Set `none` to disable.
 
