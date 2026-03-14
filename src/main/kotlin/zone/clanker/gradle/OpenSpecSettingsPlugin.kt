@@ -1,6 +1,7 @@
 package zone.clanker.gradle
 
 import zone.clanker.gradle.tasks.*
+import zone.clanker.gradle.tracking.ProposalScanner
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
@@ -105,12 +106,19 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             project.tasks.register("openspecApply", OpenSpecApplyTask::class.java)
             project.tasks.register("openspecArchive", OpenSpecArchiveTask::class.java)
 
+            // Dashboard task
+            project.tasks.register("openspecStatus", OpenSpecStatusTask::class.java)
+
+            // Dynamic task registration from proposals
+            registerProposalTasks(project)
+
             project.tasks.register("openspecClean", OpenSpecCleanTask::class.java).configure(object : org.gradle.api.Action<OpenSpecCleanTask> {
                 override fun execute(task: OpenSpecCleanTask) {
                     task.tools.set(extension.tools)
                 }
             })
 
+            // Register global gitignore for proposals
             project.tasks.register("openspecInstallGlobal", OpenSpecInstallGlobalTask::class.java).configure(object : org.gradle.api.Action<OpenSpecInstallGlobalTask> {
                 override fun execute(task: OpenSpecInstallGlobalTask) {
                     task.pluginVersion.set(PLUGIN_VERSION)
@@ -121,6 +129,30 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     }
                 }
             })
+        }
+
+        /**
+         * Dynamically register Gradle tasks for each task item in all proposals.
+         * Scans openspec/changes/ at configuration time.
+         */
+        private fun registerProposalTasks(project: Project) {
+            val proposals = ProposalScanner.scan(project.projectDir)
+            for (proposal in proposals) {
+                for (taskItem in proposal.flatten()) {
+                    if (taskItem.code.isBlank()) continue
+                    val taskName = "openspecTask-${taskItem.code}"
+                    // Avoid duplicate registration
+                    if (project.tasks.findByName(taskName) != null) continue
+                    project.tasks.register(taskName, OpenSpecTaskItemTask::class.java)
+                        .configure(object : org.gradle.api.Action<OpenSpecTaskItemTask> {
+                            override fun execute(task: OpenSpecTaskItemTask) {
+                                task.taskCode.set(taskItem.code)
+                                task.proposalName.set(proposal.name)
+                                task.description = "[task] ${taskItem.status.icon} ${taskItem.code}: ${taskItem.description}"
+                            }
+                        })
+                }
+            }
         }
     }
 }
