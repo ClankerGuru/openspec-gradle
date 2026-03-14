@@ -22,7 +22,7 @@ data class SkillContent(
     val instructions: String,
     val license: String = "MIT",
     val compatibility: String = "Requires Gradle build system.",
-    val metadata: Map<String, String> = mapOf("author" to "openspec-gradle", "version" to "1.0")
+    val metadata: Map<String, String> = mapOf("author" to "openspec-gradle", "version" to zone.clanker.gradle.OpenSpecSettingsPlugin.PLUGIN_VERSION)
 )
 
 /**
