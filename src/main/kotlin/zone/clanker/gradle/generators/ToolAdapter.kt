@@ -40,7 +40,7 @@ interface ToolAdapter {
  * Generates skill file content with YAML frontmatter, matching OpenSpec's format.
  * All tools use the same skill format.
  */
-private fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "openspec-gradle:0.1.0"): String = buildString {
+private fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "openspec-gradle:${zone.clanker.gradle.OpenSpecSettingsPlugin.PLUGIN_VERSION}"): String = buildString {
     appendLine("---")
     appendLine("name: ${content.dirName}")
     appendLine("description: ${escapeYaml(content.description)}")

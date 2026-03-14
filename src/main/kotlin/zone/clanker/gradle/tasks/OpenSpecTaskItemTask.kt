@@ -15,7 +15,7 @@ import java.io.File
  * A dynamically registered task for a single task item from a proposal.
  * Allows viewing status or updating it.
  *
- * Registered as: openspecTask-<code> (e.g., openspecTask-ttd-1)
+ * Registered as: opsx-<code> (e.g., opsx-ttd-1)
  */
 @UntrackedTask(because = "Reads and modifies proposal task status in filesystem")
 abstract class OpenSpecTaskItemTask : DefaultTask() {

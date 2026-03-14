@@ -89,14 +89,14 @@ class StatusTaskTest {
     }
 
     @Test
-    fun `dynamic task registration creates openspecTask tasks`() {
+    fun `dynamic task registration creates opsx tasks`() {
         createProposal("my-feature", """
             - [ ] `mf-1` First task
             - [ ] `mf-2` Second task
         """.trimIndent())
 
-        val result = gradle("openspecTask-mf-1").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecTask-mf-1")?.outcome)
+        val result = gradle("opsx-mf-1").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-mf-1")?.outcome)
         assertTrue(result.output.contains("mf-1"))
         assertTrue(result.output.contains("TODO"))
     }
@@ -108,8 +108,8 @@ class StatusTaskTest {
             - [ ] `mf-2` Second task
         """.trimIndent())
 
-        val result = gradle("openspecTask-mf-1", "--set=done").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecTask-mf-1")?.outcome)
+        val result = gradle("opsx-mf-1", "--set=done").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-mf-1")?.outcome)
         assertTrue(result.output.contains("DONE"))
 
         // Verify file was updated
@@ -122,7 +122,7 @@ class StatusTaskTest {
     fun `dynamic task --set=progress updates status`() {
         createProposal("my-feature", "- [ ] `mf-1` A task")
 
-        val result = gradle("openspecTask-mf-1", "--set=progress").build()
+        val result = gradle("opsx-mf-1", "--set=progress").build()
         assertTrue(result.output.contains("IN_PROGRESS"))
 
         val content = File(projectDir, "openspec/changes/my-feature/tasks.md").readText()
@@ -136,7 +136,7 @@ class StatusTaskTest {
             - [ ] `mf-2` Second task → depends: mf-1
         """.trimIndent())
 
-        val result = gradle("openspecTask-mf-2", "--set=done").buildAndFail()
+        val result = gradle("opsx-mf-2", "--set=done").buildAndFail()
         assertTrue(result.output.contains("blocked"))
         assertTrue(result.output.contains("mf-1"))
     }
@@ -148,8 +148,8 @@ class StatusTaskTest {
             - [ ] `mf-2` Second task → depends: mf-1
         """.trimIndent())
 
-        val result = gradle("openspecTask-mf-2", "--set=done").build()
-        assertEquals(TaskOutcome.SUCCESS, result.task(":openspecTask-mf-2")?.outcome)
+        val result = gradle("opsx-mf-2", "--set=done").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-mf-2")?.outcome)
     }
 
     @Test
@@ -160,7 +160,7 @@ class StatusTaskTest {
               - [ ] `mf-1.2` Last child
         """.trimIndent())
 
-        gradle("openspecTask-mf-1.2", "--set=done").build()
+        gradle("opsx-mf-1.2", "--set=done").build()
 
         val content = File(projectDir, "openspec/changes/my-feature/tasks.md").readText()
         // Parent should be auto-completed since all children are done

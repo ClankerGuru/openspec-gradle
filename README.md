@@ -7,7 +7,7 @@
 
 **Gradle-native alternative to [OpenSpec](https://github.com/Fission-AI/OpenSpec) for Kotlin/JVM projects.**
 
-Extracts project context from the Gradle build model and generates command/skill files for AI coding assistants. Zero-config — auto-applies via init script, agents configured via a single Gradle property.
+Extracts project context from the Gradle build model and generates command/skill files for AI coding assistants. Includes a task tracking system with dynamic Gradle tasks for managing proposals. Zero-config — auto-applies via init script, agents configured via a single Gradle property.
 
 ## How it differs from OpenSpec
 
@@ -18,6 +18,7 @@ Extracts project context from the Gradle build model and generates command/skill
 | **Context** | Manual / static | Extracted from Gradle build model (deps, modules, frameworks) |
 | **Config** | `openspec init` + YAML | Zero-config via `gradle.properties` |
 | **Install** | `npm install -g` | Init script or settings plugin |
+| **Task Tracking** | External | Built-in Gradle tasks per proposal item |
 
 ## Supported Agents
 
@@ -86,15 +87,71 @@ Setting `none` removes all generated files (including `.openspec/context.md`).
 
 ## Tasks
 
+### Core Tasks
+
 | Task | Description |
 |---|---|
 | `openspecSync` | Generate and install skill/command files for configured agents |
 | `openspecContext` | Generate `.openspec/context.md` — project metadata, dependencies, architecture hints |
-| `openspecPropose` | Create a new change proposal (specs, design, tasks) |
-| `openspecApply` | Mark a proposed change as ready for implementation |
-| `openspecArchive` | Archive a completed change |
+| `openspecPropose --name=<name>` | Create a new change proposal with auto-generated task codes |
+| `openspecApply --name=<name>` | Mark a proposed change as ready for implementation |
+| `openspecArchive --name=<name>` | Archive a completed change |
 | `openspecClean` | Remove all generated files and `.openspec/` directory |
 | `openspecInstallGlobal` | Install the init script to `~/.gradle/init.d/` |
+
+### Task Tracking
+
+Every task item in a proposal's `tasks.md` becomes a Gradle task:
+
+| Task | Description |
+|---|---|
+| `openspecStatus` | Dashboard — shows all proposals with progress bars |
+| `openspecStatus --proposal=<name>` | Filter dashboard to a single proposal |
+| `opsx-<code>` | Show status of a specific task (e.g., `opsx-ttd-1`) |
+| `opsx-<code> --set=done` | Mark a task as done |
+| `opsx-<code> --set=progress` | Mark a task as in-progress |
+| `opsx-<code> --set=todo` | Reset a task to todo |
+
+#### Example Workflow
+
+```bash
+# Create a proposal
+./gradlew openspecPropose --name=add-user-auth
+
+# Check the dashboard
+./gradlew openspecStatus
+
+# Start working on a task
+./gradlew opsx-aua-1 --set=progress
+
+# Mark it done
+./gradlew opsx-aua-1 --set=done
+
+# Check progress
+./gradlew openspecStatus --proposal=add-user-auth
+```
+
+#### Task Codes
+
+Task codes are auto-generated from the proposal name:
+- `add-user-auth` → prefix `aua` → tasks `aua-1`, `aua-1.1`, `aua-2`, etc.
+- `fix-login-bug` → prefix `flb` → tasks `flb-1`, `flb-2`, etc.
+
+#### Task Dependencies
+
+Tasks can declare dependencies using `→ depends:` syntax in `tasks.md`:
+
+```markdown
+- [ ] `aua-1` Create User model
+- [ ] `aua-2` Implement JWT service → depends: aua-1
+- [ ] `aua-3` Add login endpoint → depends: aua-1, aua-2
+```
+
+Running `opsx-aua-2 --set=done` will fail if `aua-1` isn't done yet.
+
+#### Auto-Propagation
+
+When all children of a parent task are marked done, the parent is automatically marked done too.
 
 ## Project Context
 
@@ -109,6 +166,20 @@ Setting `none` removes all generated files (including `.openspec/context.md`).
 - **Composite builds** — included build awareness
 
 Cached via `@CacheableTask` — only regenerates when build files change.
+
+## Tool Description Convention
+
+All tasks follow the `[tool]` description convention, making `./gradlew tasks --group openspec` a self-describing tool catalog for AI agents:
+
+```
+openspecContext  [tool] Project context generator.
+                Output: .openspec/context.md.
+                Use when: You need project metadata, plugins, frameworks.
+
+openspecStatus  [tool] Proposal dashboard.
+                Use when: Check proposal progress, find active tasks.
+                Chain: opsx-<code> --set=done to work on a task.
+```
 
 ## Generated Templates
 
@@ -127,6 +198,11 @@ All agents get the same 7 command and 7 skill templates:
 ## Gitignore
 
 Generated files are automatically added to your **global gitignore** (`~/.config/git/ignore`), not the project's `.gitignore`. This keeps project repos clean — different developers can use different agents without polluting shared config.
+
+Patterns managed:
+- `.openspec/` — context files
+- `openspec/changes/` — proposals (per-developer)
+- Agent-specific directories (`.claude/`, `.github/prompts/`, `.codex/`, `.opencode/`)
 
 ## Wiki
 

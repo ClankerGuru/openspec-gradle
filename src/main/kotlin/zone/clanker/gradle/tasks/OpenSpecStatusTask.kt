@@ -15,7 +15,7 @@ import zone.clanker.gradle.tracking.TaskStatus
  * Output: Console (ANSI-formatted)
  * Options: --proposal=<name> to filter to a single proposal
  * Use when: You need to check proposal progress, find active tasks, see what's done.
- * Chain: Read output → openspecApply --task=<code> to work on a task.
+ * Chain: Read output → opsx-<code> --set=done to work on a task.
  */
 @UntrackedTask(because = "Reads and displays proposal status from filesystem")
 abstract class OpenSpecStatusTask : DefaultTask() {
@@ -30,7 +30,7 @@ abstract class OpenSpecStatusTask : DefaultTask() {
         description = "[tool] Proposal dashboard. " +
             "Options: --proposal=<name>. " +
             "Use when: Check proposal progress, find active tasks. " +
-            "Chain: openspecApply --task=<code> to work on a task."
+            "Chain: opsx-<code> --set=done to work on a task."
     }
 
     @TaskAction

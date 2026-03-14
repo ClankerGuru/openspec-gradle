@@ -140,7 +140,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             for (proposal in proposals) {
                 for (taskItem in proposal.flatten()) {
                     if (taskItem.code.isBlank()) continue
-                    val taskName = "openspecTask-${taskItem.code}"
+                    val taskName = "opsx-${taskItem.code}"
                     // Avoid duplicate registration
                     if (project.tasks.findByName(taskName) != null) continue
                     project.tasks.register(taskName, OpenSpecTaskItemTask::class.java)
