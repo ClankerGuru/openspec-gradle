@@ -3,13 +3,13 @@ Propose a new change - create the change and generate all artifacts in one step.
 I'll create a change with artifacts:
 - proposal.md (what & why)
 - design.md (how)
-- tasks.md (implementation steps)
+- tasks.md (implementation steps with task codes)
 
-When ready to implement, use the openspec-apply-change skill.
+When ready to implement, run the opsx-apply-change skill
 
 ---
 
-**Input**: The user's request should include a change name (kebab-case), OR a description of what they want to build.
+**Input**: The argument after `the opsx-propose skill` is the change name (kebab-case), OR a description of what the user wants to build.
 
 **Steps**
 
@@ -22,9 +22,15 @@ When ready to implement, use the openspec-apply-change skill.
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Create the change via Gradle**
    ```bash
-   mkdir -p openspec/changes/<name>
+   ./gradlew opsx-propose --name=<name>
+   ```
+   This creates `openspec/changes/<name>/` with scaffolded artifacts (proposal.md, design.md, tasks.md) and auto-generated task codes.
+
+   Alternatively, create manually:
+   ```bash
+   ./gradlew opsx-propose --name=<name>
    ```
    Create `.openspec.yaml` in the change directory with metadata:
    ```yaml
@@ -66,29 +72,37 @@ When ready to implement, use the openspec-apply-change skill.
       - Create the artifact file using appropriate structure for its type:
         - `proposal.md`: What & why — problem statement, goals, scope, success criteria
         - `design.md`: How — architecture, components, interfaces, data model
-        - `tasks.md`: Implementation steps — ordered checklist with `- [ ]` items
+        - `tasks.md`: Implementation steps with task codes (e.g., `- [ ] \`abc-1\` Description`)
       - Update `.openspec.yaml` to mark the artifact status as `done`
       - Show brief progress: "Created <artifact-id>"
 
-   b. **Continue until all `apply.requires` artifacts are complete**
+   b. **Task codes in tasks.md**
+      - Each task gets a code: `<prefix>-<number>` (e.g., `aua-1`, `aua-1.1`)
+      - Prefix is derived from proposal name initials (e.g., `add-user-auth` → `aua`)
+      - Tasks can declare dependencies: `→ depends: aua-1, aua-2`
+      - These codes become Gradle tasks: `./gradlew opsx-aua-1 --set=done`
+
+   c. **Continue until all `apply.requires` artifacts are complete**
       - After creating each artifact, re-read `.openspec.yaml`
       - Check if every artifact ID in `apply.requires` has `status: "done"`
       - Stop when all required artifacts are done
 
-   c. **If an artifact requires user input** (unclear context):
+   d. **If an artifact requires user input** (unclear context):
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
 5. **Show final status**
    Read `.openspec.yaml` and display the status of all artifacts.
+   Suggest: `./gradlew opsx-status` to see the dashboard.
 
 **Output**
 
 After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
+- Task codes generated (e.g., `aua-1` through `aua-5`)
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Use the openspec-apply-change skill to start implementing."
+- Prompt: "Run `the opsx-apply-change skill` to start implementing, or `./gradlew opsx-status` to see the dashboard."
 
 **Artifact Creation Guidelines**
 
@@ -96,6 +110,7 @@ After completing all artifacts, summarize:
 - Read dependency artifacts for context before creating new ones
 - **IMPORTANT**: Focus on the user's actual project — ground artifacts in their codebase
 - Keep artifacts concise but complete
+- Use task codes in tasks.md — they become trackable Gradle tasks
 
 **Guardrails**
 - Create ALL artifacts needed for implementation (as defined by `apply.requires`)

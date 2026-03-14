@@ -8,7 +8,7 @@ Verify that implementation matches the specs and tasks for a change.
 
    List available changes if needed:
    ```bash
-   find openspec/changes -maxdepth 1 -mindepth 1 -type d -not -name archive
+   ./gradlew opsx-status
    ```
 
 2. **Read all artifacts** (proposal, design, specs, tasks)

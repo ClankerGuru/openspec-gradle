@@ -8,7 +8,7 @@ Archive a completed change in the experimental workflow.
 
    List available changes:
    ```bash
-   find openspec/changes -maxdepth 1 -mindepth 1 -type d -not -name archive
+   ./gradlew opsx-status
    ```
    Use the **AskUserQuestion tool** to let the user select.
 
