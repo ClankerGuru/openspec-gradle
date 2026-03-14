@@ -20,16 +20,24 @@ You don't change your build files. You don't configure anything. It just works.
 
 ## 5-Minute Setup
 
-### 1. Install the plugin (once, for all projects)
+### 1. Install the plugin (per-project)
 
-```bash
-git clone https://github.com/ClankerGuru/openspec-gradle.git
-cd openspec-gradle
-./gradlew publishToMavenLocal
-./gradlew opsx-install
+Add to your `settings.gradle.kts`:
+
+```kotlin
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    id("zone.clanker.gradle") version "<latest>"
+}
 ```
 
-Done. Every Gradle project on your machine now has OpenSpec.
+That's it. The plugin is now active in this project.
 
 ### 2. Pick your agent
 
