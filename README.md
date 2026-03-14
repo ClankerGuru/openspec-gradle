@@ -2,15 +2,15 @@
 
 [![🤖 clanker](https://img.shields.io/badge/🤖-clanker-black?style=flat-square)](https://github.com/ClankerGuru) [![Kotlin](https://img.shields.io/badge/Kotlin-2.1-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org) [![CI](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml/badge.svg)](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml) [![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/zone.clanker.gradle?label=Gradle%20Plugin%20Portal&style=flat-square)](https://plugins.gradle.org/plugin/zone.clanker.gradle) [![Maven Central](https://img.shields.io/maven-central/v/zone.clanker/openspec-gradle?label=Maven%20Central&style=flat-square)](https://central.sonatype.com/artifact/zone.clanker/openspec-gradle) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-**Gradle-native [OpenSpec](https://github.com/Fission-AI/OpenSpec) for the JVM.**
+**Gradle as a dynamic context engine for AI coding agents.**
 
-We love what OpenSpec does — structured context for AI coding agents. But OpenSpec is language-agnostic, which means it doesn't know about the richest source of truth in any JVM project: **the Gradle build model**.
+Inspired by [OpenSpec](https://github.com/Fission-AI/OpenSpec). Built for the JVM.
 
-Gradle already has everything: a DAG of tasks that depend on each other, resolved dependency trees, module boundaries, plugin metadata, framework detection. It's a structured API sitting right there. openspec-gradle taps into it.
+Your Gradle build already knows everything about your project — the dependency tree, the module graph, the plugin stack, the framework versions. It's a structured, queryable model that updates every time you sync. So why is your AI agent still running `grep` and `cat` to figure out what's going on?
 
-Instead of your AI agent running `grep`, `cat`, and `find` to understand your project, it runs **Gradle tasks that output focused, structured context**. Each task is a query into the build model. The outputs are ephemeral — generated on demand, never committed, always fresh. Different developers can use different agents on the same repo without stepping on each other.
+openspec-gradle treats **Gradle as the engine**. Every task is a structured query. Every output is dynamic context — generated on demand, never committed, always fresh. You don't describe your project to your agent. Gradle does it for you.
 
-Think of it this way: **Gradle is the runtime. Your AI agent is the decision maker. The plugin connects them.**
+> *We Gradle'd the prompt.* 🤖
 
 Works with **GitHub Copilot**, **Claude Code**, **OpenAI Codex**, and **OpenCode**.
 
