@@ -9,7 +9,18 @@ plugins {
 }
 
 group = "zone.clanker"
-version = "0.5.1"
+version = providers.gradleProperty("pluginVersion")
+    .orElse(provider {
+        // Derive from git tag: v0.5.1 → 0.5.1, fallback to 0.0.0-LOCAL
+        val process = ProcessBuilder("git", "describe", "--tags", "--abbrev=0")
+            .directory(projectDir)
+            .redirectErrorStream(true)
+            .start()
+        val tag = process.inputStream.bufferedReader().readText().trim()
+        process.waitFor()
+        if (tag.startsWith("v")) tag.removePrefix("v") else "0.0.0-LOCAL"
+    })
+    .get()
 
 java {
     toolchain {
