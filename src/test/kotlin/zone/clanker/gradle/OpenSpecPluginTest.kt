@@ -28,6 +28,8 @@ class OpenSpecPluginTest {
             }
         """.trimIndent())
         File(testProjectDir, "build.gradle.kts").writeText("")
+        // Isolate from global ~/.gradle/gradle.properties agent config
+        File(testProjectDir, "gradle.properties").writeText("zone.clanker.openspec.agents=github\n")
     }
 
     @Test

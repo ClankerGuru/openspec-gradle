@@ -30,12 +30,9 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
         )
 
         /**
-         * Reads a property directly from the project's gradle.properties file.
-         * Used as fallback when findProperty() doesn't see project-level properties
-         * (e.g. when applied via init script beforeSettings).
+         * Reads a property from a gradle.properties file.
          */
-        private fun readProjectGradleProperty(projectDir: File, key: String): String? {
-            val propsFile = File(projectDir, "gradle.properties")
+        private fun readGradleProperty(propsFile: File, key: String): String? {
             if (!propsFile.exists()) return null
             return try {
                 val props = java.util.Properties()
@@ -69,8 +66,10 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             // since findProperty() may not see project-level properties from init scripts.
             val toolsProvider = project.provider {
                 val prop = "zone.clanker.openspec.agents"
+                // Resolution order: -P flag > project gradle.properties > global ~/.gradle/gradle.properties > default
                 val agentsProp = project.findProperty(prop)?.toString()?.trim()
-                    ?: readProjectGradleProperty(project.projectDir, prop)
+                    ?: readGradleProperty(File(project.projectDir, "gradle.properties"), prop)
+                    ?: readGradleProperty(File(System.getProperty("user.home"), ".gradle/gradle.properties"), prop)
                     ?: "github"
                 parseAgents(agentsProp)
             }
