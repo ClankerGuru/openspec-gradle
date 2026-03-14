@@ -1,11 +1,9 @@
 package zone.clanker.gradle.tasks
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.tasks.TaskAction
-import org.gradle.api.tasks.options.Option
 import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.*
+import org.gradle.api.tasks.options.Option
 import zone.clanker.gradle.tracking.ProposalScanner
 import zone.clanker.gradle.tracking.Proposal
 import zone.clanker.gradle.tracking.TaskStatus
@@ -19,6 +17,7 @@ import zone.clanker.gradle.tracking.TaskStatus
  * Use when: You need to check proposal progress, find active tasks, see what's done.
  * Chain: Read output → openspecApply --task=<code> to work on a task.
  */
+@UntrackedTask(because = "Reads and displays proposal status from filesystem")
 abstract class OpenSpecStatusTask : DefaultTask() {
 
     @get:Input
@@ -71,10 +70,10 @@ abstract class OpenSpecStatusTask : DefaultTask() {
         logger.lifecycle("${bold}OpenSpec Dashboard${reset}")
         logger.lifecycle("")
         logger.lifecycle("${bold}Summary:${reset}")
-        logger.lifecycle("  ${green}●${reset} Proposals: ${proposals.size}")
-        logger.lifecycle("  ${green}●${reset} Active Changes: $activeCount")
-        logger.lifecycle("  ${green}●${reset} Completed Changes: $completedCount")
-        logger.lifecycle("  ${green}●${reset} Task Progress: ${bold}$doneTasks/$totalTasks${reset} (${progressPercent(doneTasks, totalTasks)}% complete)")
+        logger.lifecycle("  ${green}*${reset} Proposals: ${proposals.size}")
+        logger.lifecycle("  ${green}*${reset} Active Changes: $activeCount")
+        logger.lifecycle("  ${green}*${reset} Completed Changes: $completedCount")
+        logger.lifecycle("  ${green}*${reset} Task Progress: ${bold}$doneTasks/$totalTasks${reset} (${progressPercent(doneTasks, totalTasks)}% complete)")
         logger.lifecycle("")
 
         // Active changes with progress bars
@@ -86,7 +85,7 @@ abstract class OpenSpecStatusTask : DefaultTask() {
                 val bar = progressBar(p.progressPercent, 20)
                 val name = p.name.padEnd(maxNameLen)
                 val pct = "${p.progressPercent}%".padStart(4)
-                logger.lifecycle("  ${green}●${reset} $name $bar $pct")
+                logger.lifecycle("  ${green}*${reset} $name $bar $pct")
             }
             logger.lifecycle("")
         }
@@ -96,14 +95,14 @@ abstract class OpenSpecStatusTask : DefaultTask() {
         if (completed.isNotEmpty()) {
             logger.lifecycle("${bold}Completed Changes${reset}")
             for (p in completed) {
-                logger.lifecycle("  ${green}✓${reset} ${p.name}")
+                logger.lifecycle("  ${green}v${reset} ${p.name}")
             }
             logger.lifecycle("")
         }
 
         // Detailed task list per proposal
         for (p in proposals) {
-            logger.lifecycle("${bold}${p.name}${reset} (${p.prefix}) — ${p.doneCount}/${p.totalCount} tasks done")
+            logger.lifecycle("${bold}${p.name}${reset} (${p.prefix}) - ${p.doneCount}/${p.totalCount} tasks done")
             printTaskTree(p.tasks, "  ", green, yellow, dim, reset)
             logger.lifecycle("")
         }
@@ -119,9 +118,9 @@ abstract class OpenSpecStatusTask : DefaultTask() {
     ) {
         for (task in tasks) {
             val icon = when (task.status) {
-                TaskStatus.DONE -> "${green}✅${reset}"
-                TaskStatus.IN_PROGRESS -> "${yellow}🔄${reset}"
-                TaskStatus.TODO -> "⬜"
+                TaskStatus.DONE -> "${green}[x]${reset}"
+                TaskStatus.IN_PROGRESS -> "${yellow}[~]${reset}"
+                TaskStatus.TODO -> "[ ]"
             }
             val code = if (task.code.isNotBlank()) "${dim}${task.code}${reset}".padEnd(12 + dim.length + reset.length) else "".padEnd(12)
             logger.lifecycle("$indent$icon $code ${task.description}")
@@ -137,7 +136,7 @@ abstract class OpenSpecStatusTask : DefaultTask() {
         val green = "\u001B[32m"
         val dim = "\u001B[2m"
         val reset = "\u001B[0m"
-        return "[${green}${"█".repeat(filled)}${reset}${dim}${"░".repeat(empty)}${reset}]"
+        return "[${green}${"#".repeat(filled)}${reset}${dim}${"-".repeat(empty)}${reset}]"
     }
 
     private fun progressPercent(done: Int, total: Int): Int =

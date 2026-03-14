@@ -1,0 +1,12 @@
+#!/bin/bash
+# Pre-push hook: runs the same checks CI will run
+# Install: git config core.hooksPath .githooks
+
+set -e
+
+echo "🔍 Running pre-push checks (same as CI)..."
+
+# Run validatePlugins + check (includes test)
+./gradlew validatePlugins check jar
+
+echo "✅ All checks passed. Pushing..."

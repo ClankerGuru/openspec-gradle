@@ -10,9 +10,9 @@ enum class TaskStatus {
 
     val icon: String
         get() = when (this) {
-            TODO -> "⬜"
-            IN_PROGRESS -> "🔄"
-            DONE -> "✅"
+            TODO -> "[ ]"
+            IN_PROGRESS -> "[~]"
+            DONE -> "[x]"
         }
 
     val checkbox: String

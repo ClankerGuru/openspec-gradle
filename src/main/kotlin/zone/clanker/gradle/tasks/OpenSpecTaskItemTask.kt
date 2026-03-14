@@ -16,6 +16,7 @@ import java.io.File
  *
  * Registered as: openspecTask-<code> (e.g., openspecTask-ttd-1)
  */
+@org.gradle.api.tasks.UntrackedTask(because = "Reads and modifies proposal task status in filesystem")
 abstract class OpenSpecTaskItemTask : DefaultTask() {
 
     @get:Input
