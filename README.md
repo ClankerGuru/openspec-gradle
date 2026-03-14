@@ -6,7 +6,7 @@
 
 Inspired by [OpenSpec](https://github.com/Fission-AI/OpenSpec). Built on Gradle.
 
-OpenSpec is great — but it generates context using shell commands: `grep`, `cat`, `find`. That works, but your build tool already knows more about your project than any shell script ever will. Resolved dependencies, module relationships, plugin metadata, framework versions, task graphs — Gradle has all of it, structured and queryable.
+OpenSpec is great — but it generates context using shell commands: `grep`, `cat`, `find`. That works, but your build tool already knows more about your project than any shell script ever will. Resolved dependencies, module relationships, plugin metadata, framework versions, task graphs — Gradle has all of it, structured and queryable. And it doesn't add a Node.js dependency to your JVM project.
 
 openspec-gradle lets **Gradle provide the context**. Instead of scraping files, your AI agent gets its knowledge from the build model — the same source of truth that compiles, tests, and ships your code. Every output is dynamic, generated on demand, and never committed.
 
@@ -46,8 +46,9 @@ Most AI context tools work outside the build system. They scan files, guess at s
 - **Dependencies resolve at build time.** BOMs, platforms, version catalogs, conflict resolution — the actual dependency tree isn't in any single file. Gradle knows it. Your agent doesn't.
 - **Modules form a graph.** Multi-project builds, included builds, composite builds — the relationships between modules are defined in the build model, not the filesystem.
 - **Tasks are a DAG.** Gradle's task graph is already a structured, dependency-aware execution plan. That's exactly what an AI agent needs to reason about a project.
+- **No extra toolchain.** OpenSpec requires Node.js. If you're a JVM shop, that's an additional runtime just to generate context files. openspec-gradle runs on the tool you already have.
 
-openspec-gradle doesn't reinvent any of this. It exposes what Gradle already knows as focused markdown outputs that agents can read.
+**IDE-grade knowledge without the IDE.** IntelliJ and Android Studio already talk to Gradle through the Tooling API — that's how they resolve imports, understand your module graph, and know your dependencies. But that intelligence is locked inside the IDE. If you're using Claude Code in the terminal, Codex in CI, or Copilot in VS Code, you don't get any of it. Setting up the Language Server Protocol or the Gradle Tooling API outside of JetBrains is painful. openspec-gradle brings that same build-model knowledge to any agent, anywhere, through plain Gradle tasks.
 
 **Nothing gets committed.** Generated files live in `.openspec/` and agent-specific directories, all excluded via global gitignore. They're per-developer, ephemeral, and always regenerated from the build model. Your repo stays clean.
 
@@ -198,6 +199,20 @@ Tasks live in `tasks.md` inside each proposal:
 - `→ depends:` — blocks completion until dependencies are done
 - Parent tasks auto-complete when all children are done
 - Codes are generated from the proposal name initials + hierarchy
+
+---
+
+## Where This Is Going
+
+Today, openspec-gradle provides context. But Gradle's position in the stack opens up more:
+
+**Deterministic refactoring.** AI agents currently edit code by rewriting text — which is fragile and unpredictable. IDEs like IntelliJ already have deterministic refactoring actions (rename, extract, move) exposed through the Tooling API. Instead of asking an agent to find-and-replace across files, we can let it trigger an IDE action that does it correctly every time.
+
+**Pre-approved execution.** Most AI agents ask you to approve every shell command they run. But Gradle tasks are sandboxed, declarative, and already trusted by your build. Once you've approved the plugin, its tasks can run without prompting — your agent chains `opsx-context` → `opsx-propose` → `opsx-sync` without you babysitting each step. The first approval is the only one that matters.
+
+**Tasks as an agent API.** Gradle tasks already have inputs, outputs, dependencies, and caching. That's basically a typed function interface. As agents get better at chaining tool calls, Gradle's task graph becomes a natural API surface — each task is a composable, cacheable operation the agent can invoke without knowing the internals.
+
+> This is early. We're building the context layer first. But the architecture is designed so that Gradle becomes the execution backend, not just the context provider.
 
 ---
 
