@@ -2,9 +2,15 @@
 
 [![🤖 clanker](https://img.shields.io/badge/🤖-clanker-black?style=flat-square)](https://github.com/ClankerGuru) [![Kotlin](https://img.shields.io/badge/Kotlin-2.1-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org) [![CI](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml/badge.svg)](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml) [![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/zone.clanker.gradle?label=Gradle%20Plugin%20Portal&style=flat-square)](https://plugins.gradle.org/plugin/zone.clanker.gradle) [![Maven Central](https://img.shields.io/maven-central/v/zone.clanker/openspec-gradle?label=Maven%20Central&style=flat-square)](https://central.sonatype.com/artifact/zone.clanker/openspec-gradle) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-**Your AI coding agent doesn't know your project. This plugin fixes that.**
+**Gradle-native [OpenSpec](https://github.com/Fission-AI/OpenSpec) for the JVM.**
 
-openspec-gradle extracts real context from your Gradle build — dependencies, modules, frameworks, versions — and gives it to your AI assistant. No guessing. No grep. Just structured knowledge from the build model itself.
+We love what OpenSpec does — structured context for AI coding agents. But OpenSpec is language-agnostic, which means it doesn't know about the richest source of truth in any JVM project: **the Gradle build model**.
+
+Gradle already has everything: a DAG of tasks that depend on each other, resolved dependency trees, module boundaries, plugin metadata, framework detection. It's a structured API sitting right there. openspec-gradle taps into it.
+
+Instead of your AI agent running `grep`, `cat`, and `find` to understand your project, it runs **Gradle tasks that output focused, structured context**. Each task is a query into the build model. The outputs are ephemeral — generated on demand, never committed, always fresh. Different developers can use different agents on the same repo without stepping on each other.
+
+Think of it this way: **Gradle is the runtime. Your AI agent is the decision maker. The plugin connects them.**
 
 Works with **GitHub Copilot**, **Claude Code**, **OpenAI Codex**, and **OpenCode**.
 
@@ -20,39 +26,52 @@ plugins {
 }
 ```
 
-Then run:
+Run:
 
 ```bash
 ./gradlew opsx-sync
 ```
 
-Done. Your AI agent now has project context and skills installed.
+That's it. Your agent now has project context and skills.
 
-> **Global install** — want it on every project without touching build files?
-> Run `./gradlew opsx-install` to drop an init script into `~/.gradle/init.d/`.
-> Every Gradle project on your machine gets OpenSpec automatically.
+> **Go global** — run `./gradlew opsx-install` to install an init script at `~/.gradle/init.d/`.
+> Every Gradle project on your machine gets OpenSpec — no `plugins {}` block needed anywhere.
+
+---
+
+## Why Gradle?
+
+Most AI context tools work outside the build system. They scan files, guess at structure, and produce static snapshots. That works for simple projects, but JVM builds are different:
+
+- **Dependencies resolve at build time.** BOMs, platforms, version catalogs, conflict resolution — the actual dependency tree isn't in any single file. Gradle knows it. Your agent doesn't.
+- **Modules form a graph.** Multi-project builds, included builds, composite builds — the relationships between modules are defined in the build model, not the filesystem.
+- **Tasks are a DAG.** Gradle's task graph is already a structured, dependency-aware execution plan. That's exactly what an AI agent needs to reason about a project.
+
+openspec-gradle doesn't reinvent any of this. It exposes what Gradle already knows as focused markdown outputs that agents can read.
+
+**Nothing gets committed.** Generated files live in `.openspec/` and agent-specific directories, all excluded via global gitignore. They're per-developer, ephemeral, and always regenerated from the build model. Your repo stays clean.
 
 ---
 
 ## What It Does
 
-### 1. Project Context
+### Project Context
 
 ```bash
 ./gradlew opsx-context
 ```
 
-Generates `.openspec/context.md` — a snapshot of everything Gradle knows about your project:
+Generates `.openspec/context.md` — a structured snapshot from the build model:
 
 - Project metadata (name, group, version, Gradle/Java/Kotlin versions)
 - Module graph with inter-module dependencies
-- All resolved dependencies (actual versions after conflict resolution)
+- Resolved dependencies (actual versions after conflict resolution and BOMs)
 - Detected frameworks (Spring Boot, Android, Ktor, Compose, KMP, etc.)
 - Git info (branch, remote)
 
-Your agent reads this instead of guessing.
+Cached via `@CacheableTask` — only regenerates when build files change.
 
-### 2. Agent Skills & Commands
+### Agent Skills & Commands
 
 ```bash
 ./gradlew opsx-sync
@@ -60,66 +79,42 @@ Your agent reads this instead of guessing.
 
 Generates skill and command files in the right format for your agent. Each agent gets 7 workflows: `propose`, `apply`, `archive`, `explore`, `new`, `sync`, `verify`.
 
-### 3. Proposal Tracking
+The agent reads these alongside the project context. It doesn't need to be told how to work with your project — the skills encode the workflow, and the context provides the knowledge.
 
-Plan a feature, break it into tasks, track them with Gradle commands:
+### Proposal Tracking
+
+Break work into tasks. Each task becomes a Gradle command:
 
 ```bash
-# Create a proposal
-./gradlew opsx-propose --name=add-user-auth
-
-# See the dashboard
-./gradlew opsx-status
-
-# Work through tasks
-./gradlew opsx-aua-1 --set=progress
-./gradlew opsx-aua-1 --set=done
+./gradlew opsx-propose --name=add-user-auth    # scaffold a proposal
+./gradlew opsx-status                           # dashboard with progress
+./gradlew opsx-aua-1 --set=done                 # check off a task
 ```
 
-Every task in your plan becomes a real Gradle command.
+Tasks are defined in `tasks.md`, auto-coded from the proposal name (`add-user-auth` → prefix `aua` → tasks `aua-1`, `aua-2.1`, etc.), and registered as real Gradle tasks at configuration time.
 
 ---
 
-## Example: Building a Bookmark CLI
+## Example
 
-You want to build a small command-line tool to save and search bookmarks.
-
-**1. Start a project**
+You're building a small CLI to manage bookmarks. Here's the full flow:
 
 ```bash
+# Start a project
 mkdir bookmarks && cd bookmarks
 gradle init --type kotlin-application --dsl kotlin
-```
 
-**2. Add the plugin** to `settings.gradle.kts`:
+# Set your agent (gradle.properties)
+echo "zone.clanker.openspec.agents=claude" >> gradle.properties
 
-```kotlin
-plugins {
-    id("zone.clanker.gradle") version "<version>"
-}
-```
-
-**3. Set your agent** in `gradle.properties`:
-
-```properties
-zone.clanker.openspec.agents=claude
-```
-
-**4. Generate context + skills**
-
-```bash
+# Generate everything
 ./gradlew opsx-sync
-```
 
-**5. Create a proposal**
-
-```bash
+# Plan a feature
 ./gradlew opsx-propose --name=bookmark-cli
 ```
 
-This creates `openspec/changes/bookmark-cli/` with `proposal.md`, `design.md`, and `tasks.md`.
-
-**6. Write your task plan** in `tasks.md`:
+Edit `openspec/changes/bookmark-cli/tasks.md`:
 
 ```markdown
 - [ ] `bc-1` Parse CLI arguments (add, search, list)
@@ -130,71 +125,66 @@ This creates `openspec/changes/bookmark-cli/` with `proposal.md`, `design.md`, a
 - [ ] `bc-4` Pretty-print results
 ```
 
-**7. Track progress**
+Work through it:
 
 ```bash
-./gradlew opsx-status                        # dashboard
-./gradlew opsx-bc-1 --set=done               # check off a task
-./gradlew opsx-status --proposal=bookmark-cli # see progress
+./gradlew opsx-status                         # see the dashboard
+./gradlew opsx-bc-1 --set=progress            # start a task
+./gradlew opsx-bc-1 --set=done                # finish it
+./gradlew opsx-status --proposal=bookmark-cli # check progress
 ```
 
-**8. Ask your agent to implement**
-
-Your agent already has the context and the skills. Just ask:
+Or just tell your agent:
 
 > "Look at the bookmark-cli proposal and implement bc-2"
 
-It reads `.openspec/context.md`, reads the proposal, and knows exactly what to do.
+It has the context. It has the skills. It knows what to do.
 
 ---
 
 ## Configuration
 
-Set your agent in `gradle.properties` (project-level or `~/.gradle/gradle.properties` for global default):
+One property in `gradle.properties`:
 
 ```properties
 zone.clanker.openspec.agents=claude
 ```
 
-| Value | Agent | Generated files |
+| Value | Agent | Where files go |
 |---|---|---|
 | `github` | GitHub Copilot | `.github/prompts/` · `.github/skills/` |
 | `claude` | Claude Code | `.claude/commands/` · `.claude/skills/` |
 | `codex` | OpenAI Codex | `.codex/skills/` |
 | `opencode` | OpenCode | `.opencode/commands/` · `.opencode/skills/` |
 
-Combine agents: `zone.clanker.openspec.agents=github,claude`
-
-Per-project overrides global. Set `none` to disable.
+Combine: `github,claude` · Per-project overrides global · Set `none` to disable.
 
 ---
 
 ## Tasks
 
-Run `./gradlew opsx` to see everything:
+```bash
+./gradlew opsx          # list everything
+```
 
-| Task | Description |
+| Task | What it does |
 |---|---|
-| `opsx` | List all available tasks |
-| `opsx-context` | Generate project context snapshot |
-| `opsx-sync` | Generate agent skills + commands + context |
-| `opsx-propose` | Create a new change proposal |
+| `opsx` | List all OpenSpec tasks |
+| `opsx-context` | Generate project context from the build model |
+| `opsx-sync` | Generate agent files (context + skills + commands) |
+| `opsx-propose` | Create a change proposal with task scaffolding |
 | `opsx-apply` | Mark a proposal ready to implement |
 | `opsx-archive` | Archive a completed proposal |
 | `opsx-status` | Dashboard with progress bars |
-| `opsx-<code>` | View or update a specific task |
+| `opsx-<code>` | View or update a task (`--set=todo\|progress\|done`) |
 | `opsx-clean` | Remove all generated files |
 | `opsx-install` | Install globally via init script |
 
 ---
 
-## How Task Tracking Works
+## Task Tracking
 
-Write a checklist in `tasks.md`. Codes are auto-generated from the proposal name:
-
-```
-add-user-auth → prefix aua → tasks aua-1, aua-2, aua-2.1, etc.
-```
+Tasks live in `tasks.md` inside each proposal:
 
 ```markdown
 - [ ] `aua-1` Create User model
@@ -205,27 +195,19 @@ add-user-auth → prefix aua → tasks aua-1, aua-2, aua-2.1, etc.
 ```
 
 - `[ ]` todo · `[~]` in progress · `[x]` done
-- `→ depends: aua-1` — can't mark done until dependency is done
-- When all children finish, the parent auto-completes
+- `→ depends:` — blocks completion until dependencies are done
+- Parent tasks auto-complete when all children are done
+- Codes are generated from the proposal name initials + hierarchy
 
 ---
 
-## Gitignore
+## Design Principles
 
-Generated files are added to your **global** gitignore (`~/.config/git/ignore`), not the project's `.gitignore`. Different developers can use different agents without polluting the repo.
-
----
-
-## FAQ
-
-**Do I need to change my build.gradle.kts?**
-No. Add the plugin in `settings.gradle.kts` or use the global init script. Your build files stay clean.
-
-**Can teammates use different agents?**
-Yes. Each person sets their own `gradle.properties`. Generated files are per-developer.
-
-**What goes in context.md?**
-Everything Gradle knows: project metadata, all dependencies with resolved versions, module graph, detected frameworks, git info. Cached — only regenerates when build files change.
+- **Zero config.** One property. No DSL blocks. No YAML files.
+- **Nothing committed.** All generated content excluded via global gitignore. Your repo stays clean.
+- **Gradle is the API.** Every output comes from a task. Tasks are composable, cacheable, and dependency-aware.
+- **Agent-agnostic.** Same structured context, formatted for each agent's conventions.
+- **Per-developer.** Different agents, different proposals, no conflicts. Each developer's workspace is their own.
 
 ---
 
