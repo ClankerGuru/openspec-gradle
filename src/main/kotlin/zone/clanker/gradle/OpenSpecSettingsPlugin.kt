@@ -76,6 +76,32 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             }
             extension.tools.set(toolsProvider)
 
+            project.tasks.register("opsx").configure(object : org.gradle.api.Action<org.gradle.api.Task> {
+                override fun execute(task: org.gradle.api.Task) {
+                    task.group = "opsx"
+                    task.description = "List all OpenSpec tasks — the AI tool catalog for this project."
+                    task.doLast(object : org.gradle.api.Action<org.gradle.api.Task> {
+                    override fun execute(t: org.gradle.api.Task) {
+                        val tasks = t.project.tasks
+                            .filter { task -> task.name.startsWith("opsx-") && task.group == "opsx" }
+                            .sortedBy { task -> task.name }
+                        val maxLen = tasks.maxOfOrNull { task -> task.name.length } ?: 0
+                        println("")
+                        println("OpenSpec v$PLUGIN_VERSION — AI tool catalog")
+                        println("─".repeat(60))
+                        for (task in tasks) {
+                            val desc = task.description ?: ""
+                            println("  ${task.name.padEnd(maxLen + 2)} $desc")
+                        }
+                        println("")
+                        println("Run any task:  ./gradlew <task-name>")
+                        println("Full details:  ./gradlew help --task <task-name>")
+                        println("")
+                    }
+                })
+                }
+            })
+
             project.tasks.register("opsx-sync", OpenSpecSyncTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSyncTask> {
                 override fun execute(task: OpenSpecSyncTask) {
                     task.tools.set(extension.tools)

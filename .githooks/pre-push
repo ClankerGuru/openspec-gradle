@@ -2,6 +2,16 @@
 # Pre-push hook: run build (compile + validatePlugins + test) before pushing
 # Install: git config core.hooksPath .githooks
 
+# Ensure JAVA_HOME is set (SDKMAN or fallback)
+if [ -z "$JAVA_HOME" ]; then
+    if [ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+    elif [ -d "/data/.sdkman/candidates/java/current" ]; then
+        export JAVA_HOME="/data/.sdkman/candidates/java/current"
+        export PATH="$JAVA_HOME/bin:$PATH"
+    fi
+fi
+
 echo "Running ./gradlew build before push..."
 ./gradlew --no-daemon build
 exit_code=$?
