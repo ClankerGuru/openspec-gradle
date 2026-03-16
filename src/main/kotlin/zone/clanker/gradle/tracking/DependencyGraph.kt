@@ -36,8 +36,9 @@ class DependencyGraph(tasks: List<TaskItem>) {
     fun hasCycle(): Boolean = findCycles().isNotEmpty()
 
     /**
-     * Find all elementary cycles. Returns each cycle as a list of codes
-     * forming the cycle path (e.g., [A, B, C, A]).
+     * Find cycles detected during DFS traversal. Returns each cycle as a list
+     * of codes forming the cycle path (e.g., [A, B, C, A]).
+     * Note: May report duplicate cycles with different starting points.
      */
     fun findCycles(): List<List<String>> {
         val cycles = mutableListOf<List<String>>()

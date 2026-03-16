@@ -66,18 +66,19 @@ abstract class OpenSpecTaskItemTask : DefaultTask() {
                 )
             }
 
-            // Check for cycles before any status change
-            val graph = DependencyGraph(tasks)
-            val cycles = graph.findCycles()
-            if (cycles.isNotEmpty()) {
-                throw GradleException(
-                    "Dependency cycle detected — cannot change status:\n" +
-                        cycles.joinToString("\n") { "  ${it.joinToString(" → ")}" } +
-                        "\nFix the dependency cycle first."
-                )
+            // Check for cycles and deps before marking done or in-progress
+            if (newStatus != TaskStatus.TODO) {
+                val graph = DependencyGraph(tasks)
+                val cycles = graph.findCycles()
+                if (cycles.isNotEmpty()) {
+                    throw GradleException(
+                        "Dependency cycle detected — cannot change status:\n" +
+                            cycles.joinToString("\n") { "  ${it.joinToString(" → ")}" } +
+                            "\nFix the dependency cycle first."
+                    )
+                }
             }
 
-            // Validate dependencies before marking done
             if (newStatus == TaskStatus.DONE || newStatus == TaskStatus.IN_PROGRESS) {
                 validateDependencies(code, taskItem, allFlat)
             }

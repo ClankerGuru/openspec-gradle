@@ -105,8 +105,8 @@ abstract class OpenSpecStatusTask : DefaultTask() {
         val red = "\u001B[31m"
         for (p in proposals) {
             val graph = DependencyGraph(p.tasks)
-            if (graph.hasCycle()) {
-                val cycles = graph.findCycles()
+            val cycles = graph.findCycles()
+            if (cycles.isNotEmpty()) {
                 logger.lifecycle("${red}⚠️  WARNING: Dependency cycle detected in '${p.name}':${reset}")
                 for (cycle in cycles) {
                     logger.lifecycle("${red}   ${cycle.joinToString(" → ")}${reset}")
