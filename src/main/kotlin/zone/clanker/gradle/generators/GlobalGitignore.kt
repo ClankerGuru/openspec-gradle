@@ -20,16 +20,15 @@ object GlobalGitignore {
         "openspec/changes/",
         "# GitHub Copilot",
         ".github/prompts/opsx-*",
-        ".github/skills/openspec-*",
+        ".github/skills/opsx-*",
         "# Claude Code",
         ".claude/commands/opsx/",
-        ".claude/skills/openspec-*",
+        ".claude/skills/opsx-*",
         "# Codex",
         ".codex/skills/opsx-*",
-        ".codex/skills/openspec-*",
         "# OpenCode",
         ".opencode/commands/opsx-*",
-        ".opencode/skills/openspec-*",
+        ".opencode/skills/opsx-*",
     )
 
     /**
