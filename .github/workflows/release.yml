@@ -30,6 +30,19 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      - name: Verify version matches release tag
+        run: |
+          EXPECTED="${{ github.event.release.tag_name }}"
+          EXPECTED="${EXPECTED#v}"
+          ACTUAL=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')
+          echo "Expected: $EXPECTED"
+          echo "Actual:   $ACTUAL"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Version mismatch! build.gradle.kts=$ACTUAL but release tag=$EXPECTED"
+            exit 1
+          fi
+          echo "✅ Version matches: $ACTUAL"
+
       - name: Import GPG key
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import
