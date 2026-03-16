@@ -8,7 +8,11 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
 import org.gradle.api.tasks.options.Option
-import zone.clanker.gradle.tracking.*
+import zone.clanker.gradle.tracking.DependencyGraph
+import zone.clanker.gradle.tracking.TaskParser
+import zone.clanker.gradle.tracking.TaskItem
+import zone.clanker.gradle.tracking.TaskStatus
+import zone.clanker.gradle.tracking.TaskWriter
 import java.io.File
 
 /**
@@ -59,6 +63,17 @@ abstract class OpenSpecTaskItemTask : DefaultTask() {
                 "done", "d", "x" -> TaskStatus.DONE
                 else -> throw GradleException(
                     "Invalid status '${setStatus.get()}'. Use: todo, progress, done"
+                )
+            }
+
+            // Check for cycles before any status change
+            val graph = DependencyGraph(tasks)
+            val cycles = graph.findCycles()
+            if (cycles.isNotEmpty()) {
+                throw GradleException(
+                    "Dependency cycle detected — cannot change status:\n" +
+                        cycles.joinToString("\n") { "  ${it.joinToString(" → ")}" } +
+                        "\nFix the dependency cycle first."
                 )
             }
 
