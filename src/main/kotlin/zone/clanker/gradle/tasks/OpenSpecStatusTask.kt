@@ -4,6 +4,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.options.Option
+import zone.clanker.gradle.tracking.DependencyGraph
 import zone.clanker.gradle.tracking.ProposalScanner
 import zone.clanker.gradle.tracking.Proposal
 import zone.clanker.gradle.tracking.TaskStatus
@@ -98,6 +99,20 @@ abstract class OpenSpecStatusTask : DefaultTask() {
                 logger.lifecycle("  ${green}v${reset} ${p.name}")
             }
             logger.lifecycle("")
+        }
+
+        // Check for dependency cycles
+        val red = "\u001B[31m"
+        for (p in proposals) {
+            val graph = DependencyGraph(p.tasks)
+            val cycles = graph.findCycles()
+            if (cycles.isNotEmpty()) {
+                logger.lifecycle("${red}⚠️  WARNING: Dependency cycle detected in '${p.name}':${reset}")
+                for (cycle in cycles) {
+                    logger.lifecycle("${red}   ${cycle.joinToString(" → ")}${reset}")
+                }
+                logger.lifecycle("")
+            }
         }
 
         // Detailed task list per proposal

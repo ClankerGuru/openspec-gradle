@@ -5,7 +5,7 @@ import zone.clanker.gradle.generators.SkillContent
 
 /**
  * Registry of all embedded prompt/skill templates.
- * Templates reference filesystem operations instead of openspec CLI.
+ * Templates reference filesystem operations instead of CLI commands.
  */
 object TemplateRegistry {
 
@@ -44,7 +44,7 @@ object TemplateRegistry {
     )
 
     private fun proposeSkill() = SkillContent(
-        dirName = "openspec-propose",
+        dirName = "opsx-propose",
         description = "Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.",
         instructions = loadResource("templates/skills/propose.md")
     )
@@ -61,7 +61,7 @@ object TemplateRegistry {
     )
 
     private fun applySkill() = SkillContent(
-        dirName = "openspec-apply-change",
+        dirName = "opsx-apply",
         description = "Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.",
         instructions = loadResource("templates/skills/apply.md")
     )
@@ -78,7 +78,7 @@ object TemplateRegistry {
     )
 
     private fun archiveSkill() = SkillContent(
-        dirName = "openspec-archive-change",
+        dirName = "opsx-archive",
         description = "Archive a completed change. Use when the user wants to finalize and archive a change after implementation is complete.",
         instructions = loadResource("templates/skills/archive.md")
     )
@@ -95,7 +95,7 @@ object TemplateRegistry {
     )
 
     private fun exploreSkill() = SkillContent(
-        dirName = "openspec-explore",
+        dirName = "opsx-explore",
         description = "Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements.",
         instructions = loadResource("templates/skills/explore.md")
     )
@@ -112,7 +112,7 @@ object TemplateRegistry {
     )
 
     private fun newSkill() = SkillContent(
-        dirName = "openspec-new-change",
+        dirName = "opsx-new",
         description = "Start a new OpenSpec change with scaffolded directory structure.",
         instructions = loadResource("templates/skills/new.md")
     )
@@ -129,7 +129,7 @@ object TemplateRegistry {
     )
 
     private fun syncSkill() = SkillContent(
-        dirName = "openspec-sync-specs",
+        dirName = "opsx-sync",
         description = "Sync delta specs from a change to main specs.",
         instructions = loadResource("templates/skills/sync.md")
     )
@@ -146,7 +146,7 @@ object TemplateRegistry {
     )
 
     private fun verifySkill() = SkillContent(
-        dirName = "openspec-verify-change",
+        dirName = "opsx-verify",
         description = "Verify that implementation matches the specs and tasks for a change.",
         instructions = loadResource("templates/skills/verify.md")
     )

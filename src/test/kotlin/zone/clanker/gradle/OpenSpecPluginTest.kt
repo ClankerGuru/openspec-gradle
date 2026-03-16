@@ -38,7 +38,7 @@ class OpenSpecPluginTest {
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-sync")?.outcome)
 
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
-        assertTrue(File(testProjectDir, ".github/skills/openspec-propose/SKILL.md").exists())
+        assertTrue(File(testProjectDir, ".github/skills/opsx-propose/SKILL.md").exists())
         assertTrue(!File(testProjectDir, ".claude/commands/opsx/propose.md").exists())
     }
 
