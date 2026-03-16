@@ -70,7 +70,7 @@ class TemplateRegistryTest {
     }
 
     @Test
-    fun `skill dirNames use openspec prefix`() {
+    fun `skill dirNames use opsx prefix`() {
         for (skill in TemplateRegistry.getSkillTemplates()) {
             assertTrue(skill.dirName.startsWith("opsx-"), "Skill '${skill.dirName}' should start with opsx-")
         }

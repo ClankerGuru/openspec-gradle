@@ -5,7 +5,7 @@ I'll create a change with artifacts:
 - design.md (how)
 - tasks.md (implementation steps with task codes)
 
-When ready to implement, run the opsx-apply-change skill
+When ready to implement, run the opsx-apply skill
 
 ---
 
@@ -109,7 +109,7 @@ After completing all artifacts, summarize:
 - List of artifacts created with brief descriptions
 - Task codes generated (e.g., `aua-1` through `aua-5`)
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `the opsx-apply-change skill` to start implementing, or `./gradlew opsx-status` to see the dashboard."
+- Prompt: "Run `the opsx-apply skill` to start implementing, or `./gradlew opsx-status` to see the dashboard."
 
 **Artifact Creation Guidelines**
 

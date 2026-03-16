@@ -5,7 +5,7 @@ import zone.clanker.gradle.generators.SkillContent
 
 /**
  * Registry of all embedded prompt/skill templates.
- * Templates reference filesystem operations instead of openspec CLI.
+ * Templates reference filesystem operations instead of CLI commands.
  */
 object TemplateRegistry {
 
