@@ -102,8 +102,9 @@ class ToolAdapterTest {
     }
 
     @Test
-    fun `ToolAdapterRegistry all returns five adapters`() {
-        assertEquals(5, ToolAdapterRegistry.all().size)
+    fun `ToolAdapterRegistry all includes expected adapters`() {
+        val ids = ToolAdapterRegistry.all().map { it.toolId }.toSet()
+        assertTrue(ids.containsAll(setOf("claude", "github-copilot", "codex", "opencode", "crush")))
     }
 
     // ── Agent parsing ────────────────────────────────────
