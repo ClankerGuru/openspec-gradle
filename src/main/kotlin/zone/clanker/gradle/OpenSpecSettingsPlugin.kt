@@ -132,6 +132,33 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             project.tasks.register("opsx-apply", OpenSpecApplyTask::class.java)
             project.tasks.register("opsx-archive", OpenSpecArchiveTask::class.java)
 
+            // Discovery tasks
+            project.tasks.register("opsx-tree", OpenSpecTreeTask::class.java).configure(object : org.gradle.api.Action<OpenSpecTreeTask> {
+                override fun execute(task: OpenSpecTreeTask) {
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    if (project.hasProperty("scope")) task.scope.set(project.property("scope").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/tree.md"))
+                }
+            })
+
+            project.tasks.register("opsx-deps", OpenSpecDepsTask::class.java).configure(object : org.gradle.api.Action<OpenSpecDepsTask> {
+                override fun execute(task: OpenSpecDepsTask) {
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/deps.md"))
+                }
+            })
+
+            project.tasks.register("opsx-modules", OpenSpecModulesTask::class.java).configure(object : org.gradle.api.Action<OpenSpecModulesTask> {
+                override fun execute(task: OpenSpecModulesTask) {
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/modules.md"))
+                }
+            })
+
+            project.tasks.register("opsx-devloop", OpenSpecDevloopTask::class.java).configure(object : org.gradle.api.Action<OpenSpecDevloopTask> {
+                override fun execute(task: OpenSpecDevloopTask) {
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/devloop.md"))
+                }
+            })
+
             // Dashboard task
             project.tasks.register("opsx-status", OpenSpecStatusTask::class.java)
 
