@@ -71,6 +71,15 @@ Depending on what the user brings, you might:
 
 ---
 
+## Project Context
+
+Read these files for project understanding (run `./gradlew opsx-sync` to generate all):
+- `.openspec/context.md` — project config, plugins, frameworks, git info
+- `.openspec/tree.md` — source layout per module
+- `.openspec/deps.md` — dependencies with versions
+- `.openspec/modules.md` — module graph and boundaries
+- `.openspec/devloop.md` — build/test/run commands
+
 ## OpenSpec Awareness
 
 You have full context of the OpenSpec system. Use it naturally, don't force it.

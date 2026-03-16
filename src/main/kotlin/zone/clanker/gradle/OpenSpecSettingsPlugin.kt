@@ -106,7 +106,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecSyncTask) {
                     task.tools.set(extension.tools)
                     task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
-                    task.dependsOn("opsx-context")
+                    task.dependsOn("opsx-context", "opsx-tree", "opsx-deps", "opsx-modules", "opsx-devloop")
                 }
             })
 

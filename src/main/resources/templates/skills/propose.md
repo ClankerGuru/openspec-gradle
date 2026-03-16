@@ -55,12 +55,19 @@ When ready to implement, run the opsx-apply-change skill
      requires: [tasks]
    ```
 
-3. **Get the artifact build order**
+3. **Read project context** (run `./gradlew opsx-sync` to generate all):
+   - `.openspec/context.md` — project config, plugins, frameworks, git info
+   - `.openspec/tree.md` — source layout per module
+   - `.openspec/deps.md` — dependencies with versions
+   - `.openspec/modules.md` — module graph and boundaries
+   - `.openspec/devloop.md` — build/test/run commands
+
+4. **Get the artifact build order**
    Read `.openspec.yaml` to determine:
    - `apply.requires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
    - `artifacts`: list of all artifacts with their status and dependencies
 
-4. **Create artifacts in sequence until apply-ready**
+5. **Create artifacts in sequence until apply-ready**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
@@ -91,7 +98,7 @@ When ready to implement, run the opsx-apply-change skill
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Show final status**
+6. **Show final status**
    Read `.openspec.yaml` and display the status of all artifacts.
    Suggest: `./gradlew opsx-status` to see the dashboard.
 
