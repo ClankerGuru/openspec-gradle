@@ -26,7 +26,12 @@ Implement tasks from an OpenSpec change.
    - `openspec/changes/<name>/design.md`
    - `openspec/changes/<name>/tasks.md`
 
-   Also read project context: `.openspec/context.md` (run `./gradlew opsx-context` if missing)
+   Also read project context (run `./gradlew opsx-sync` to generate all):
+   - `.openspec/context.md` — project config, plugins, frameworks, git info
+   - `.openspec/tree.md` — source layout per module
+   - `.openspec/deps.md` — dependencies with versions
+   - `.openspec/modules.md` — module graph and boundaries
+   - `.openspec/devloop.md` — build/test/run commands
 
    **Handle states:**
    - If required artifacts are missing: show message, suggest creating them first
