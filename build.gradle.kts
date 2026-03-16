@@ -9,7 +9,10 @@ plugins {
 }
 
 group = "zone.clanker"
-version = "0.5.1"
+version = providers.exec {
+    commandLine("git", "describe", "--tags", "--abbrev=0")
+}.standardOutput.asText.map { it.trim().removePrefix("v") }
+    .getOrElse("0.0.0-LOCAL")
 
 java {
     toolchain {
