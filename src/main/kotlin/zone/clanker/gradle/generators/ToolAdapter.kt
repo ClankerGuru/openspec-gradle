@@ -137,12 +137,31 @@ object OpenCodeAdapter : ToolAdapter {
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
 }
 
+object CrushAdapter : ToolAdapter {
+    override val toolId = "crush"
+    override fun getCommandFilePath(commandId: String) = ".crush/commands/opsx/$commandId.md"
+    override fun formatCommandFile(content: CommandContent) = buildString {
+        appendLine("---")
+        appendLine("name: ${escapeYaml(content.name)}")
+        appendLine("description: ${escapeYaml(content.description)}")
+        appendLine("category: ${escapeYaml(content.category)}")
+        appendLine("tags: ${formatTagsArray(content.tags)}")
+        appendLine("---")
+        appendLine()
+        append(content.body)
+        appendLine()
+    }
+    override fun getSkillFilePath(skillDirName: String) = ".crush/skills/$skillDirName/SKILL.md"
+    override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
+}
+
 object ToolAdapterRegistry {
     private val adapters = mapOf(
         "claude" to ClaudeAdapter,
         "github-copilot" to GitHubCopilotAdapter,
         "codex" to CodexAdapter,
-        "opencode" to OpenCodeAdapter
+        "opencode" to OpenCodeAdapter,
+        "crush" to CrushAdapter
     )
 
     fun get(toolId: String): ToolAdapter? = adapters[toolId]

@@ -27,7 +27,8 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             "github" to "github-copilot",
             "claude" to "claude",
             "codex" to "codex",
-            "opencode" to "opencode"
+            "opencode" to "opencode",
+            "crush" to "crush"
         )
 
         /**
