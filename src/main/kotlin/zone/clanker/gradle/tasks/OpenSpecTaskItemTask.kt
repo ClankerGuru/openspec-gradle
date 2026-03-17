@@ -44,7 +44,7 @@ abstract class OpenSpecTaskItemTask : DefaultTask() {
     fun execute() {
         val code = taskCode.get()
         val name = proposalName.get()
-        val tasksFile = File(project.projectDir, "openspec/changes/$name/tasks.md")
+        val tasksFile = File(project.projectDir, "opsx/changes/$name/tasks.md")
 
         if (!tasksFile.exists()) {
             throw GradleException("tasks.md not found for proposal '$name'")

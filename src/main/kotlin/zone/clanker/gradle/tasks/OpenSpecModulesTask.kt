@@ -14,7 +14,7 @@ abstract class OpenSpecModulesTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Module graph generator. " +
-            "Output: .openspec/modules.md. " +
+            "Output: .opsx/modules.md. " +
             "Use when: You need to understand multi-project structure and inter-module dependencies. " +
             "Chain: Use with opsx-deps for full dependency details."
     }

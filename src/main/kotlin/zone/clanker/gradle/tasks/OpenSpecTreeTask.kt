@@ -24,7 +24,7 @@ abstract class OpenSpecTreeTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Source tree generator. " +
-            "Output: .openspec/tree.md. " +
+            "Output: .opsx/tree.md. " +
             "Options: -Pmodule=name -Pscope=main|test. " +
             "Use when: You need to see the file/directory structure of source sets. " +
             "Chain: Use with opsx-context for full project understanding."

@@ -16,8 +16,8 @@ object GlobalGitignore {
     private val IGNORE_PATTERNS = listOf(
         "# OpenSpec generated files (managed by openspec-gradle plugin)",
         "# These are per-developer — different devs use different AI agents.",
-        ".openspec/",
-        "openspec/changes/",
+        ".opsx/",
+        "opsx/changes/",
         "# GitHub Copilot",
         ".github/prompts/opsx-*",
         ".github/skills/opsx-*",

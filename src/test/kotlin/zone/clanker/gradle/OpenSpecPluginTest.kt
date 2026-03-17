@@ -77,9 +77,9 @@ class OpenSpecPluginTest {
     fun `opsx-propose creates change directory`() {
         val result = gradle("opsx-propose", "--name=test-change").build()
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-propose")?.outcome)
-        assertTrue(File(testProjectDir, "openspec/changes/test-change/proposal.md").exists())
-        assertTrue(File(testProjectDir, "openspec/changes/test-change/design.md").exists())
-        assertTrue(File(testProjectDir, "openspec/changes/test-change/tasks.md").exists())
+        assertTrue(File(testProjectDir, "opsx/changes/test-change/proposal.md").exists())
+        assertTrue(File(testProjectDir, "opsx/changes/test-change/design.md").exists())
+        assertTrue(File(testProjectDir, "opsx/changes/test-change/tasks.md").exists())
     }
 
     @Test
@@ -98,7 +98,7 @@ class OpenSpecPluginTest {
         val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
         assertTrue(globalGitignore.exists(), "Global gitignore should be created")
         val content = globalGitignore.readText()
-        assertTrue(content.contains(".openspec/"), "Should contain .openspec/ pattern")
+        assertTrue(content.contains(".opsx/"), "Should contain .opsx/ pattern")
         assertTrue(content.contains(".github/prompts/opsx-*"), "Should contain copilot pattern")
         assertTrue(content.contains(".claude/commands/opsx/"), "Should contain claude pattern")
     }

@@ -14,7 +14,7 @@ abstract class OpenSpecDepsTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Dependency resolver. " +
-            "Output: .openspec/deps.md. " +
+            "Output: .opsx/deps.md. " +
             "Use when: You need full dependency list with GAV coordinates, classified as local vs external. " +
             "Chain: Use with opsx-modules for dependency graph."
     }

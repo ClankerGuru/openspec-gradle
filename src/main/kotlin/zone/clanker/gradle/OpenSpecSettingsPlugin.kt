@@ -126,14 +126,14 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                             }
                         })
                     )
-                    task.contextFile.set(project.layout.projectDirectory.file(".openspec/context.md"))
+                    task.contextFile.set(project.layout.projectDirectory.file(".opsx/context.md"))
                 }
             })
 
             project.tasks.register("opsx-arch", OpenSpecArchTask::class.java).configure(object : org.gradle.api.Action<OpenSpecArchTask> {
                 override fun execute(task: OpenSpecArchTask) {
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/arch.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/arch.md"))
                 }
             })
 
@@ -147,7 +147,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
                     if (project.hasProperty("file")) task.targetFile.set(project.property("file").toString())
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/symbols.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/symbols.md"))
                 }
             })
 
@@ -155,7 +155,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecFindTask) {
                     if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/find.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/find.md"))
                 }
             })
 
@@ -165,7 +165,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     if (project.hasProperty("to")) task.to.set(project.property("to").toString())
                     if (project.hasProperty("dryRun")) task.dryRun.set(project.property("dryRun").toString().toBoolean())
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/rename.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/rename.md"))
                 }
             })
 
@@ -173,7 +173,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecCallsTask) {
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/calls.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/calls.md"))
                 }
             })
 
@@ -182,25 +182,25 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecTreeTask) {
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     if (project.hasProperty("scope")) task.scope.set(project.property("scope").toString())
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/tree.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/tree.md"))
                 }
             })
 
             project.tasks.register("opsx-deps", OpenSpecDepsTask::class.java).configure(object : org.gradle.api.Action<OpenSpecDepsTask> {
                 override fun execute(task: OpenSpecDepsTask) {
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/deps.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/deps.md"))
                 }
             })
 
             project.tasks.register("opsx-modules", OpenSpecModulesTask::class.java).configure(object : org.gradle.api.Action<OpenSpecModulesTask> {
                 override fun execute(task: OpenSpecModulesTask) {
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/modules.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/modules.md"))
                 }
             })
 
             project.tasks.register("opsx-devloop", OpenSpecDevloopTask::class.java).configure(object : org.gradle.api.Action<OpenSpecDevloopTask> {
                 override fun execute(task: OpenSpecDevloopTask) {
-                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/devloop.md"))
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/devloop.md"))
                 }
             })
 
@@ -231,7 +231,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
 
         /**
          * Dynamically register Gradle tasks for each task item in all proposals.
-         * Scans openspec/changes/ at configuration time.
+         * Scans opsx/changes/ at configuration time.
          */
         private fun registerProposalTasks(project: Project) {
             val proposals = ProposalScanner.scan(project.projectDir)

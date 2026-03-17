@@ -48,7 +48,7 @@ abstract class OpenSpecStatusTask : DefaultTask() {
         }
 
         if (proposals.isEmpty()) {
-            logger.lifecycle("No proposals found in openspec/changes/")
+            logger.lifecycle("No proposals found in opsx/changes/")
             return
         }
 

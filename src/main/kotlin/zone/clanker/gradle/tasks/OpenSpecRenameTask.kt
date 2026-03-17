@@ -30,7 +30,7 @@ abstract class OpenSpecRenameTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Safe rename across the codebase. " +
-            "Output: .openspec/rename.md. " +
+            "Output: .opsx/rename.md. " +
             "Options: -Pfrom=OldName -Pto=NewName (required), -PdryRun=true (preview only). " +
             "Use when: You need to rename a class, function, or property safely. " +
             "Chain: Run opsx-find first for impact analysis."

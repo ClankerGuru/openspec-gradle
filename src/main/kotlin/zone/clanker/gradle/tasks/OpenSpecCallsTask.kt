@@ -24,7 +24,7 @@ abstract class OpenSpecCallsTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Method-level call graph with Mermaid diagrams. " +
-            "Output: .openspec/calls.md. " +
+            "Output: .opsx/calls.md. " +
             "Options: -Psymbol=ClassName (filter), -Pmodule=name. " +
             "Use when: You need to understand method-level interactions and call chains. " +
             "Chain: More detailed than opsx-arch dependency graph."

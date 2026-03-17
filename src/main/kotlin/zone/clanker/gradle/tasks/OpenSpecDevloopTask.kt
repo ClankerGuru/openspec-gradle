@@ -13,7 +13,7 @@ abstract class OpenSpecDevloopTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Dev commands reference. " +
-            "Output: .openspec/devloop.md. " +
+            "Output: .opsx/devloop.md. " +
             "Use when: You need build/test/run commands for each module. " +
             "Chain: Use after opsx-modules to understand what to build."
     }

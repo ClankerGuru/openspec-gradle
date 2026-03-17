@@ -32,7 +32,7 @@ class DependencyGraphIntegrationTest {
         .forwardOutput()
 
     private fun createProposal(name: String, tasks: String) {
-        val dir = File(projectDir, "openspec/changes/$name")
+        val dir = File(projectDir, "opsx/changes/$name")
         dir.mkdirs()
         File(dir, "tasks.md").writeText(tasks)
     }

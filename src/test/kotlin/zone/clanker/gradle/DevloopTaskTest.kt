@@ -26,7 +26,7 @@ class DevloopTaskTest {
         """.trimIndent())
     }
 
-    private fun outputFile() = File(testProjectDir, ".openspec/devloop.md")
+    private fun outputFile() = File(testProjectDir, ".opsx/devloop.md")
 
     @Test
     fun `generates devloop md`() {

@@ -27,7 +27,7 @@ abstract class OpenSpecSymbolsTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Symbol index — declarations and usages from PSI analysis. " +
-            "Output: .openspec/symbols.md. " +
+            "Output: .opsx/symbols.md. " +
             "Options: -Psymbol=Name (filter to symbol), -Pfile=path (filter to file), -Pmodule=name. " +
             "Use when: You need to find where something is declared or used. Replaces grep. " +
             "Chain: Use before opsx-find for targeted search, or opsx-rename for safe refactoring."

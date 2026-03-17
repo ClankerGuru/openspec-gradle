@@ -23,7 +23,7 @@ abstract class OpenSpecFindTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Find all usages of a symbol across the codebase. " +
-            "Output: .openspec/find.md. " +
+            "Output: .opsx/find.md. " +
             "Options: -Psymbol=Name (required). " +
             "Use when: You need to know everywhere a class/function/property is used. " +
             "Chain: Use before opsx-rename for impact analysis."

@@ -29,7 +29,7 @@ class TreeTaskTest {
         """.trimIndent())
     }
 
-    private fun outputFile() = File(testProjectDir, ".openspec/tree.md")
+    private fun outputFile() = File(testProjectDir, ".opsx/tree.md")
 
     @Test
     fun `generates tree md`() {

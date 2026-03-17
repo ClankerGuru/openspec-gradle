@@ -23,7 +23,7 @@ abstract class OpenSpecContextTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Project context generator. " +
-            "Output: .openspec/context.md. " +
+            "Output: .opsx/context.md. " +
             "Use when: You need project metadata, plugins, frameworks, dependencies, git info. " +
             "Chain: Read output for project understanding."
     }

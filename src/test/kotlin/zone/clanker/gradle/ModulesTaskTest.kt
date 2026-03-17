@@ -26,7 +26,7 @@ class ModulesTaskTest {
         """.trimIndent())
     }
 
-    private fun outputFile() = File(testProjectDir, ".openspec/modules.md")
+    private fun outputFile() = File(testProjectDir, ".opsx/modules.md")
 
     @Test
     fun `single module project`() {
