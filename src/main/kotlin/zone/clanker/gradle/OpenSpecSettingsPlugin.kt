@@ -141,6 +141,42 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             project.tasks.register("opsx-apply", OpenSpecApplyTask::class.java)
             project.tasks.register("opsx-archive", OpenSpecArchiveTask::class.java)
 
+            // PSI-based tasks
+            project.tasks.register("opsx-symbols", OpenSpecSymbolsTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSymbolsTask> {
+                override fun execute(task: OpenSpecSymbolsTask) {
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
+                    if (project.hasProperty("file")) task.targetFile.set(project.property("file").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/symbols.md"))
+                }
+            })
+
+            project.tasks.register("opsx-find", OpenSpecFindTask::class.java).configure(object : org.gradle.api.Action<OpenSpecFindTask> {
+                override fun execute(task: OpenSpecFindTask) {
+                    if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/find.md"))
+                }
+            })
+
+            project.tasks.register("opsx-rename", OpenSpecRenameTask::class.java).configure(object : org.gradle.api.Action<OpenSpecRenameTask> {
+                override fun execute(task: OpenSpecRenameTask) {
+                    if (project.hasProperty("from")) task.from.set(project.property("from").toString())
+                    if (project.hasProperty("to")) task.to.set(project.property("to").toString())
+                    if (project.hasProperty("dryRun")) task.dryRun.set(project.property("dryRun").toString().toBoolean())
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/rename.md"))
+                }
+            })
+
+            project.tasks.register("opsx-calls", OpenSpecCallsTask::class.java).configure(object : org.gradle.api.Action<OpenSpecCallsTask> {
+                override fun execute(task: OpenSpecCallsTask) {
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/calls.md"))
+                }
+            })
+
             // Discovery tasks
             project.tasks.register("opsx-tree", OpenSpecTreeTask::class.java).configure(object : org.gradle.api.Action<OpenSpecTreeTask> {
                 override fun execute(task: OpenSpecTreeTask) {

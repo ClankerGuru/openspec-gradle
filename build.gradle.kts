@@ -27,6 +27,8 @@ repositories {
 }
 
 dependencies {
+    compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.3.0")
+    implementation("com.github.javaparser:javaparser-core:3.26.4")
     testImplementation(gradleTestKit())
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
