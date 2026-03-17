@@ -1,5 +1,6 @@
 package zone.clanker.gradle
 
+import zone.clanker.gradle.generators.ToolAdapterRegistry
 import zone.clanker.gradle.tasks.*
 import zone.clanker.gradle.tracking.ProposalScanner
 import org.gradle.api.Plugin
@@ -23,11 +24,9 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 ?: "0.0.0"
         }
 
-        private val AGENT_MAP = mapOf(
-            "github" to "github-copilot",
-            "claude" to "claude",
-            "codex" to "codex",
-            "opencode" to "opencode"
+        // Only aliases that differ from the registry tool ID
+        private val AGENT_ALIASES = mapOf(
+            "github" to "github-copilot"
         )
 
         /**
@@ -49,7 +48,10 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             return value.split(",")
                 .map { it.trim().lowercase() }
                 .filter { it.isNotBlank() && it != "none" }
-                .mapNotNull { AGENT_MAP[it] }
+                .mapNotNull { token ->
+                    AGENT_ALIASES[token]
+                        ?: token.takeIf { it in ToolAdapterRegistry.supportedTools() }
+                }
                 .distinct()
         }
 
