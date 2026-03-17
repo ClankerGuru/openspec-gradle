@@ -22,16 +22,43 @@ fun detectAntiPatterns(
     edges: List<ClassDependency>,
     rootDir: File,
 ): List<AntiPattern> {
+    val resolver = SupertypeResolver(components)
     val patterns = mutableListOf<AntiPattern>()
 
     patterns.addAll(detectSmellClasses(components, rootDir))
-    patterns.addAll(detectSingleImplInterfaces(components, rootDir))
+    patterns.addAll(detectSingleImplInterfaces(components, resolver, rootDir))
     patterns.addAll(detectGodClasses(components, rootDir))
-    patterns.addAll(detectDeepInheritance(components, rootDir))
+    patterns.addAll(detectDeepInheritance(components, resolver, rootDir))
     patterns.addAll(detectCircularDeps(components, edges))
     patterns.addAll(detectMissingTests(components, rootDir))
 
     return patterns.sortedWith(compareBy({ it.severity }, { it.file.path }))
+}
+
+/**
+ * Resolves supertypes to their actual components using qualified names.
+ * Prefers: import match → same-package → unique simple name.
+ */
+private class SupertypeResolver(components: List<ClassifiedComponent>) {
+    private val byQualifiedName = components.associateBy { it.source.qualifiedName }
+    private val bySimpleName = components.groupBy { it.source.simpleName }
+
+    fun resolve(owner: ClassifiedComponent, supertype: String): ClassifiedComponent? = when {
+        '.' in supertype -> byQualifiedName[supertype]
+        else -> {
+            owner.source.imports
+                .firstOrNull { it.substringAfterLast(".") == supertype }
+                ?.let { byQualifiedName[it] }
+                ?: byQualifiedName["${owner.source.packageName}.$supertype"]
+                ?: bySimpleName[supertype]?.singleOrNull()
+        }
+    }
+
+    /** Find all components that implement/extend the given interface. */
+    fun findImplementors(iface: ClassifiedComponent): List<ClassifiedComponent> =
+        bySimpleName.values.flatten().filter { c ->
+            c.source.supertypes.any { supertype -> resolve(c, supertype) === iface }
+        }
 }
 
 /**
@@ -53,13 +80,15 @@ private fun detectSmellClasses(components: List<ClassifiedComponent>, rootDir: F
 /**
  * Interfaces with only one implementation — premature abstraction.
  */
-private fun detectSingleImplInterfaces(components: List<ClassifiedComponent>, rootDir: File): List<AntiPattern> {
+private fun detectSingleImplInterfaces(
+    components: List<ClassifiedComponent>,
+    resolver: SupertypeResolver,
+    rootDir: File,
+): List<AntiPattern> {
     val interfaces = components.filter { it.source.isInterface }
-    val allSupertypes = components.flatMap { c -> c.source.supertypes.map { it to c } }
-        .groupBy({ it.first }, { it.second })
 
     return interfaces.mapNotNull { iface ->
-        val impls = allSupertypes[iface.source.simpleName] ?: emptyList()
+        val impls = resolver.findImplementors(iface)
         if (impls.size == 1) {
             val impl = impls[0]
             AntiPattern(
@@ -97,14 +126,17 @@ private fun detectGodClasses(components: List<ClassifiedComponent>, rootDir: Fil
 /**
  * Deep inheritance chains — prefer composition.
  */
-private fun detectDeepInheritance(components: List<ClassifiedComponent>, rootDir: File): List<AntiPattern> {
-    val bySimpleName = components.associateBy { it.source.simpleName }
-
+private fun detectDeepInheritance(
+    components: List<ClassifiedComponent>,
+    resolver: SupertypeResolver,
+    rootDir: File,
+): List<AntiPattern> {
     fun depth(c: ClassifiedComponent, visited: Set<String> = emptySet()): Int {
-        if (c.source.simpleName in visited) return 0
-        val parent = c.source.supertypes.firstOrNull()?.let { bySimpleName[it] } ?: return 0
+        if (c.source.qualifiedName in visited) return 0
+        val parentName = c.source.supertypes.firstOrNull() ?: return 0
+        val parent = resolver.resolve(c, parentName) ?: return 0
         if (parent.source.isInterface) return 0
-        return 1 + depth(parent, visited + c.source.simpleName)
+        return 1 + depth(parent, visited + c.source.qualifiedName)
     }
 
     return components
@@ -112,7 +144,7 @@ private fun detectDeepInheritance(components: List<ClassifiedComponent>, rootDir
         .mapNotNull { c ->
             val d = depth(c)
             if (d >= 3) {
-                val chain = buildChain(c, bySimpleName).joinToString(" → ")
+                val chain = buildChain(c, resolver).joinToString(" → ")
                 AntiPattern(
                     severity = AntiPattern.Severity.WARNING,
                     message = "`${c.source.simpleName}` has inheritance depth $d: $chain",
@@ -124,15 +156,16 @@ private fun detectDeepInheritance(components: List<ClassifiedComponent>, rootDir
         }
 }
 
-private fun buildChain(c: ClassifiedComponent, byName: Map<String, ClassifiedComponent>): List<String> {
+private fun buildChain(c: ClassifiedComponent, resolver: SupertypeResolver): List<String> {
     val chain = mutableListOf(c.source.simpleName)
     var current = c
-    val visited = mutableSetOf(c.source.simpleName)
+    val visited = mutableSetOf(c.source.qualifiedName)
     while (true) {
-        val parent = current.source.supertypes.firstOrNull()?.let { byName[it] } ?: break
-        if (parent.source.isInterface || parent.source.simpleName in visited) break
+        val parentName = current.source.supertypes.firstOrNull() ?: break
+        val parent = resolver.resolve(current, parentName) ?: break
+        if (parent.source.isInterface || parent.source.qualifiedName in visited) break
         chain.add(parent.source.simpleName)
-        visited.add(parent.source.simpleName)
+        visited.add(parent.source.qualifiedName)
         current = parent
     }
     return chain

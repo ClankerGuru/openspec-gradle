@@ -39,9 +39,9 @@ abstract class OpenSpecArchTask : DefaultTask() {
         val srcDirs = projects.flatMap { proj ->
             val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java)
             javaExt?.sourceSets?.flatMap { ss -> ss.allSource.srcDirs.filter { it.exists() } } ?: emptyList()
-        }
+        }.distinctBy { it.absolutePath }
 
-        val sources = scanSources(srcDirs)
+        val sources = scanSources(srcDirs).distinctBy { it.file.absolutePath }
         if (sources.isEmpty()) {
             out.writeText("# Architecture Analysis\n\n> No source files found.\n")
             logger.lifecycle("OpenSpec: No sources found for architecture analysis.")

@@ -10,13 +10,13 @@ fun generateDependencyDiagram(
 ): String {
     val connected = mutableSetOf<String>()
     for (edge in edges) {
-        connected.add(edge.from.source.simpleName)
-        connected.add(edge.to.source.simpleName)
+        connected.add(edge.from.source.qualifiedName)
+        connected.add(edge.to.source.qualifiedName)
     }
 
     if (connected.isEmpty()) return ""
 
-    val relevantComponents = components.filter { it.source.simpleName in connected }
+    val relevantComponents = components.filter { it.source.qualifiedName in connected }
     val byGroup = relevantComponents.groupBy { it.packageGroup }
 
     val sb = StringBuilder()
@@ -26,13 +26,13 @@ fun generateDependencyDiagram(
     for ((group, comps) in byGroup.entries.sortedBy { it.key }) {
         sb.appendLine("    subgraph $group")
         for (c in comps.sortedBy { it.source.simpleName }) {
-            sb.appendLine("        ${nodeId(c.source.simpleName)}[${c.source.simpleName}]")
+            sb.appendLine("        ${nodeId(c.source.qualifiedName)}[${c.source.simpleName}]")
         }
         sb.appendLine("    end")
     }
 
-    for (edge in edges.distinctBy { "${it.from.source.simpleName}->${it.to.source.simpleName}" }) {
-        sb.appendLine("    ${nodeId(edge.from.source.simpleName)} --> ${nodeId(edge.to.source.simpleName)}")
+    for (edge in edges.distinctBy { "${it.from.source.qualifiedName}->${it.to.source.qualifiedName}" }) {
+        sb.appendLine("    ${nodeId(edge.from.source.qualifiedName)} --> ${nodeId(edge.to.source.qualifiedName)}")
     }
 
     sb.appendLine("```")
@@ -66,12 +66,12 @@ fun generateSequenceDiagrams(
         sb.appendLine("sequenceDiagram")
 
         for (c in chain) {
-            sb.appendLine("    participant ${c.source.simpleName}")
+            sb.appendLine("    participant ${nodeId(c.source.qualifiedName)} as ${c.source.simpleName}")
         }
 
         for (i in 0 until chain.size - 1) {
-            val from = chain[i].source.simpleName
-            val to = chain[i + 1].source.simpleName
+            val from = nodeId(chain[i].source.qualifiedName)
+            val to = nodeId(chain[i + 1].source.qualifiedName)
             sb.appendLine("    $from->>$to: ")
             sb.appendLine("    $to-->>${from}: ")
         }
@@ -86,7 +86,6 @@ fun generateSequenceDiagrams(
 
 /**
  * Trace the data flow chain from an entry point, following the dependency graph.
- * Picks the most-connected neighbor at each step.
  */
 private fun traceChain(
     entry: ClassifiedComponent,

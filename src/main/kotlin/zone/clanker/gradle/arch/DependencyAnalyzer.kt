@@ -38,13 +38,20 @@ fun buildDependencyGraph(components: List<ClassifiedComponent>): List<ClassDepen
             }
         }
 
-        // Also check supertypes by simple name
+        // Resolve supertypes — prefer qualified match via imports, then same-package, then unique simple name
         for (supertype in component.source.supertypes) {
-            val candidates = bySimpleName[supertype] ?: continue
-            for (candidate in candidates) {
-                if (candidate !== component) {
-                    edges.add(ClassDependency(component, candidate))
+            val resolved = when {
+                '.' in supertype -> byQualifiedName[supertype]
+                else -> {
+                    component.source.imports
+                        .firstOrNull { it.substringAfterLast(".") == supertype }
+                        ?.let { byQualifiedName[it] }
+                        ?: byQualifiedName["${component.source.packageName}.$supertype"]
+                        ?: bySimpleName[supertype]?.singleOrNull()
                 }
+            }
+            if (resolved != null && resolved !== component) {
+                edges.add(ClassDependency(component, resolved))
             }
         }
     }
