@@ -108,7 +108,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecSyncTask) {
                     task.tools.set(extension.tools)
                     task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
-                    task.dependsOn("opsx-context", "opsx-tree", "opsx-deps", "opsx-modules", "opsx-devloop")
+                    task.dependsOn("opsx-context", "opsx-tree", "opsx-deps", "opsx-modules", "opsx-devloop", "opsx-arch")
                 }
             })
 
@@ -127,6 +127,13 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                         })
                     )
                     task.contextFile.set(project.layout.projectDirectory.file(".openspec/context.md"))
+                }
+            })
+
+            project.tasks.register("opsx-arch", OpenSpecArchTask::class.java).configure(object : org.gradle.api.Action<OpenSpecArchTask> {
+                override fun execute(task: OpenSpecArchTask) {
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".openspec/arch.md"))
                 }
             })
 
