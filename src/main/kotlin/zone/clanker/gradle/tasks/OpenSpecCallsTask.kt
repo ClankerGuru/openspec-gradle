@@ -100,28 +100,32 @@ abstract class OpenSpecCallsTask : DefaultTask() {
                 sb.appendLine("```mermaid")
                 sb.appendLine("sequenceDiagram")
 
-                val participants = mutableSetOf<String>()
+                val participants = mutableMapOf<String, String>() // qualifiedClass -> participantId
                 for (call in calls) {
                     val callerClass = call.caller.qualifiedName.substringBeforeLast('.')
                     val targetClass = call.target.qualifiedName.substringBeforeLast('.')
                     if (callerClass !in participants) {
                         val label = callerClass.substringAfterLast('.')
-                        sb.appendLine("    participant $label")
-                        participants.add(callerClass)
+                        val id = sanitizeMermaidId(callerClass)
+                        sb.appendLine("    participant $id as $label")
+                        participants[callerClass] = id
                     }
                     if (targetClass !in participants) {
                         val label = targetClass.substringAfterLast('.')
-                        sb.appendLine("    participant $label")
-                        participants.add(targetClass)
+                        val id = sanitizeMermaidId(targetClass)
+                        sb.appendLine("    participant $id as $label")
+                        participants[targetClass] = id
                     }
                 }
 
                 for (call in calls) {
-                    val callerClass = call.caller.qualifiedName.substringBeforeLast('.').substringAfterLast('.')
-                    val targetClass = call.target.qualifiedName.substringBeforeLast('.').substringAfterLast('.')
+                    val callerClass = call.caller.qualifiedName.substringBeforeLast('.')
+                    val targetClass = call.target.qualifiedName.substringBeforeLast('.')
+                    val callerId = participants[callerClass] ?: continue
+                    val targetId = participants[targetClass] ?: continue
                     val methodName = call.target.name.substringAfterLast('.')
-                    if (callerClass != targetClass) {
-                        sb.appendLine("    $callerClass->>$targetClass: $methodName()")
+                    if (callerId != targetId) {
+                        sb.appendLine("    $callerId->>$targetId: $methodName()")
                     }
                 }
                 sb.appendLine("```")
@@ -145,5 +149,5 @@ abstract class OpenSpecCallsTask : DefaultTask() {
     }
 
     private fun sanitizeMermaidId(name: String): String =
-        name.replace('.', '_').replace('-', '_')
+        name.replace(Regex("[^a-zA-Z0-9_]"), "_")
 }

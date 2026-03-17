@@ -106,16 +106,14 @@ class SymbolIndex(
             val allSymbols = mutableListOf<Symbol>()
             val allRefs = mutableListOf<Reference>()
 
-            val ktParser = KotlinPsiParser()
-            val javaParser = JavaPsiParser()
-
-            ktParser.use { parser ->
+            KotlinPsiParser().use { ktParser ->
+                val javaParser = JavaPsiParser()
                 for (file in sourceFiles) {
                     try {
                         when (file.extension) {
                             "kt" -> {
-                                allSymbols.addAll(parser.extractDeclarations(file))
-                                allRefs.addAll(parser.extractReferences(file))
+                                allSymbols.addAll(ktParser.extractDeclarations(file))
+                                allRefs.addAll(ktParser.extractReferences(file))
                             }
                             "java" -> {
                                 allSymbols.addAll(javaParser.extractDeclarations(file))
@@ -123,7 +121,7 @@ class SymbolIndex(
                             }
                         }
                     } catch (e: Exception) {
-                        // Skip files that fail to parse
+                        System.err.println("Warning: Failed to parse ${file.name}: ${e.message}")
                     }
                 }
             }

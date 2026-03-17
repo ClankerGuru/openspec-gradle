@@ -85,7 +85,9 @@ class Renamer(private val index: SymbolIndex) {
             if (file.name == expectedOldName) {
                 val newFile = File(file.parentFile, "${edit.newText}.${file.extension}")
                 if (!newFile.exists()) {
-                    file.renameTo(newFile)
+                    if (!file.renameTo(newFile)) {
+                        System.err.println("Warning: Failed to rename ${file.name} to ${newFile.name}")
+                    }
                 }
             }
         }
