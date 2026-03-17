@@ -36,11 +36,14 @@ class StatusTaskTest {
         File(dir, "tasks.md").writeText(tasks)
     }
 
+    private fun statusFile() = File(projectDir, ".opsx/status.md")
+
     @Test
     fun `opsx-status runs with no proposals`() {
         val result = gradle("opsx-status").build()
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-status")?.outcome)
-        assertTrue(result.output.contains("No proposals found"))
+        val content = statusFile().readText()
+        assertTrue(content.contains("No active proposals"))
     }
 
     @Test
@@ -53,9 +56,9 @@ class StatusTaskTest {
 
         val result = gradle("opsx-status").build()
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-status")?.outcome)
-        assertTrue(result.output.contains("OpenSpec Dashboard"))
-        assertTrue(result.output.contains("my-feature"))
-        assertTrue(result.output.contains("1/3"))
+        val content = statusFile().readText()
+        assertTrue(content.contains("my-feature"))
+        assertTrue(content.contains("1/3"))
     }
 
     @Test
@@ -82,10 +85,10 @@ class StatusTaskTest {
         """.trimIndent())
 
         val result = gradle("opsx-status").build()
-        assertTrue(result.output.contains("feature-a"))
-        assertTrue(result.output.contains("feature-b"))
-        assertTrue(result.output.contains("2/2"), "Should show feature-a as 2/2 done")
-        assertTrue(result.output.contains("0%"), "Should show feature-b at 0%")
+        val content = statusFile().readText()
+        assertTrue(content.contains("feature-a"))
+        assertTrue(content.contains("feature-b"))
+        assertTrue(content.contains("2/5 tasks done"), "Should show 2/5 tasks done")
     }
 
     @Test

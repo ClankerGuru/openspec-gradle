@@ -205,7 +205,11 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             })
 
             // Dashboard task
-            project.tasks.register("opsx-status", OpenSpecStatusTask::class.java)
+            project.tasks.register("opsx-status", OpenSpecStatusTask::class.java).configure(object : org.gradle.api.Action<OpenSpecStatusTask> {
+                override fun execute(task: OpenSpecStatusTask) {
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/status.md"))
+                }
+            })
 
             // Dynamic task registration from proposals
             registerProposalTasks(project)
