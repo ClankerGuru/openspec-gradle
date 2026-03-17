@@ -78,6 +78,6 @@ class ModulesTaskTest {
         val content = outputFile().readText()
         assertTrue(content.contains(":core"))
         assertTrue(content.contains(":app"))
-        assertTrue(content.contains("Dependency Graph"))
+        assertTrue(content.contains("flowchart TD"))
     }
 }
