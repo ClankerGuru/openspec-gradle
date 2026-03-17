@@ -81,13 +81,16 @@ fun findEntryPoints(
     components: List<ClassifiedComponent>,
     edges: List<ClassDependency> = emptyList(),
 ): List<ClassifiedComponent> {
+    // Collect all entry points — main() classes + annotated controllers + graph roots
+    val result = mutableListOf<ClassifiedComponent>()
+
     // 1. Classes with main() method
-    val withMain = components.filter { "main" in it.source.methods }
-    if (withMain.isNotEmpty()) return withMain
+    result.addAll(components.filter { "main" in it.source.methods })
 
     // 2. Annotated entry points (controllers, etc.)
-    val annotated = components.filter { it.role == ComponentRole.CONTROLLER }
-    if (annotated.isNotEmpty()) return annotated
+    result.addAll(components.filter { it.role == ComponentRole.CONTROLLER })
+
+    if (result.isNotEmpty()) return result.distinctBy { it.source.qualifiedName }
 
     // 3. Root nodes — components that have outgoing edges but no incoming edges
     if (edges.isNotEmpty()) {

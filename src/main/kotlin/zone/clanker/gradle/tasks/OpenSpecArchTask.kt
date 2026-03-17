@@ -37,8 +37,50 @@ abstract class OpenSpecArchTask : DefaultTask() {
         val projects = resolveProjects()
 
         val srcDirs = projects.flatMap { proj ->
+            val dirs = mutableListOf<java.io.File>()
+
+            // Java/Kotlin JVM source sets
             val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java)
-            javaExt?.sourceSets?.flatMap { ss -> ss.allSource.srcDirs.filter { it.exists() } } ?: emptyList()
+            javaExt?.sourceSets?.forEach { ss ->
+                dirs.addAll(ss.allSource.srcDirs.filter { it.exists() })
+            }
+
+            // KMP source sets — discover via the kotlin extension reflectively
+            if (dirs.isEmpty()) {
+                try {
+                    val kotlinExt = proj.extensions.findByName("kotlin")
+                    if (kotlinExt != null) {
+                        val sourceSets = kotlinExt.javaClass.getMethod("getSourceSets").invoke(kotlinExt)
+                        if (sourceSets is Iterable<*>) {
+                            for (ss in sourceSets) {
+                                if (ss == null) continue
+                                val kotlin = ss.javaClass.getMethod("getKotlin").invoke(ss)
+                                if (kotlin != null) {
+                                    val srcDirSet = kotlin.javaClass.getMethod("getSrcDirs").invoke(kotlin)
+                                    if (srcDirSet is Set<*>) {
+                                        srcDirSet.filterIsInstance<java.io.File>().filter { it.exists() }.forEach { dirs.add(it) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+
+            // Fallback: scan conventional source directories
+            if (dirs.isEmpty()) {
+                val srcDir = proj.file("src")
+                if (srcDir.exists()) {
+                    srcDir.listFiles()?.forEach { setDir ->
+                        val kotlinDir = java.io.File(setDir, "kotlin")
+                        val javaDir = java.io.File(setDir, "java")
+                        if (kotlinDir.exists()) dirs.add(kotlinDir)
+                        if (javaDir.exists()) dirs.add(javaDir)
+                    }
+                }
+            }
+
+            dirs
         }.distinctBy { it.absolutePath }
 
         val sources = scanSources(srcDirs).distinctBy { it.file.absolutePath }
