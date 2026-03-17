@@ -43,12 +43,7 @@ class Renamer(private val index: SymbolIndex) {
                     file = ref.file,
                     line = ref.line,
                     oldText = ref.targetName,
-                    newText = if (ref.kind == ReferenceKind.IMPORT) {
-                        // For imports, replace the last segment of the qualified name
-                        toName
-                    } else {
-                        toName
-                    },
+                    newText = toName,
                     kind = ref.kind.label,
                 ))
             }
@@ -66,7 +61,9 @@ class Renamer(private val index: SymbolIndex) {
         val modified = mutableListOf<File>()
 
         for ((file, fileEdits) in byFile) {
-            val lines = file.readLines().toMutableList()
+            val originalText = file.readText()
+            val lines = originalText.lines().toMutableList()
+            val endsWithNewline = originalText.endsWith("\n")
             // Process from bottom to top to preserve line numbers
             for (edit in fileEdits.sortedByDescending { it.line }) {
                 val lineIdx = edit.line - 1
@@ -74,7 +71,7 @@ class Renamer(private val index: SymbolIndex) {
                     lines[lineIdx] = lines[lineIdx].replace(edit.oldText, edit.newText)
                 }
             }
-            file.writeText(lines.joinToString("\n") + if (file.readText().endsWith("\n")) "\n" else "")
+            file.writeText(lines.joinToString("\n") + if (endsWithNewline) "\n" else "")
             modified.add(file)
         }
 

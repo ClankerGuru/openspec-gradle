@@ -41,7 +41,9 @@ object SourceDiscovery {
                         }
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                project.logger.debug("KMP source discovery failed for ${project.path}: ${e.message}")
+            }
         }
 
         // Fallback: scan conventional source directories

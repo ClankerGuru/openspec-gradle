@@ -107,7 +107,6 @@ class SymbolIndex(
             val allRefs = mutableListOf<Reference>()
 
             KotlinPsiParser().use { ktParser ->
-                val javaParser = JavaPsiParser()
                 for (file in sourceFiles) {
                     try {
                         when (file.extension) {
@@ -116,6 +115,7 @@ class SymbolIndex(
                                 allRefs.addAll(ktParser.extractReferences(file))
                             }
                             "java" -> {
+                                val javaParser = JavaPsiParser()
                                 allSymbols.addAll(javaParser.extractDeclarations(file))
                                 allRefs.addAll(javaParser.extractReferences(file))
                             }

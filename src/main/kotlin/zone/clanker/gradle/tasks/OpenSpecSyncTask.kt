@@ -90,9 +90,9 @@ abstract class OpenSpecSyncTask : DefaultTask() {
             }
         }
         // Also remove .opsx/ directory
-        val openspecDir = File(project.projectDir, ".opsx")
-        if (openspecDir.exists()) {
-            openspecDir.deleteRecursively()
+        val opsxDir = File(project.projectDir, ".opsx")
+        if (opsxDir.exists()) {
+            opsxDir.deleteRecursively()
             logger.lifecycle("OpenSpec: Removed .opsx/ directory")
         }
 

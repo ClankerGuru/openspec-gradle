@@ -43,8 +43,8 @@ abstract class OpenSpecProposeTask : DefaultTask() {
 
         changesDir.mkdirs()
 
-        // Create .openspec.yaml
-        File(changesDir, ".openspec.yaml").writeText("""
+        // Create .opsx.yaml
+        File(changesDir, ".opsx.yaml").writeText("""
             |name: $name
             |created: ${LocalDate.now()}
             |status: active

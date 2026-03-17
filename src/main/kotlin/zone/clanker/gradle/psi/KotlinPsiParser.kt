@@ -12,7 +12,9 @@ class KotlinPsiParser : AutoCloseable {
 
     fun extractReferences(file: File): List<Reference> = KotlinRegexParser.extractReferences(file)
 
-    override fun close() {}
+    override fun close() {
+        // No resources to close — delegates to stateless KotlinRegexParser
+    }
 }
 
 /**
@@ -108,10 +110,8 @@ object KotlinRegexParser {
                 }
             }
 
-            // Track class scope (simple brace counting)
-            if (trimmed == "}" && !trimmed.contains("{")) {
-                // Might be closing a class — simplified tracking
-            }
+            // Note: class scope tracking via brace counting is omitted — single-class-per-file
+            // is the common Kotlin convention. Multi-class files may misattribute symbols.
         }
 
         return symbols

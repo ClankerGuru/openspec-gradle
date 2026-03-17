@@ -3,7 +3,6 @@ package zone.clanker.gradle.psi
 import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.MethodCallExpr
-import com.github.javaparser.ast.expr.NameExpr
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import java.io.File
 
