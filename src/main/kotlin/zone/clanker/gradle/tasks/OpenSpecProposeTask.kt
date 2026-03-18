@@ -20,7 +20,7 @@ abstract class OpenSpecProposeTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Create a new spec-driven change proposal. " +
-            "Output: openspec/changes/<name>/ with proposal.md, design.md, tasks.md. " +
+            "Output: opsx/changes/<name>/ with proposal.md, design.md, tasks.md. " +
             "Options: --name=<kebab-case-name>. " +
             "Use when: Starting a new feature, fix, or refactor. " +
             "Chain: Fill in artifacts → opsx-apply --name=<name> to implement."
@@ -34,7 +34,7 @@ abstract class OpenSpecProposeTask : DefaultTask() {
             )
         }
 
-        val changesDir = File(project.projectDir, "openspec/changes/$name")
+        val changesDir = File(project.projectDir, "opsx/changes/$name")
         if (changesDir.exists()) {
             throw org.gradle.api.GradleException(
                 "Change '$name' already exists at ${changesDir.relativeTo(project.projectDir)}"
@@ -43,8 +43,8 @@ abstract class OpenSpecProposeTask : DefaultTask() {
 
         changesDir.mkdirs()
 
-        // Create .openspec.yaml
-        File(changesDir, ".openspec.yaml").writeText("""
+        // Create .opsx.yaml
+        File(changesDir, ".opsx.yaml").writeText("""
             |name: $name
             |created: ${LocalDate.now()}
             |status: active
@@ -94,7 +94,7 @@ abstract class OpenSpecProposeTask : DefaultTask() {
             |
         """.trimMargin())
 
-        logger.lifecycle("OpenSpec: Created change '$name' at openspec/changes/$name/ (prefix: $prefix)")
+        logger.lifecycle("OpenSpec: Created change '$name' at opsx/changes/$name/ (prefix: $prefix)")
         logger.lifecycle("  - proposal.md (what & why)")
         logger.lifecycle("  - design.md (how)")
         logger.lifecycle("  - tasks.md (implementation steps)")

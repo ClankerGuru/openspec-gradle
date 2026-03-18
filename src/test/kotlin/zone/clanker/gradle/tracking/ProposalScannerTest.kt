@@ -11,7 +11,7 @@ class ProposalScannerTest {
     lateinit var tempDir: File
 
     private fun createProposal(name: String, tasksContent: String) {
-        val dir = File(tempDir, "openspec/changes/$name")
+        val dir = File(tempDir, "opsx/changes/$name")
         dir.mkdirs()
         File(dir, "tasks.md").writeText(tasksContent)
     }
@@ -43,8 +43,8 @@ class ProposalScannerTest {
     @Test
     fun `scan skips archive directory`() {
         createProposal("active", "- [ ] `a-1` Task")
-        File(tempDir, "openspec/changes/archive").mkdirs()
-        File(tempDir, "openspec/changes/archive/old/tasks.md").apply {
+        File(tempDir, "opsx/changes/archive").mkdirs()
+        File(tempDir, "opsx/changes/archive/old/tasks.md").apply {
             parentFile.mkdirs()
             writeText("- [x] `o-1` Old task")
         }
@@ -56,7 +56,7 @@ class ProposalScannerTest {
 
     @Test
     fun `scan skips dirs without tasks md`() {
-        val dir = File(tempDir, "openspec/changes/no-tasks")
+        val dir = File(tempDir, "opsx/changes/no-tasks")
         dir.mkdirs()
         File(dir, "proposal.md").writeText("# No tasks here")
 

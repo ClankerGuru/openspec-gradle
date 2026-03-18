@@ -93,7 +93,7 @@ class WorkflowTest {
         assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
 
         gradle("opsx-propose", "--name=lifecycle-test").build()
-        val changeDir = File(testProjectDir, "openspec/changes/lifecycle-test")
+        val changeDir = File(testProjectDir, "opsx/changes/lifecycle-test")
         assertTrue(changeDir.exists())
         assertTrue(File(changeDir, "proposal.md").exists())
 

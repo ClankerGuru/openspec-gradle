@@ -80,3 +80,20 @@ jobs:
         run: gh release upload "${{ github.event.release.tag_name }}" build/libs/*.jar --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update README version
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          git fetch origin main
+          git checkout main
+          sed -i "s|id(\"zone.clanker.gradle\") version \"[^\"]*\"|id(\"zone.clanker.gradle\") version \"$VERSION\"|g" README.md
+          if git diff --quiet README.md; then
+            echo "README already up to date"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs: update README version to $VERSION"
+            git push origin main
+          fi

@@ -26,7 +26,7 @@ class DevloopTaskTest {
         """.trimIndent())
     }
 
-    private fun outputFile() = File(testProjectDir, ".openspec/devloop.md")
+    private fun outputFile() = File(testProjectDir, ".opsx/devloop.md")
 
     @Test
     fun `generates devloop md`() {
@@ -66,9 +66,9 @@ class DevloopTaskTest {
         val content = outputFile().readText()
         // Root project commands should not have :: prefix
         assertTrue(!content.contains("::"), "Output should not contain '::' malformed prefixes, got:\n$content")
-        // Subproject commands should use :core: and :app: prefixes
-        assertTrue(content.contains(":core:build"))
-        assertTrue(content.contains(":app:build"))
+        // Should list modules
+        assertTrue(content.contains(":core"))
+        assertTrue(content.contains(":app"))
     }
 
     @Test

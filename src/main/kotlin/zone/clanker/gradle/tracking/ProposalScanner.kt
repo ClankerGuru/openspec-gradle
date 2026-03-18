@@ -3,18 +3,18 @@ package zone.clanker.gradle.tracking
 import java.io.File
 
 /**
- * Scans openspec/changes/ directories for proposals and parses their tasks.
+ * Scans opsx/changes/ directories for proposals and parses their tasks.
  */
 object ProposalScanner {
 
     /**
-     * Scan the openspec/changes/ directory for all active proposals.
+     * Scan the opsx/changes/ directory for all active proposals.
      *
      * @param projectDir The project root directory
      * @return List of parsed proposals with their tasks
      */
     fun scan(projectDir: File): List<Proposal> {
-        val changesDir = File(projectDir, "openspec/changes")
+        val changesDir = File(projectDir, "opsx/changes")
         if (!changesDir.exists() || !changesDir.isDirectory) return emptyList()
 
         return changesDir.listFiles()
@@ -46,7 +46,7 @@ object ProposalScanner {
      * Find a specific proposal by name.
      */
     fun findProposal(projectDir: File, name: String): Proposal? {
-        val dir = File(projectDir, "openspec/changes/$name")
+        val dir = File(projectDir, "opsx/changes/$name")
         if (!dir.exists()) return null
         return parseProposal(dir)
     }

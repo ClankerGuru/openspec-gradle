@@ -26,7 +26,7 @@ class DepsTaskTest {
         """.trimIndent())
     }
 
-    private fun outputFile() = File(testProjectDir, ".openspec/deps.md")
+    private fun outputFile() = File(testProjectDir, ".opsx/deps.md")
 
     @Test
     fun `generates deps md with external dependencies`() {

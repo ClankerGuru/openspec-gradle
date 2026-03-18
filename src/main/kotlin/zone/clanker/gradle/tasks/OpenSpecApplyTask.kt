@@ -25,7 +25,7 @@ abstract class OpenSpecApplyTask : DefaultTask() {
 
     @TaskAction
     fun apply() {
-        val changesRoot = File(project.projectDir, "openspec/changes")
+        val changesRoot = File(project.projectDir, "opsx/changes")
 
         val name = changeName.ifEmpty {
             autoSelectChange(changesRoot)
@@ -55,7 +55,7 @@ abstract class OpenSpecApplyTask : DefaultTask() {
             logger.lifecycle("  Context files:")
             listOf("proposal.md", "design.md", "tasks.md").forEach { f ->
                 val file = File(changeDir, f)
-                if (file.exists()) logger.lifecycle("    - openspec/changes/$name/$f")
+                if (file.exists()) logger.lifecycle("    - opsx/changes/$name/$f")
             }
             logger.lifecycle("")
             logger.lifecycle("  Read the context files and implement the remaining tasks.")

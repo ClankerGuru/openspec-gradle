@@ -28,7 +28,7 @@ class ContextTaskTest {
         """.trimIndent())
     }
 
-    private fun contextFile() = File(testProjectDir, ".openspec/context.md")
+    private fun contextFile() = File(testProjectDir, ".opsx/context.md")
 
     @Test
     fun `task generates context md`() {
@@ -151,7 +151,7 @@ class ContextTaskTest {
         gradle("opsx-sync").build()
         val globalGitignore = zone.clanker.gradle.generators.GlobalGitignore.resolveGlobalGitignoreFile()
         assertTrue(globalGitignore.exists())
-        assertTrue(globalGitignore.readText().contains(".openspec/"))
+        assertTrue(globalGitignore.readText().contains(".opsx/"))
     }
 
     @Test

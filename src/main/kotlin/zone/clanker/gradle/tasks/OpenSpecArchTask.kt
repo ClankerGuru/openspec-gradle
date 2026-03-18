@@ -21,7 +21,7 @@ abstract class OpenSpecArchTask : DefaultTask() {
     init {
         group = "opsx"
         description = "[tool] Architecture analyzer. " +
-            "Output: .openspec/arch.md. " +
+            "Output: .opsx/arch.md. " +
             "Options: -Pmodule=name. " +
             "Use when: You need to understand how components connect, entry points, data flow, and anti-patterns. " +
             "Chain: Read output before making structural changes."

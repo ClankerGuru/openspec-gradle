@@ -18,14 +18,14 @@ abstract class OpenSpecArchiveTask : DefaultTask() {
 
     init {
         group = "opsx"
-        description = "[tool] Archive a completed change to openspec/changes/archive/. " +
+        description = "[tool] Archive a completed change to opsx/changes/archive/. " +
             "Options: --name=<change-name>. " +
             "Use when: A proposal is fully implemented."
     }
 
     @TaskAction
     fun archive() {
-        val changesRoot = File(project.projectDir, "openspec/changes")
+        val changesRoot = File(project.projectDir, "opsx/changes")
         val name = changeName.ifEmpty {
             throw org.gradle.api.GradleException(
                 "Change name required. Use: ./gradlew opsx-archive --name=my-change"
@@ -46,7 +46,9 @@ abstract class OpenSpecArchiveTask : DefaultTask() {
             throw org.gradle.api.GradleException("Archive '$dateName' already exists")
         }
 
-        changeDir.renameTo(target)
-        logger.lifecycle("OpenSpec: Archived '$name' to openspec/changes/archive/$dateName/")
+        if (!changeDir.renameTo(target)) {
+            throw org.gradle.api.GradleException("Failed to archive '$name' — could not move to opsx/changes/archive/$dateName/")
+        }
+        logger.lifecycle("OpenSpec: Archived '$name' to opsx/changes/archive/$dateName/")
     }
 }

@@ -31,16 +31,19 @@ class StatusTaskTest {
         .forwardOutput()
 
     private fun createProposal(name: String, tasks: String) {
-        val dir = File(projectDir, "openspec/changes/$name")
+        val dir = File(projectDir, "opsx/changes/$name")
         dir.mkdirs()
         File(dir, "tasks.md").writeText(tasks)
     }
+
+    private fun statusFile() = File(projectDir, ".opsx/status.md")
 
     @Test
     fun `opsx-status runs with no proposals`() {
         val result = gradle("opsx-status").build()
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-status")?.outcome)
-        assertTrue(result.output.contains("No proposals found"))
+        val content = statusFile().readText()
+        assertTrue(content.contains("No active proposals"))
     }
 
     @Test
@@ -53,9 +56,9 @@ class StatusTaskTest {
 
         val result = gradle("opsx-status").build()
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-status")?.outcome)
-        assertTrue(result.output.contains("OpenSpec Dashboard"))
-        assertTrue(result.output.contains("my-feature"))
-        assertTrue(result.output.contains("1/3"))
+        val content = statusFile().readText()
+        assertTrue(content.contains("my-feature"))
+        assertTrue(content.contains("1/3"))
     }
 
     @Test
@@ -82,10 +85,10 @@ class StatusTaskTest {
         """.trimIndent())
 
         val result = gradle("opsx-status").build()
-        assertTrue(result.output.contains("feature-a"))
-        assertTrue(result.output.contains("feature-b"))
-        assertTrue(result.output.contains("2/2"), "Should show feature-a as 2/2 done")
-        assertTrue(result.output.contains("0%"), "Should show feature-b at 0%")
+        val content = statusFile().readText()
+        assertTrue(content.contains("feature-a"))
+        assertTrue(content.contains("feature-b"))
+        assertTrue(content.contains("2/5 tasks done"), "Should show 2/5 tasks done")
     }
 
     @Test
@@ -113,7 +116,7 @@ class StatusTaskTest {
         assertTrue(result.output.contains("DONE"))
 
         // Verify file was updated
-        val content = File(projectDir, "openspec/changes/my-feature/tasks.md").readText()
+        val content = File(projectDir, "opsx/changes/my-feature/tasks.md").readText()
         assertTrue(content.contains("[x] `mf-1`"))
         assertTrue(content.contains("[ ] `mf-2`")) // unchanged
     }
@@ -125,7 +128,7 @@ class StatusTaskTest {
         val result = gradle("opsx-mf-1", "--set=progress").build()
         assertTrue(result.output.contains("IN_PROGRESS"))
 
-        val content = File(projectDir, "openspec/changes/my-feature/tasks.md").readText()
+        val content = File(projectDir, "opsx/changes/my-feature/tasks.md").readText()
         assertTrue(content.contains("[~] `mf-1`"))
     }
 
@@ -162,7 +165,7 @@ class StatusTaskTest {
 
         gradle("opsx-mf-1.2", "--set=done").build()
 
-        val content = File(projectDir, "openspec/changes/my-feature/tasks.md").readText()
+        val content = File(projectDir, "opsx/changes/my-feature/tasks.md").readText()
         // Parent should be auto-completed since all children are done
         val lines = content.lines()
         assertTrue(lines.any { it.contains("[x]") && it.contains("`mf-1`") },

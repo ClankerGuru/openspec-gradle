@@ -1,6 +1,7 @@
 package zone.clanker.gradle.tasks
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.options.Option
@@ -9,15 +10,6 @@ import zone.clanker.gradle.tracking.ProposalScanner
 import zone.clanker.gradle.tracking.Proposal
 import zone.clanker.gradle.tracking.TaskStatus
 
-/**
- * Displays a dashboard of all proposals and their task progress.
- *
- * [tool] Proposal dashboard.
- * Output: Console (ANSI-formatted)
- * Options: --proposal=<name> to filter to a single proposal
- * Use when: You need to check proposal progress, find active tasks, see what's done.
- * Chain: Read output → opsx-<code> --set=done to work on a task.
- */
 @UntrackedTask(because = "Reads and displays proposal status from filesystem")
 abstract class OpenSpecStatusTask : DefaultTask() {
 
@@ -26,9 +18,13 @@ abstract class OpenSpecStatusTask : DefaultTask() {
     @get:Option(option = "proposal", description = "Filter to a specific proposal name")
     abstract val proposal: Property<String>
 
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
     init {
         group = "opsx"
         description = "[tool] Proposal dashboard. " +
+            "Output: .opsx/status.md. " +
             "Options: --proposal=<name>. " +
             "Use when: Check proposal progress, find active tasks. " +
             "Chain: opsx-<code> --set=done to work on a task."
@@ -36,10 +32,14 @@ abstract class OpenSpecStatusTask : DefaultTask() {
 
     @TaskAction
     fun execute() {
+        val out = outputFile.get().asFile
+        out.parentFile.mkdirs()
+
         val proposals = if (proposal.isPresent) {
             val p = ProposalScanner.findProposal(project.projectDir, proposal.get())
             if (p == null) {
-                logger.lifecycle("No proposal found: ${proposal.get()}")
+                out.writeText("# Status\n\n> No proposal found: ${proposal.get()}\n")
+                logger.lifecycle("OpenSpec: No proposal found: ${proposal.get()}")
                 return
             }
             listOf(p)
@@ -47,111 +47,83 @@ abstract class OpenSpecStatusTask : DefaultTask() {
             ProposalScanner.scan(project.projectDir)
         }
 
+        val sb = StringBuilder()
+
         if (proposals.isEmpty()) {
-            logger.lifecycle("No proposals found in openspec/changes/")
-            return
+            sb.appendLine("# Status")
+            sb.appendLine()
+            sb.appendLine("> No active proposals. Create one with `./gradlew opsx-propose -Pname=my-feature`")
+        } else {
+            renderDashboard(sb, proposals)
         }
 
-        printDashboard(proposals)
+        out.writeText(sb.toString())
+        logger.lifecycle(sb.toString().trimEnd())
     }
 
-    private fun printDashboard(proposals: List<Proposal>) {
-        val green = "\u001B[32m"
-        val yellow = "\u001B[33m"
-        val dim = "\u001B[2m"
-        val bold = "\u001B[1m"
-        val reset = "\u001B[0m"
-
+    private fun renderDashboard(sb: StringBuilder, proposals: List<Proposal>) {
         val totalTasks = proposals.sumOf { it.totalCount }
         val doneTasks = proposals.sumOf { it.doneCount }
         val activeCount = proposals.count { it.progressPercent < 100 }
         val completedCount = proposals.count { it.progressPercent == 100 }
 
-        logger.lifecycle("")
-        logger.lifecycle("${bold}OpenSpec Dashboard${reset}")
-        logger.lifecycle("")
-        logger.lifecycle("${bold}Summary:${reset}")
-        logger.lifecycle("  ${green}*${reset} Proposals: ${proposals.size}")
-        logger.lifecycle("  ${green}*${reset} Active Changes: $activeCount")
-        logger.lifecycle("  ${green}*${reset} Completed Changes: $completedCount")
-        logger.lifecycle("  ${green}*${reset} Task Progress: ${bold}$doneTasks/$totalTasks${reset} (${progressPercent(doneTasks, totalTasks)}% complete)")
-        logger.lifecycle("")
+        sb.appendLine("# Status")
+        sb.appendLine()
+        sb.appendLine("**${proposals.size} proposals** — $activeCount active, $completedCount completed — **$doneTasks/$totalTasks tasks done** (${progressPercent(doneTasks, totalTasks)}%)")
+        sb.appendLine()
 
-        // Active changes with progress bars
+        // Active proposals
         val active = proposals.filter { it.progressPercent < 100 }
         if (active.isNotEmpty()) {
-            logger.lifecycle("${bold}Active Changes${reset}")
-            val maxNameLen = active.maxOf { it.name.length }.coerceAtLeast(20)
+            sb.appendLine("## Active")
+            sb.appendLine()
             for (p in active) {
-                val bar = progressBar(p.progressPercent, 20)
-                val name = p.name.padEnd(maxNameLen)
-                val pct = "${p.progressPercent}%".padStart(4)
-                logger.lifecycle("  ${green}*${reset} $name $bar $pct")
+                sb.appendLine("### ${p.name} (${p.progressPercent}%)")
+                sb.appendLine()
+                renderTasks(sb, p.tasks, "")
+                sb.appendLine()
             }
-            logger.lifecycle("")
         }
 
-        // Completed changes
+        // Completed
         val completed = proposals.filter { it.progressPercent == 100 }
         if (completed.isNotEmpty()) {
-            logger.lifecycle("${bold}Completed Changes${reset}")
+            sb.appendLine("## Completed")
+            sb.appendLine()
             for (p in completed) {
-                logger.lifecycle("  ${green}v${reset} ${p.name}")
+                sb.appendLine("- ~~${p.name}~~ ✅")
             }
-            logger.lifecycle("")
+            sb.appendLine()
         }
 
-        // Check for dependency cycles
-        val red = "\u001B[31m"
+        // Dependency cycle warnings
         for (p in proposals) {
             val graph = DependencyGraph(p.tasks)
             val cycles = graph.findCycles()
             if (cycles.isNotEmpty()) {
-                logger.lifecycle("${red}⚠️  WARNING: Dependency cycle detected in '${p.name}':${reset}")
+                sb.appendLine("## ⚠️ Dependency Cycles in '${p.name}'")
+                sb.appendLine()
                 for (cycle in cycles) {
-                    logger.lifecycle("${red}   ${cycle.joinToString(" → ")}${reset}")
+                    sb.appendLine("- ${cycle.joinToString(" → ")}")
                 }
-                logger.lifecycle("")
+                sb.appendLine()
             }
-        }
-
-        // Detailed task list per proposal
-        for (p in proposals) {
-            logger.lifecycle("${bold}${p.name}${reset} (${p.prefix}) - ${p.doneCount}/${p.totalCount} tasks done")
-            printTaskTree(p.tasks, "  ", green, yellow, dim, reset)
-            logger.lifecycle("")
         }
     }
 
-    private fun printTaskTree(
-        tasks: List<zone.clanker.gradle.tracking.TaskItem>,
-        indent: String,
-        green: String,
-        yellow: String,
-        dim: String,
-        reset: String
-    ) {
+    private fun renderTasks(sb: StringBuilder, tasks: List<zone.clanker.gradle.tracking.TaskItem>, indent: String) {
         for (task in tasks) {
             val icon = when (task.status) {
-                TaskStatus.DONE -> "${green}[x]${reset}"
-                TaskStatus.IN_PROGRESS -> "${yellow}[~]${reset}"
-                TaskStatus.TODO -> "[ ]"
+                TaskStatus.DONE -> "- [x]"
+                TaskStatus.IN_PROGRESS -> "- [~]"
+                TaskStatus.TODO -> "- [ ]"
             }
-            val code = if (task.code.isNotBlank()) "${dim}${task.code}${reset}".padEnd(12 + dim.length + reset.length) else "".padEnd(12)
-            logger.lifecycle("$indent$icon $code ${task.description}")
+            val code = if (task.code.isNotBlank()) "`${task.code}` " else ""
+            sb.appendLine("$indent$icon $code${task.description}")
             if (task.children.isNotEmpty()) {
-                printTaskTree(task.children, "$indent  ", green, yellow, dim, reset)
+                renderTasks(sb, task.children, "$indent  ")
             }
         }
-    }
-
-    private fun progressBar(percent: Int, width: Int): String {
-        val filled = (percent * width) / 100
-        val empty = width - filled
-        val green = "\u001B[32m"
-        val dim = "\u001B[2m"
-        val reset = "\u001B[0m"
-        return "[${green}${"#".repeat(filled)}${reset}${dim}${"-".repeat(empty)}${reset}]"
     }
 
     private fun progressPercent(done: Int, total: Int): Int =
