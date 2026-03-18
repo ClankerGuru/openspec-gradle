@@ -1,6 +1,7 @@
 package zone.clanker.gradle.tasks
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
@@ -9,8 +10,12 @@ import zone.clanker.gradle.psi.SymbolIndex
 import zone.clanker.gradle.psi.SymbolKind
 import java.io.File
 
-@UntrackedTask(because = "Symbol index reads all project sources dynamically")
+@CacheableTask
 abstract class OpenSpecSymbolsTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceFiles: ConfigurableFileCollection
 
     @get:Input @get:Optional
     abstract val module: Property<String>
