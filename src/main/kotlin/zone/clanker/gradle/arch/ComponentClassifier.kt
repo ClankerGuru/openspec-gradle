@@ -93,11 +93,14 @@ fun findEntryPoints(
     if (result.isNotEmpty()) return result.distinctBy { it.source.qualifiedName }
 
     // 3. Root nodes — components that have outgoing edges but no incoming edges
+    //    Exclude data classes — they appear as roots because they're referenced but don't reference back
     if (edges.isNotEmpty()) {
         val hasInbound = edges.map { it.to.source.qualifiedName }.toSet()
         val hasOutbound = edges.map { it.from.source.qualifiedName }.toSet()
         val roots = components.filter {
-            it.source.qualifiedName in hasOutbound && it.source.qualifiedName !in hasInbound
+            it.source.qualifiedName in hasOutbound &&
+                it.source.qualifiedName !in hasInbound &&
+                !it.source.isDataClass
         }
         if (roots.isNotEmpty()) return roots
     }

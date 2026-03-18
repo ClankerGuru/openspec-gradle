@@ -78,19 +78,140 @@ class SymbolIndex(
         val methodSymbols = symbols.filter { it.kind == SymbolKind.FUNCTION }
         val methodsBySimpleName = methodSymbols.groupBy { it.name.substringAfterLast('.') }
 
+        // Pre-compute: for each file, which class qualified names are imported/referenced
+        val fileImportedClasses = references
+            .filter { it.kind == ReferenceKind.IMPORT }
+            .groupBy { it.file.absolutePath }
+            .mapValues { (_, refs) -> refs.mapNotNull { it.targetQualifiedName }.toSet() }
+
+        // Pre-compute: receiver type map per file — map property names to their type's qualified name
+        // e.g., "repository" -> "com.example.BookRepository" from constructor params like (private val repository: BookRepository)
+        val fileReceiverTypes = buildReceiverTypeMap()
+
         for (ref in references) {
             if (ref.kind != ReferenceKind.CALL) continue
-            // Find the method being called
             val targets = methodsBySimpleName[ref.targetName] ?: continue
-            // Find which method contains this call (the caller)
             val caller = findContainingMethod(ref.file, ref.line) ?: continue
-            for (target in targets) {
-                // Skip self-calls in the same location
+
+            // Try to extract the receiver from context (e.g., "repository.searchBooks(query)" -> "repository")
+            val receiver = extractReceiver(ref.context, ref.targetName)
+            val callerClassQN = caller.qualifiedName.substringBeforeLast('.', "")
+
+            // Resolve which target is actually being called
+            val resolvedTargets = if (targets.size == 1) {
+                targets // Only one candidate — no ambiguity
+            } else {
+                disambiguateTargets(targets, ref, caller, receiver, callerClassQN, fileImportedClasses, fileReceiverTypes)
+            }
+
+            for (target in resolvedTargets) {
                 if (target.file == ref.file && target.line == ref.line) continue
+                // Skip self-class calls for methods with same name (e.g., don't link execute->execute in different classes)
+                val targetClassQN = target.qualifiedName.substringBeforeLast('.', "")
+                if (targetClassQN == callerClassQN && target.qualifiedName != caller.qualifiedName) continue
                 calls.add(MethodCall(caller = caller, target = target, file = ref.file, line = ref.line))
             }
         }
         return calls.distinctBy { "${it.caller.qualifiedName}->${it.target.qualifiedName}" }
+    }
+
+    /**
+     * Extract receiver name from a call context string.
+     * e.g., "repository.searchBooks(query)" -> "repository"
+     * e.g., "val result = api.fetch()" -> "api"
+     */
+    private fun extractReceiver(context: String, methodName: String): String? {
+        val pattern = Regex("""(\w+)\.$methodName\s*\(""")
+        val match = pattern.find(context) ?: return null
+        val receiver = match.groupValues[1]
+        // Skip common non-receiver prefixes
+        if (receiver in setOf("this", "super", "it", "Companion")) return null
+        return receiver
+    }
+
+    /**
+     * Build a map: file path -> (property name -> class qualified name)
+     * from constructor parameters and property declarations with type annotations.
+     */
+    private fun buildReceiverTypeMap(): Map<String, Map<String, String>> {
+        val result = mutableMapOf<String, MutableMap<String, String>>()
+
+        // For each class, look at TYPE_REF references in the same file near the class declaration
+        // and match property names to imported types
+        for (symbol in symbols) {
+            if (symbol.kind !in setOf(SymbolKind.CLASS, SymbolKind.DATA_CLASS)) continue
+            val filePath = symbol.file.absolutePath
+            val fileRefs = references.filter { it.file.absolutePath == filePath }
+            val imports = fileRefs.filter { it.kind == ReferenceKind.IMPORT }
+                .mapNotNull { ref -> ref.targetQualifiedName?.let { ref.targetName to it } }
+                .toMap()
+
+            // Read the file to find constructor params: (private val name: Type)
+            try {
+                val lines = symbol.file.readLines()
+                val classLine = if (symbol.line - 1 in lines.indices) symbol.line - 1 else continue
+                // Look at lines around the class declaration for constructor params
+                val searchRange = classLine until minOf(classLine + 15, lines.size)
+                val paramPattern = Regex("""(?:val|var)\s+(\w+)\s*:\s*(\w+)""")
+
+                for (lineIdx in searchRange) {
+                    val line = lines[lineIdx]
+                    paramPattern.findAll(line).forEach { match ->
+                        val propName = match.groupValues[1]
+                        val typeName = match.groupValues[2]
+                        // Resolve type name to qualified name via imports
+                        val qualifiedType = imports[typeName]
+                        if (qualifiedType != null) {
+                            result.getOrPut(filePath) { mutableMapOf() }[propName] = qualifiedType
+                        }
+                    }
+                    // Stop at the first { after class declaration
+                    if (line.contains("{") && lineIdx > classLine) break
+                }
+            } catch (_: Exception) { }
+        }
+        return result
+    }
+
+    /**
+     * Disambiguate multiple method targets with the same simple name.
+     */
+    private fun disambiguateTargets(
+        targets: List<Symbol>,
+        ref: Reference,
+        caller: Symbol,
+        receiver: String?,
+        callerClassQN: String,
+        fileImportedClasses: Map<String, Set<String>>,
+        fileReceiverTypes: Map<String, Map<String, String>>,
+    ): List<Symbol> {
+        val filePath = ref.file.absolutePath
+
+        // Strategy 1: If we have a receiver name, look up its type
+        if (receiver != null) {
+            val receiverTypes = fileReceiverTypes[filePath]
+            val receiverQN = receiverTypes?.get(receiver)
+            if (receiverQN != null) {
+                val matched = targets.filter { it.qualifiedName.startsWith("$receiverQN.") }
+                if (matched.isNotEmpty()) return matched
+            }
+        }
+
+        // Strategy 2: Filter to targets whose containing class is imported in the caller's file
+        val imports = fileImportedClasses[filePath] ?: emptySet()
+        val importFiltered = targets.filter { target ->
+            val targetClassQN = target.qualifiedName.substringBeforeLast('.', "")
+            targetClassQN in imports || targetClassQN == callerClassQN
+        }
+        if (importFiltered.isNotEmpty() && importFiltered.size < targets.size) return importFiltered
+
+        // Strategy 3: Prefer targets in the same package as the caller
+        val callerPkg = caller.packageName
+        val samePackage = targets.filter { it.packageName == callerPkg }
+        if (samePackage.isNotEmpty() && samePackage.size < targets.size) return samePackage
+
+        // No disambiguation possible — return all (will produce some false edges)
+        return targets
     }
 
     private fun findContainingMethod(file: File, line: Int): Symbol? {
