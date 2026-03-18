@@ -44,66 +44,95 @@ abstract class OpenSpecDepsTask : DefaultTask() {
     }
 
     private fun appendProjectDeps(sb: StringBuilder, proj: org.gradle.api.Project, root: org.gradle.api.Project) {
-        // Match both JVM configs and KMP source set configs
-        val interestingSuffixes = setOf(
-            "implementation", "api", "compileOnly", "runtimeOnly",
-            "Implementation", "Api", "CompileOnly", "RuntimeOnly"
-        )
+        val label = if (proj == root && root.subprojects.isEmpty()) "Root" else proj.path
 
-        val interestingConfigs = proj.configurations.names.filter { name ->
-            interestingSuffixes.any { suffix -> name == suffix || name.endsWith(suffix) }
-        }.filter { name ->
-            val lower = name.lowercase()
-            // Skip internal compilation configs (duplicates of source set configs)
-            !lower.contains("compilation") &&
-            // Skip test configs for cleaner output
-            !lower.contains("test")
-        }.toSet()
+        // Collect module dependencies from declaration configs
+        val moduleDeps = mutableSetOf<String>()
+        val declaredConfigs = proj.configurations.names.filter { name ->
+            val suffixes = listOf("implementation", "api", "compileOnly", "runtimeOnly")
+            suffixes.any { name.equals(it, ignoreCase = true) || name.endsWith(it.replaceFirstChar { c -> c.uppercase() }) }
+        }.filter { !it.lowercase().contains("test") && !it.lowercase().contains("compilation") }
 
-        val moduleDeps = mutableListOf<String>()
-        val externalDeps = mutableListOf<String>()
+        for (configName in declaredConfigs) {
+            val config = try { proj.configurations.findByName(configName) } catch (_: Exception) { null } ?: continue
+            for (dep in config.dependencies) {
+                if (dep is ProjectDependency) {
+                    moduleDeps.add("- `$configName`: ${dep.path}")
+                }
+            }
+        }
 
-        // Try resolving versions from classpaths
+        // Resolve actual dependency tree from resolvable classpath configurations
+        val resolvedSections = mutableListOf<Pair<String, List<String>>>()
         val isOffline = proj.gradle.startParameter.isOffline
-        val resolvedVersions = mutableMapOf<String, String>()
-        if (isOffline) {
-            logger.warn("OpenSpec: Offline mode — skipping dependency resolution for ${proj.path}")
-        } else {
-            for (configName in listOf("compileClasspath", "runtimeClasspath", "testCompileClasspath")) {
+
+        if (!isOffline) {
+            // Find all resolvable classpath configs (JVM + KMP)
+            val classpathConfigs = proj.configurations.names.filter { name ->
+                val lower = name.lowercase()
+                (lower.endsWith("compileclasspath") || lower.endsWith("runtimeclasspath")) &&
+                    !lower.contains("test") &&
+                    !lower.contains("metadata")
+            }.sorted()
+
+            for (configName in classpathConfigs) {
                 val config = try { proj.configurations.findByName(configName) } catch (_: Exception) { null }
                 if (config == null || !config.isCanBeResolved) continue
                 try {
-                    config.resolvedConfiguration.firstLevelModuleDependencies.forEach { dep ->
-                        resolvedVersions["${dep.moduleGroup}:${dep.moduleName}"] = dep.moduleVersion
+                    val resolved = config.resolvedConfiguration.firstLevelModuleDependencies
+                    if (resolved.isEmpty()) continue
+                    val deps = mutableListOf<String>()
+                    for (dep in resolved.sortedBy { "${it.moduleGroup}:${it.moduleName}" }) {
+                        val gav = "${dep.moduleGroup}:${dep.moduleName}:${dep.moduleVersion}"
+                        // Collect transitive deps
+                        val transitives = dep.children
+                            .filter { it.moduleGroup != dep.moduleGroup || it.moduleName != dep.moduleName }
+                            .map { "  - ${it.moduleGroup}:${it.moduleName}:${it.moduleVersion}" }
+                            .sorted()
+                        deps.add("- $gav")
+                        deps.addAll(transitives)
                     }
+                    resolvedSections.add(configName to deps)
                 } catch (e: Exception) {
-                    logger.warn("OpenSpec: Failed to resolve $configName for ${proj.path}: ${e.message}")
+                    logger.debug("OpenSpec: Failed to resolve $configName for ${proj.path}: ${e.message}")
                 }
             }
         }
 
-        for (configName in interestingConfigs) {
-            val config = try { proj.configurations.findByName(configName) } catch (_: Exception) { null }
-            if (config == null) continue
-            for (dep in config.dependencies) {
-                if (dep is ProjectDependency) {
-                    val depPath = dep.path
-                    moduleDeps.add("- `$configName`: $depPath")
-                } else {
+        // Fall back to declared deps if resolution failed
+        if (resolvedSections.isEmpty()) {
+            val declared = mutableListOf<String>()
+            for (configName in declaredConfigs) {
+                val config = try { proj.configurations.findByName(configName) } catch (_: Exception) { null } ?: continue
+                for (dep in config.dependencies) {
+                    if (dep is ProjectDependency) continue
                     val group = dep.group ?: ""
                     val name = dep.name
-                    // Skip unresolved/empty dependencies
                     if (group.isEmpty() && name == "unspecified") continue
-                    val version = resolvedVersions["$group:$name"] ?: dep.version ?: ""
+                    val version = dep.version ?: ""
                     val gav = if (version.isNotEmpty()) "$group:$name:$version" else "$group:$name"
-                    externalDeps.add("- `$configName`: $gav")
+                    declared.add("- `$configName`: $gav")
                 }
             }
+            if (declared.isEmpty() && moduleDeps.isEmpty()) return
+
+            sb.appendLine("## $label")
+            sb.appendLine()
+            if (moduleDeps.isNotEmpty()) {
+                sb.appendLine("### Local Module Dependencies")
+                sb.appendLine()
+                moduleDeps.forEach { sb.appendLine(it) }
+                sb.appendLine()
+            }
+            if (declared.isNotEmpty()) {
+                sb.appendLine("### Declared Dependencies (unresolved)")
+                sb.appendLine()
+                declared.forEach { sb.appendLine(it) }
+                sb.appendLine()
+            }
+            return
         }
 
-        if (moduleDeps.isEmpty() && externalDeps.isEmpty()) return
-
-        val label = if (proj == root && root.subprojects.isEmpty()) "Root" else proj.path
         sb.appendLine("## $label")
         sb.appendLine()
 
@@ -114,10 +143,10 @@ abstract class OpenSpecDepsTask : DefaultTask() {
             sb.appendLine()
         }
 
-        if (externalDeps.isNotEmpty()) {
-            sb.appendLine("### External Dependencies")
+        for ((configName, deps) in resolvedSections) {
+            sb.appendLine("### $configName")
             sb.appendLine()
-            externalDeps.forEach { sb.appendLine(it) }
+            deps.forEach { sb.appendLine(it) }
             sb.appendLine()
         }
     }

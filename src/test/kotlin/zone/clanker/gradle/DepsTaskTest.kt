@@ -42,7 +42,9 @@ class DepsTaskTest {
         assertTrue(outputFile().exists())
         val content = outputFile().readText()
         assertTrue(content.contains("guava"))
-        assertTrue(content.contains("External Dependencies"))
+        // Resolved deps show under classpath config names, or fall back to declared
+        assertTrue(content.contains("compileClasspath") || content.contains("runtimeClasspath") || content.contains("Declared Dependencies"),
+            "Expected resolved or declared dependency section, got:\n$content")
     }
 
     @Test
