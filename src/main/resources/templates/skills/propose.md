@@ -26,13 +26,13 @@ When ready to implement, run the opsx-apply skill
    ```bash
    ./gradlew opsx-propose --name=<name>
    ```
-   This creates `openspec/changes/<name>/` with scaffolded artifacts (proposal.md, design.md, tasks.md) and auto-generated task codes.
+   This creates `opsx/changes/<name>/` with scaffolded artifacts (proposal.md, design.md, tasks.md) and auto-generated task codes.
 
    Alternatively, create manually:
    ```bash
    ./gradlew opsx-propose --name=<name>
    ```
-   Create `.openspec.yaml` in the change directory with metadata:
+   Create `.opsx.yaml` in the change directory with metadata:
    ```yaml
    name: <name>
    schema: spec-driven
@@ -56,14 +56,14 @@ When ready to implement, run the opsx-apply skill
    ```
 
 3. **Read project context** (run `./gradlew opsx-sync` to generate all):
-   - `.openspec/context.md` — project config, plugins, frameworks, git info
-   - `.openspec/tree.md` — source layout per module
-   - `.openspec/deps.md` — dependencies with versions
-   - `.openspec/modules.md` — module graph and boundaries
-   - `.openspec/devloop.md` — build/test/run commands
+   - `.opsx/context.md` — project config, plugins, frameworks, git info
+   - `.opsx/tree.md` — source layout per module
+   - `.opsx/deps.md` — dependencies with versions
+   - `.opsx/modules.md` — module graph and boundaries
+   - `.opsx/devloop.md` — build/test/run commands
 
 4. **Get the artifact build order**
-   Read `.openspec.yaml` to determine:
+   Read `.opsx.yaml` to determine:
    - `apply.requires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
    - `artifacts`: list of all artifacts with their status and dependencies
 
@@ -74,13 +74,13 @@ When ready to implement, run the opsx-apply skill
    Loop through artifacts in dependency order (artifacts with no pending dependencies first):
 
    a. **For each artifact that is `ready` (dependencies satisfied)**:
-      - Read the artifact entry from `.openspec.yaml` for guidance
+      - Read the artifact entry from `.opsx.yaml` for guidance
       - Read any completed dependency files for context
       - Create the artifact file using appropriate structure for its type:
         - `proposal.md`: What & why — problem statement, goals, scope, success criteria
         - `design.md`: How — architecture, components, interfaces, data model
         - `tasks.md`: Implementation steps with task codes (e.g., `- [ ] \`abc-1\` Description`)
-      - Update `.openspec.yaml` to mark the artifact status as `done`
+      - Update `.opsx.yaml` to mark the artifact status as `done`
       - Show brief progress: "Created <artifact-id>"
 
    b. **Task codes in tasks.md**
@@ -90,7 +90,7 @@ When ready to implement, run the opsx-apply skill
       - These codes become Gradle tasks: `./gradlew opsx-aua-1 --set=done`
 
    c. **Continue until all `apply.requires` artifacts are complete**
-      - After creating each artifact, re-read `.openspec.yaml`
+      - After creating each artifact, re-read `.opsx.yaml`
       - Check if every artifact ID in `apply.requires` has `status: "done"`
       - Stop when all required artifacts are done
 
@@ -99,7 +99,7 @@ When ready to implement, run the opsx-apply skill
       - Then continue with creation
 
 6. **Show final status**
-   Read `.openspec.yaml` and display the status of all artifacts.
+   Read `.opsx.yaml` and display the status of all artifacts.
    Suggest: `./gradlew opsx-status` to see the dashboard.
 
 **Output**

@@ -12,11 +12,11 @@ Verify that implementation matches the specs and tasks for a change.
    ```
 
 2. **Read project context** (run `./gradlew opsx-sync` to generate all):
-   - `.openspec/context.md` — project config, plugins, frameworks, git info
-   - `.openspec/tree.md` — source layout per module
-   - `.openspec/deps.md` — dependencies with versions
-   - `.openspec/modules.md` — module graph and boundaries
-   - `.openspec/devloop.md` — build/test/run commands
+   - `.opsx/context.md` — project config, plugins, frameworks, git info
+   - `.opsx/tree.md` — source layout per module
+   - `.opsx/deps.md` — dependencies with versions
+   - `.opsx/modules.md` — module graph and boundaries
+   - `.opsx/devloop.md` — build/test/run commands
 
 3. **Read all artifacts** (proposal, design, specs, tasks)
 4. **Check task completion** - all tasks should be marked `[x]`

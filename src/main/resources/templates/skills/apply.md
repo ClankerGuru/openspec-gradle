@@ -1,4 +1,4 @@
-Implement tasks from an OpenSpec change.
+Implement tasks from an OPSX change.
 
 **Input**: The user's request should include a change name, or it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
@@ -15,23 +15,23 @@ Implement tasks from an OpenSpec change.
    Always announce: "Using change: <name>".
 
 2. **Check status to understand the schema**
-   Read `openspec/changes/<name>/.openspec.yaml` to understand:
+   Read `opsx/changes/<name>/.opsx.yaml` to understand:
    - `schema`: The workflow being used (e.g., "spec-driven")
    - Which artifact contains the tasks (typically "tasks" for spec-driven)
 
 3. **Read context files**
 
    Read the artifact files from the change directory:
-   - `openspec/changes/<name>/proposal.md`
-   - `openspec/changes/<name>/design.md`
-   - `openspec/changes/<name>/tasks.md`
+   - `opsx/changes/<name>/proposal.md`
+   - `opsx/changes/<name>/design.md`
+   - `opsx/changes/<name>/tasks.md`
 
    Also read project context (run `./gradlew opsx-sync` to generate all):
-   - `.openspec/context.md` — project config, plugins, frameworks, git info
-   - `.openspec/tree.md` — source layout per module
-   - `.openspec/deps.md` — dependencies with versions
-   - `.openspec/modules.md` — module graph and boundaries
-   - `.openspec/devloop.md` — build/test/run commands
+   - `.opsx/context.md` — project config, plugins, frameworks, git info
+   - `.opsx/tree.md` — source layout per module
+   - `.opsx/deps.md` — dependencies with versions
+   - `.opsx/modules.md` — module graph and boundaries
+   - `.opsx/devloop.md` — build/test/run commands
 
    **Handle states:**
    - If required artifacts are missing: show message, suggest creating them first
