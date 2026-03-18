@@ -2,13 +2,18 @@ package zone.clanker.gradle.tasks
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.*
 import zone.clanker.gradle.psi.SourceDiscovery
 
-@UntrackedTask(because = "Reads dynamic project configurations at execution time")
+@CacheableTask
 abstract class OpenSpecModulesTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val buildFiles: ConfigurableFileCollection
 
     @get:OutputFile
     abstract val outputFile: RegularFileProperty

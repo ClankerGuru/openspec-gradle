@@ -1,10 +1,12 @@
 package zone.clanker.gradle
 
 import zone.clanker.gradle.generators.ToolAdapterRegistry
+import zone.clanker.gradle.psi.SourceDiscovery
 import zone.clanker.gradle.tasks.*
 import zone.clanker.gradle.tracking.ProposalScanner
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.initialization.Settings
 import java.io.File
 
@@ -104,6 +106,28 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 }
             })
 
+            // Shared input file collections for cacheable tasks
+            val rootDir = project.rootProject.projectDir
+            val sourceFileTree = project.files().apply {
+                val projects = SourceDiscovery.resolveProjects(project, null)
+                val srcDirs = SourceDiscovery.discoverSourceDirs(projects)
+                for (dir in srcDirs) {
+                    from(project.fileTree(dir, object : org.gradle.api.Action<org.gradle.api.file.ConfigurableFileTree> {
+                        override fun execute(ft: org.gradle.api.file.ConfigurableFileTree) {
+                            ft.include("**/*.kt", "**/*.java")
+                        }
+                    }))
+                }
+            }
+            val buildFileTree = project.rootProject.fileTree(rootDir, object : org.gradle.api.Action<org.gradle.api.file.ConfigurableFileTree> {
+                override fun execute(ft: org.gradle.api.file.ConfigurableFileTree) {
+                    ft.include("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+                        "gradle.properties", "*.lockfile", "gradle/libs.versions.toml")
+                    ft.include("**/build.gradle", "**/build.gradle.kts", "**/gradle.properties")
+                    ft.exclude("build/", "**/build/", ".gradle/", "**/.gradle/")
+                }
+            })
+
             project.tasks.register("opsx-sync", OpenSpecSyncTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSyncTask> {
                 override fun execute(task: OpenSpecSyncTask) {
                     task.tools.set(extension.tools)
@@ -132,6 +156,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
 
             project.tasks.register("opsx-arch", OpenSpecArchTask::class.java).configure(object : org.gradle.api.Action<OpenSpecArchTask> {
                 override fun execute(task: OpenSpecArchTask) {
+                    task.sourceFiles.from(sourceFileTree)
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/arch.md"))
                 }
@@ -144,6 +169,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             // PSI-based tasks
             project.tasks.register("opsx-symbols", OpenSpecSymbolsTask::class.java).configure(object : org.gradle.api.Action<OpenSpecSymbolsTask> {
                 override fun execute(task: OpenSpecSymbolsTask) {
+                    task.sourceFiles.from(sourceFileTree)
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
                     if (project.hasProperty("file")) task.targetFile.set(project.property("file").toString())
@@ -229,6 +255,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             // Discovery tasks
             project.tasks.register("opsx-tree", OpenSpecTreeTask::class.java).configure(object : org.gradle.api.Action<OpenSpecTreeTask> {
                 override fun execute(task: OpenSpecTreeTask) {
+                    task.sourceFiles.from(sourceFileTree)
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     if (project.hasProperty("scope")) task.scope.set(project.property("scope").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/tree.md"))
@@ -237,18 +264,21 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
 
             project.tasks.register("opsx-deps", OpenSpecDepsTask::class.java).configure(object : org.gradle.api.Action<OpenSpecDepsTask> {
                 override fun execute(task: OpenSpecDepsTask) {
+                    task.buildFiles.from(buildFileTree)
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/deps.md"))
                 }
             })
 
             project.tasks.register("opsx-modules", OpenSpecModulesTask::class.java).configure(object : org.gradle.api.Action<OpenSpecModulesTask> {
                 override fun execute(task: OpenSpecModulesTask) {
+                    task.buildFiles.from(buildFileTree)
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/modules.md"))
                 }
             })
 
             project.tasks.register("opsx-devloop", OpenSpecDevloopTask::class.java).configure(object : org.gradle.api.Action<OpenSpecDevloopTask> {
                 override fun execute(task: OpenSpecDevloopTask) {
+                    task.buildFiles.from(buildFileTree)
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/devloop.md"))
                 }
             })

@@ -2,11 +2,16 @@ package zone.clanker.gradle.tasks
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.*
 
-@UntrackedTask(because = "Dependency resolution is inherently dynamic and not cacheable")
+@CacheableTask
 abstract class OpenSpecDepsTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val buildFiles: ConfigurableFileCollection
 
     @get:OutputFile
     abstract val outputFile: RegularFileProperty

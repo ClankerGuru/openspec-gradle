@@ -1,14 +1,19 @@
 package zone.clanker.gradle.tasks
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import zone.clanker.gradle.psi.SourceDiscovery
 import java.io.File
 
-@UntrackedTask(because = "Source directories are determined dynamically at execution time")
+@CacheableTask
 abstract class OpenSpecTreeTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceFiles: ConfigurableFileCollection
 
     @get:Input
     @get:Optional
