@@ -183,6 +183,48 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 }
             })
 
+            project.tasks.register("opsx-move", OpenSpecMoveTask::class.java).configure(object : org.gradle.api.Action<OpenSpecMoveTask> {
+                override fun execute(task: OpenSpecMoveTask) {
+                    if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
+                    if (project.hasProperty("targetPackage")) task.targetPackage.set(project.property("targetPackage").toString())
+                    if (project.hasProperty("dryRun")) {
+                        val value = project.property("dryRun").toString().lowercase()
+                        if (value !in setOf("true", "false")) {
+                            throw org.gradle.api.GradleException("Invalid dryRun value '$value' — must be 'true' or 'false'")
+                        }
+                        task.dryRun.set(value == "true")
+                    }
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/move.md"))
+                }
+            })
+
+            project.tasks.register("opsx-usages", OpenSpecUsagesTask::class.java).configure(object : org.gradle.api.Action<OpenSpecUsagesTask> {
+                override fun execute(task: OpenSpecUsagesTask) {
+                    if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/usages.md"))
+                }
+            })
+
+            project.tasks.register("opsx-extract", OpenSpecExtractTask::class.java).configure(object : org.gradle.api.Action<OpenSpecExtractTask> {
+                override fun execute(task: OpenSpecExtractTask) {
+                    if (project.hasProperty("sourceFile")) task.sourceFile.set(project.property("sourceFile").toString())
+                    if (project.hasProperty("startLine")) task.startLine.set(project.property("startLine").toString().toInt())
+                    if (project.hasProperty("endLine")) task.endLine.set(project.property("endLine").toString().toInt())
+                    if (project.hasProperty("newName")) task.newName.set(project.property("newName").toString())
+                    if (project.hasProperty("targetFile")) task.targetFile.set(project.property("targetFile").toString())
+                    if (project.hasProperty("dryRun")) {
+                        val value = project.property("dryRun").toString().lowercase()
+                        if (value !in setOf("true", "false")) {
+                            throw org.gradle.api.GradleException("Invalid dryRun value '$value' — must be 'true' or 'false'")
+                        }
+                        task.dryRun.set(value == "true")
+                    }
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/extract.md"))
+                }
+            })
+
             // Discovery tasks
             project.tasks.register("opsx-tree", OpenSpecTreeTask::class.java).configure(object : org.gradle.api.Action<OpenSpecTreeTask> {
                 override fun execute(task: OpenSpecTreeTask) {

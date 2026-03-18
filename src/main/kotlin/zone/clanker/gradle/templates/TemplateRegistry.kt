@@ -23,7 +23,12 @@ object TemplateRegistry {
         findCommand(),
         callsCommand(),
         renameCommand(),
-        statusCommand()
+        statusCommand(),
+        moveCommand(),
+        usagesCommand(),
+        extractCommand(),
+        inlineCommand(),
+        depsCommand(),
     )
 
     fun getSkillTemplates(): List<SkillContent> = listOf(
@@ -37,7 +42,12 @@ object TemplateRegistry {
         findSkill(),
         callsSkill(),
         renameSkill(),
-        statusSkill()
+        statusSkill(),
+        moveSkill(),
+        usagesSkill(),
+        extractSkill(),
+        inlineSkill(),
+        depsSkill(),
     )
 
     // ── Propose ──────────────────────────────────────────
@@ -225,5 +235,90 @@ object TemplateRegistry {
         dirName = "opsx-status",
         description = "Show status of all open changes and proposals. Use when the user wants to see what changes are in progress.",
         instructions = loadResource("templates/skills/status.md")
+    )
+
+    // ── Move ─────────────────────────────────────────────
+
+    private fun moveCommand() = CommandContent(
+        id = "move",
+        name = "OPSX: Move",
+        description = "Move a class/file to a different package",
+        category = "Code Intelligence",
+        tags = listOf("refactoring", "move"),
+        body = loadResource("templates/commands/move.md")
+    )
+
+    private fun moveSkill() = SkillContent(
+        dirName = "opsx-move",
+        description = "Move a class or file to a different package safely, updating all imports. Use when the user wants to relocate code.",
+        instructions = loadResource("templates/skills/move.md")
+    )
+
+    // ── Usages ───────────────────────────────────────────
+
+    private fun usagesCommand() = CommandContent(
+        id = "usages",
+        name = "OPSX: Usages",
+        description = "Show all usages of a symbol with file:line locations",
+        category = "Code Intelligence",
+        tags = listOf("symbols", "usages"),
+        body = loadResource("templates/commands/usages.md")
+    )
+
+    private fun usagesSkill() = SkillContent(
+        dirName = "opsx-usages",
+        description = "Find all usages of a symbol with exact file:line locations. Use when the user wants to see where a symbol is referenced.",
+        instructions = loadResource("templates/skills/usages.md")
+    )
+
+    // ── Extract ──────────────────────────────────────────
+
+    private fun extractCommand() = CommandContent(
+        id = "extract",
+        name = "OPSX: Extract",
+        description = "Extract a block of code into a new function",
+        category = "Code Intelligence",
+        tags = listOf("refactoring", "extract"),
+        body = loadResource("templates/commands/extract.md")
+    )
+
+    private fun extractSkill() = SkillContent(
+        dirName = "opsx-extract",
+        description = "Extract a block of code into a new function or class. Use when the user wants to refactor by extracting code.",
+        instructions = loadResource("templates/skills/extract.md")
+    )
+
+    // ── Inline ───────────────────────────────────────────
+
+    private fun inlineCommand() = CommandContent(
+        id = "inline",
+        name = "OPSX: Inline",
+        description = "Inline a function — replace call sites with the body",
+        category = "Code Intelligence",
+        tags = listOf("refactoring", "inline"),
+        body = loadResource("templates/commands/inline.md")
+    )
+
+    private fun inlineSkill() = SkillContent(
+        dirName = "opsx-inline",
+        description = "Inline a function or class — replace call sites with the implementation body. The reverse of extract.",
+        instructions = loadResource("templates/skills/inline.md")
+    )
+
+    // ── Deps (interactive) ───────────────────────────────
+
+    private fun depsCommand() = CommandContent(
+        id = "deps",
+        name = "OPSX: Deps",
+        description = "Query resolved project dependencies",
+        category = "Code Intelligence",
+        tags = listOf("dependencies", "query"),
+        body = loadResource("templates/commands/deps.md")
+    )
+
+    private fun depsSkill() = SkillContent(
+        dirName = "opsx-deps",
+        description = "Query project dependencies — resolved versions, transitive deps, and module relationships.",
+        instructions = loadResource("templates/skills/deps.md")
     )
 }
