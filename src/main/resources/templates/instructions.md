@@ -1,35 +1,65 @@
 # OPSX — Gradle-Powered Project Intelligence
 
-This project uses **OPSX** (OpenSpec Gradle Plugin) to provide structured project context via Gradle tasks.
+This project uses **OPSX** (OpenSpec Gradle Plugin) to provide structured, deterministic project understanding via Gradle tasks. **These tasks are your primary tools** — always prefer them over shell commands.
 
-## Golden Rule
+## 🥇 OPSX First
 
-**NEVER create Python, Bash, sed, awk, or any scripts to analyze or modify this project.**
-All project understanding comes from OPSX tasks. All file operations go through Gradle.
+This is a Gradle build. You have purpose-built tasks for exploring, analyzing, and refactoring code. **Always use OPSX tasks first.** Only fall back to raw shell commands (`grep`, `find`, `cat`, etc.) if no OPSX task covers your need.
+
+1. **Start with `./gradlew opsx`** to see all available tasks.
+2. **Read `.opsx/` files** for cached context before running heavy tasks.
+3. **Prefer OPSX refactoring tasks** over manual file edits.
+4. **Don't create scripts** (Python, Bash, etc.) to do what a task already does.
+
+### OPSX replaces most shell commands:
+
+| ❌ Don't do this | ✅ Do this instead |
+|---|---|
+| `grep -r "UserRepo" src/` | `./gradlew opsx-find -Pquery=UserRepo` |
+| `find . -name "*.kt"` | `./gradlew opsx-tree` |
+| `cat src/.../User.kt` | `./gradlew opsx-find -Pquery=User` then read `.opsx/find.md` |
+| `grep -rn "fun fetch" \| head` | `./gradlew opsx-calls -Psymbol=fetch` |
+| `sed -i 's/OldName/NewName/g'` | `./gradlew opsx-rename -Pfrom=OldName -Pto=NewName` |
+| `mv src/.../File.kt src/.../other/` | `./gradlew opsx-move -Psymbol=File -PtargetPackage=com.other` |
+| `wc -l src/**/*.kt` | `./gradlew opsx-tree` (includes line counts) |
+| `./gradlew dependencies` | `./gradlew opsx-deps` (structured output) |
+| Manual file deletion | `./gradlew opsx-remove -Psymbol=DeadClass` |
 
 ## Available Tasks
 
-Run any task with `./gradlew <task>` (or `./gradlew :<module>:<task>` for subprojects).
+Run `./gradlew opsx` for the full catalog. Use `./gradlew :<module>:<task>` for subprojects, `./gradlew :<included-build>:<task>` for composite builds.
 
-### Discovery
+### Discovery (auto-generated on build)
 
-| Task | What it does |
-|------|-------------|
-| `opsx-context` | Project metadata, build stack, frameworks, git info |
-| `opsx-tree` | Source file tree with line counts |
-| `opsx-modules` | Module structure and dependency graph (Mermaid) |
-| `opsx-deps` | Resolved dependency tree per configuration |
-| `opsx-devloop` | Build commands, test framework, run commands |
+| Task | Output | What it does |
+|------|--------|-------------|
+| `opsx-context` | `.opsx/context.md` | Project metadata, build stack, frameworks, git info |
+| `opsx-tree` | `.opsx/tree.md` | Source file tree with line counts |
+| `opsx-modules` | `.opsx/modules.md` | Module structure and dependency graph (Mermaid) |
+| `opsx-deps` | `.opsx/deps.md` | Resolved dependency tree per configuration |
+| `opsx-devloop` | `.opsx/devloop.md` | Build commands, test framework, run commands |
+| `opsx-symbols` | `.opsx/symbols.md` | Symbol index — classes, functions, interfaces with locations |
 
-### Code Intelligence
+### Code Intelligence (on-demand)
 
-| Task | What it does |
-|------|-------------|
-| `opsx-arch` | Architecture analysis — component graph, layers, data flow |
-| `opsx-symbols` | Symbol index — classes, functions, interfaces with locations |
-| `opsx-find` | Find symbol by name (use `-Psymbol=<name>`) |
-| `opsx-calls` | Call graph for a symbol (use `-Psymbol=<name>`) |
-| `opsx-rename` | Preview rename refactoring (use `-Pfrom=<old> -Pto=<new> -PdryRun=true`) |
+| Task | Output | What it does |
+|------|--------|-------------|
+| `opsx-arch` | `.opsx/arch.md` | Architecture analysis — component graph, layers, data flow |
+| `opsx-find` | `.opsx/find.md` | Find symbol by name (`-Pquery=Name`) |
+| `opsx-calls` | `.opsx/calls.md` | Call graph for a symbol (`-Psymbol=Name`) |
+| `opsx-usages` | `.opsx/usages.md` | Find all usages of a symbol (`-Psymbol=Name`) |
+| `opsx-verify` | `.opsx/verify.md` | Enforce architecture rules, fail on violations |
+
+### Refactoring (dry-run by default)
+
+| Task | Output | What it does |
+|------|--------|-------------|
+| `opsx-rename` | `.opsx/rename.md` | Rename symbol across codebase (`-Pfrom=Old -Pto=New`) |
+| `opsx-move` | `.opsx/move.md` | Move symbol to new package (`-Psymbol=Name -PtargetPackage=pkg`) |
+| `opsx-extract` | `.opsx/extract.md` | Extract lines to new function (`-PsourceFile=path -PstartLine=N -PendLine=M -PnewName=name`) |
+| `opsx-remove` | `.opsx/remove.md` | Remove symbol or code lines (`-Psymbol=Name` or `-Pfile=path -PstartLine=N -PendLine=M`) |
+
+All refactoring tasks default to `-PdryRun=true`. Add `-PdryRun=false` to execute.
 
 ### Workflow
 
@@ -39,39 +69,21 @@ Run any task with `./gradlew <task>` (or `./gradlew :<module>:<task>` for subpro
 | `opsx-apply` | Implement tasks from a change |
 | `opsx-archive` | Archive a completed change |
 | `opsx-status` | Show status of all changes |
-
-### Utilities
-
-| Task | What it does |
-|------|-------------|
-| `opsx` | Show task catalog |
-| `opsx-sync` | Regenerate agent files |
+| `opsx-sync` | Regenerate all agent files |
 | `opsx-clean` | Remove all generated files |
-| `opsx-install` | Install init script globally |
-
-## Output Directory
-
-Task outputs are written to `.opsx/` — read these files for project context:
-- `.opsx/context.md` — project metadata
-- `.opsx/tree.md` — source tree
-- `.opsx/modules.md` — module graph
-- `.opsx/deps.md` — dependencies
-- `.opsx/devloop.md` — build/test/run commands
-- `.opsx/arch.md` — architecture analysis
-- `.opsx/symbols.md` — symbol index
-- `.opsx/calls.md` — call graph
 
 ## Workflow
 
-1. **Understand** — Run discovery tasks first (`opsx-context`, `opsx-tree`, `opsx-modules`)
-2. **Analyze** — Use code intelligence (`opsx-arch`, `opsx-symbols`, `opsx-find`)
-3. **Plan** — Create a proposal (`opsx-propose`)
-4. **Implement** — Work through tasks (`opsx-apply`)
-5. **Verify** — Check your work matches the spec
+1. **Orient** — Read `.opsx/context.md`, `.opsx/tree.md`, `.opsx/modules.md` (already generated)
+2. **Understand** — Run `opsx-arch`, `opsx-symbols`, `opsx-find` as needed
+3. **Plan** — Create a proposal with `opsx-propose`
+4. **Implement** — Use refactoring tasks + `opsx-apply`
+5. **Verify** — Run `opsx-verify` to check architecture rules
 
 ## Tips
 
-- Chain tasks: `./gradlew opsx-context opsx-tree opsx-arch` runs all three
-- Read `.opsx/` files for cached output instead of re-running tasks
-- Use `opsx-find -Pquery=ClassName` to locate symbols quickly
-- Use `opsx-calls -Pquery=methodName` to understand call chains
+- **Chain tasks:** `./gradlew opsx-context opsx-tree opsx-arch` runs all three
+- **Read cached output first:** `.opsx/` files persist between runs — don't re-run if already fresh
+- **Multi-module:** Use `-Pmodule=:name` to scope any task to a specific module
+- **Composite builds:** Use `./gradlew :<included-build>:opsx-find` to query included builds
+- **All builds use KTS** — `build.gradle.kts` and `settings.gradle.kts` only, no Groovy

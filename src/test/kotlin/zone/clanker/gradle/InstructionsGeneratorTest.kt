@@ -18,18 +18,19 @@ class InstructionsGeneratorTest {
     lateinit var projectDir: File
 
     @Test
-    fun `claude generates to dot-claude CLAUDE md`() {
+    fun `claude generates to dot-claude CLAUDE md with markers`() {
         val files = InstructionsGenerator.generate(buildDir, listOf("claude"))
         assertEquals(1, files.size)
         assertEquals(".claude/CLAUDE.md", files[0].relativePath)
-        assertFalse(files[0].file.readText().contains("OPSX:BEGIN")) // not append mode
+        assertTrue(files[0].file.readText().contains("OPSX:BEGIN")) // append mode
     }
 
     @Test
-    fun `copilot generates path-specific instructions file`() {
+    fun `copilot generates repo-wide instructions file with markers`() {
         val files = InstructionsGenerator.generate(buildDir, listOf("github-copilot"))
         assertEquals(1, files.size)
-        assertEquals(".github/instructions/opsx.instructions.md", files[0].relativePath)
+        assertEquals(".github/copilot-instructions.md", files[0].relativePath)
+        assertTrue(files[0].file.readText().contains("OPSX:BEGIN"))
     }
 
     @Test
@@ -81,11 +82,11 @@ class InstructionsGeneratorTest {
     }
 
     @Test
-    fun `instruction content forbids scripts`() {
+    fun `instruction content promotes OPSX first`() {
         val files = InstructionsGenerator.generate(buildDir, listOf("claude"))
         val content = files[0].file.readText()
-        assertTrue(content.contains("NEVER create Python"))
-        assertTrue(content.contains("Bash"))
+        assertTrue(content.contains("OPSX First"))
+        assertTrue(content.contains("Don't create scripts"))
     }
 
     @Test

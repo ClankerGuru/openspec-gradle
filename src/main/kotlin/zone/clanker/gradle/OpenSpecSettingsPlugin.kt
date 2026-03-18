@@ -127,9 +127,9 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             }
             val buildFileTree = project.rootProject.fileTree(rootDir, object : org.gradle.api.Action<org.gradle.api.file.ConfigurableFileTree> {
                 override fun execute(ft: org.gradle.api.file.ConfigurableFileTree) {
-                    ft.include("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+                    ft.include("build.gradle.kts", "settings.gradle.kts",
                         "gradle.properties", "*.lockfile", "gradle/libs.versions.toml")
-                    ft.include("**/build.gradle", "**/build.gradle.kts", "**/gradle.properties")
+                    ft.include("**/build.gradle.kts", "**/gradle.properties")
                     ft.exclude("build/", "**/build/", ".gradle/", "**/.gradle/")
                 }
             })
@@ -149,9 +149,9 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     task.buildFiles.from(
                         project.rootProject.fileTree(rootDir, object : org.gradle.api.Action<org.gradle.api.file.ConfigurableFileTree> {
                             override fun execute(ft: org.gradle.api.file.ConfigurableFileTree) {
-                                ft.include("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+                                ft.include("build.gradle.kts", "settings.gradle.kts",
                                     "gradle.properties", "*.lockfile", "gradle/libs.versions.toml")
-                                ft.include("**/build.gradle", "**/build.gradle.kts", "**/gradle.properties")
+                                ft.include("**/build.gradle.kts", "**/gradle.properties")
                                 ft.exclude("build/", "**/build/", ".gradle/", "**/.gradle/")
                             }
                         })
@@ -262,6 +262,32 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                         task.dryRun.set(value == "true")
                     }
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/extract.md"))
+                    val isDryRun = project.hasProperty("dryRun") && project.property("dryRun").toString().lowercase() == "true"
+                    if (!isDryRun) {
+                        task.finalizedBy("opsx-sync")
+                    }
+                }
+            })
+
+            project.tasks.register("opsx-remove", OpenSpecRemoveTask::class.java).configure(object : org.gradle.api.Action<OpenSpecRemoveTask> {
+                override fun execute(task: OpenSpecRemoveTask) {
+                    if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
+                    if (project.hasProperty("file")) task.sourceFile.set(project.property("file").toString())
+                    project.intProperty("startLine")?.let { task.startLine.set(it) }
+                    project.intProperty("endLine")?.let { task.endLine.set(it) }
+                    if (project.hasProperty("dryRun")) {
+                        val value = project.property("dryRun").toString().lowercase()
+                        if (value !in setOf("true", "false")) {
+                            throw org.gradle.api.GradleException("Invalid dryRun value '$value' — must be 'true' or 'false'")
+                        }
+                        task.dryRun.set(value == "true")
+                    }
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/remove.md"))
+                    val isDryRun = project.hasProperty("dryRun") && project.property("dryRun").toString().lowercase() == "true"
+                    if (!isDryRun) {
+                        task.finalizedBy("opsx-sync")
+                    }
                 }
             })
 

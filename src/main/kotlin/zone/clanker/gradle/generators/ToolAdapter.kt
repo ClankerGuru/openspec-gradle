@@ -34,7 +34,7 @@ interface ToolAdapter {
     fun formatCommandFile(content: CommandContent): String
     fun getSkillFilePath(skillDirName: String): String
     fun formatSkillFile(content: SkillContent): String
-    /** Path to the root agent instructions file (e.g. .claude/CLAUDE.md, .github/instructions/opsx.instructions.md, AGENTS.md) */
+    /** Path to the root agent instructions file (e.g. .claude/CLAUDE.md, .github/copilot-instructions.md, AGENTS.md) */
     fun getInstructionsFilePath(): String
     /** Whether instructions should be appended to an existing file (with markers) vs written fresh */
     val appendInstructions: Boolean get() = false
@@ -91,6 +91,7 @@ object ClaudeAdapter : ToolAdapter {
     override fun getSkillFilePath(skillDirName: String) = ".claude/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
     override fun getInstructionsFilePath() = ".claude/CLAUDE.md"
+    override val appendInstructions: Boolean get() = true
 }
 
 object GitHubCopilotAdapter : ToolAdapter {
@@ -106,7 +107,8 @@ object GitHubCopilotAdapter : ToolAdapter {
     }
     override fun getSkillFilePath(skillDirName: String) = ".github/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
-    override fun getInstructionsFilePath() = ".github/instructions/opsx.instructions.md"
+    override fun getInstructionsFilePath() = ".github/copilot-instructions.md"
+    override val appendInstructions: Boolean get() = true
 }
 
 object CodexAdapter : ToolAdapter {

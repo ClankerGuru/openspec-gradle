@@ -40,40 +40,34 @@ abstract class OpenSpecTreeTask : DefaultTask() {
         val out = outputFile.get().asFile
         out.parentFile.mkdirs()
 
+        val root = project.rootProject
+        val isMultiModule = root.subprojects.isNotEmpty() && !module.isPresent
+        val projects = SourceDiscovery.resolveProjects(project, module.orNull)
+        val scopeFilter = if (scope.isPresent) scope.get().lowercase() else null
+
+        if (projects.isEmpty()) {
+            out.writeText("# Source Tree\n\n> No modules found.\n")
+            return
+        }
+
+        if (isMultiModule) {
+            generateMultiModule(out, root, projects, scopeFilter)
+        } else {
+            generateSingleModule(out, root, projects, scopeFilter)
+        }
+    }
+
+    private fun generateSingleModule(out: File, root: org.gradle.api.Project, projects: List<org.gradle.api.Project>, scopeFilter: String?) {
         val sb = StringBuilder()
         sb.appendLine("# Source Tree")
         sb.appendLine()
 
-        val root = project.rootProject
-        val projects = SourceDiscovery.resolveProjects(project, module.orNull)
-
-        if (projects.isEmpty()) {
-            sb.appendLine("> No modules found.")
-            out.writeText(sb.toString())
-            return
-        }
-
-        val scopeFilter = if (scope.isPresent) scope.get().lowercase() else null
         var totalFiles = 0
         var totalDirs = 0
         var renderedModules = 0
 
         for (proj in projects) {
-            val srcDirs = SourceDiscovery.discoverSourceDirs(proj)
-            val filteredDirs = if (scopeFilter != null) {
-                srcDirs.filter { dir ->
-                    // Extract the source set segment from paths like src/<sourceSet>/kotlin
-                    val segments = dir.toPath().iterator().asSequence().map { it.toString() }.toList()
-                    val srcIdx = segments.indexOf("src")
-                    val sourceSetName = if (srcIdx >= 0 && srcIdx + 1 < segments.size) segments[srcIdx + 1].lowercase() else ""
-                    when (scopeFilter) {
-                        "main" -> !sourceSetName.contains("test")
-                        "test" -> sourceSetName.contains("test")
-                        else -> true
-                    }
-                }
-            } else srcDirs
-
+            val filteredDirs = filterDirs(proj, scopeFilter)
             if (filteredDirs.isEmpty()) continue
             renderedModules++
 
@@ -100,12 +94,85 @@ abstract class OpenSpecTreeTask : DefaultTask() {
             }
         }
 
-        // Add summary at the top
         val summary = "**$totalFiles source files** across **$renderedModules modules**\n\n"
         sb.insert(sb.indexOf("\n") + 1, "\n$summary")
 
         out.writeText(sb.toString())
         logger.lifecycle("OpenSpec: Generated source tree ($totalFiles files) at ${out.relativeTo(root.projectDir)}")
+    }
+
+    private fun generateMultiModule(out: File, root: org.gradle.api.Project, projects: List<org.gradle.api.Project>, scopeFilter: String?) {
+        val subDir = out.parentFile.resolve("tree")
+        subDir.mkdirs()
+
+        data class ModuleStats(val name: String, val displayName: String, val files: Int)
+        val stats = mutableListOf<ModuleStats>()
+
+        for (proj in projects) {
+            val filteredDirs = filterDirs(proj, scopeFilter)
+            if (filteredDirs.isEmpty()) continue
+
+            val moduleName = if (proj == root) "root" else proj.name
+            val displayName = if (proj == root) ":root" else proj.path
+
+            val sb = StringBuilder()
+            sb.appendLine("# Source Tree — $displayName")
+            sb.appendLine()
+
+            var totalFiles = 0
+            for (srcDir in filteredDirs) {
+                val relPath = if (srcDir.toPath().startsWith(root.projectDir.toPath())) {
+                    srcDir.relativeTo(root.projectDir).path
+                } else {
+                    srcDir.absolutePath
+                }
+                val fileStats = countFiles(srcDir)
+                totalFiles += fileStats.first
+
+                sb.appendLine("### `$relPath/` (${fileStats.first} files)")
+                sb.appendLine()
+                sb.appendLine("```")
+                renderDirectoryTree(sb, srcDir, "")
+                sb.appendLine("```")
+                sb.appendLine()
+            }
+
+            File(subDir, "$moduleName.md").writeText(sb.toString())
+            stats.add(ModuleStats(moduleName, displayName, totalFiles))
+        }
+
+        // Write index
+        val idx = StringBuilder()
+        idx.appendLine("# Source Tree")
+        idx.appendLine()
+        if (stats.isEmpty()) {
+            idx.appendLine("> No source files found.")
+        } else {
+            idx.appendLine("| Module | Files |")
+            idx.appendLine("|--------|-------|")
+            for (s in stats) {
+                idx.appendLine("| [${s.displayName}](tree/${s.name}.md) | ${s.files} |")
+            }
+        }
+        idx.appendLine()
+        out.writeText(idx.toString())
+        logger.lifecycle("OpenSpec: Generated source tree (${stats.size} modules) at ${out.relativeTo(root.projectDir)}")
+    }
+
+    private fun filterDirs(proj: org.gradle.api.Project, scopeFilter: String?): List<File> {
+        val srcDirs = SourceDiscovery.discoverSourceDirs(proj)
+        return if (scopeFilter != null) {
+            srcDirs.filter { dir ->
+                val segments = dir.toPath().iterator().asSequence().map { it.toString() }.toList()
+                val srcIdx = segments.indexOf("src")
+                val sourceSetName = if (srcIdx >= 0 && srcIdx + 1 < segments.size) segments[srcIdx + 1].lowercase() else ""
+                when (scopeFilter) {
+                    "main" -> !sourceSetName.contains("test")
+                    "test" -> sourceSetName.contains("test")
+                    else -> true
+                }
+            }
+        } else srcDirs
     }
 
     private fun countFiles(dir: File): Pair<Int, Int> {

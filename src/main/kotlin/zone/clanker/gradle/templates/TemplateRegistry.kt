@@ -29,6 +29,7 @@ object TemplateRegistry {
         extractCommand(),
         inlineCommand(),
         depsCommand(),
+        removeCommand(),
     )
 
     fun getSkillTemplates(): List<SkillContent> = listOf(
@@ -48,6 +49,7 @@ object TemplateRegistry {
         extractSkill(),
         inlineSkill(),
         depsSkill(),
+        removeSkill(),
     )
 
     // ── Propose ──────────────────────────────────────────
@@ -320,5 +322,20 @@ object TemplateRegistry {
         dirName = "opsx-deps",
         description = "Query project dependencies — resolved versions, transitive deps, and module relationships.",
         instructions = loadResource("templates/skills/deps.md")
+    )
+
+    private fun removeCommand() = CommandContent(
+        id = "remove",
+        name = "OPSX: Remove",
+        description = "Remove a symbol or code lines from the codebase",
+        category = "Code Intelligence",
+        tags = listOf("refactoring", "remove", "delete"),
+        body = loadResource("templates/commands/remove.md")
+    )
+
+    private fun removeSkill() = SkillContent(
+        dirName = "opsx-remove",
+        description = "Remove a symbol (class, function, property) or line range from the codebase, cleaning up imports.",
+        instructions = loadResource("templates/skills/remove.md")
     )
 }

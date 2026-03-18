@@ -42,35 +42,84 @@ abstract class OpenSpecSymbolsTask : DefaultTask() {
     fun analyze() {
         val out = outputFile.get().asFile
         out.parentFile.mkdirs()
-        val rootDir = project.rootProject.projectDir
+        val root = project.rootProject
+        val rootDir = root.projectDir
+        val isMultiModule = root.subprojects.isNotEmpty() && !module.isPresent && !symbol.isPresent && !targetFile.isPresent
 
         val projects = SourceDiscovery.resolveProjects(project, module.orNull)
         val srcDirs = SourceDiscovery.discoverSourceDirs(projects)
-        val sourceFiles = SourceDiscovery.collectSourceFiles(srcDirs)
+        val allSourceFiles = SourceDiscovery.collectSourceFiles(srcDirs)
 
-        if (sourceFiles.isEmpty()) {
+        if (allSourceFiles.isEmpty()) {
             out.writeText("# Symbol Index\n\n> No source files found.\n")
             logger.lifecycle("OpenSpec: No sources found for symbol analysis.")
             return
         }
 
-        logger.lifecycle("OpenSpec: Analyzing ${sourceFiles.size} source files...")
-        val index = SymbolIndex.build(sourceFiles)
-        val sb = StringBuilder()
+        logger.lifecycle("OpenSpec: Analyzing ${allSourceFiles.size} source files...")
 
-        if (symbol.isPresent) {
-            // Show specific symbol usages
-            renderSymbolUsages(sb, index, symbol.get(), rootDir)
-        } else if (targetFile.isPresent) {
-            // Show symbols in a specific file
-            renderFileSymbols(sb, index, targetFile.get(), rootDir)
-        } else {
-            // Show full index
-            renderFullIndex(sb, index, rootDir)
+        // For filtered queries (symbol/file), always write single file
+        if (symbol.isPresent || targetFile.isPresent) {
+            val index = SymbolIndex.build(allSourceFiles)
+            val sb = StringBuilder()
+            if (symbol.isPresent) {
+                renderSymbolUsages(sb, index, symbol.get(), rootDir)
+            } else {
+                renderFileSymbols(sb, index, targetFile.get(), rootDir)
+            }
+            out.writeText(sb.toString())
+            logger.lifecycle("OpenSpec: Generated symbol index at ${out.relativeTo(rootDir)}")
+            return
         }
 
-        out.writeText(sb.toString())
-        logger.lifecycle("OpenSpec: Generated symbol index at ${out.relativeTo(rootDir)}")
+        if (isMultiModule) {
+            val subDir = out.parentFile.resolve("symbols")
+            subDir.mkdirs()
+
+            data class ModuleStats(val name: String, val displayName: String, val symbols: Int, val types: Int, val functions: Int)
+            val stats = mutableListOf<ModuleStats>()
+
+            val allProjects = listOf(root) + root.subprojects.sortedBy { it.path }
+            for (proj in allProjects) {
+                val projSrcDirs = SourceDiscovery.discoverSourceDirs(proj)
+                val projFiles = SourceDiscovery.collectSourceFiles(projSrcDirs)
+                if (projFiles.isEmpty()) continue
+
+                val moduleName = if (proj == root) "root" else proj.name
+                val displayName = if (proj == root) ":root" else proj.path
+
+                val index = SymbolIndex.build(projFiles)
+                val sb = StringBuilder()
+                renderFullIndex(sb, index, rootDir)
+                File(subDir, "$moduleName.md").writeText(sb.toString())
+
+                val typeCount = index.symbols.count { it.kind in setOf(SymbolKind.CLASS, SymbolKind.INTERFACE, SymbolKind.DATA_CLASS, SymbolKind.ENUM, SymbolKind.OBJECT) }
+                val funCount = index.symbols.count { it.kind == SymbolKind.FUNCTION }
+                stats.add(ModuleStats(moduleName, displayName, index.symbols.size, typeCount, funCount))
+            }
+
+            val idx = StringBuilder()
+            idx.appendLine("# Symbol Index")
+            idx.appendLine()
+            if (stats.isEmpty()) {
+                idx.appendLine("> No symbols found.")
+            } else {
+                idx.appendLine("| Module | Symbols | Types | Functions |")
+                idx.appendLine("|--------|---------|-------|-----------|")
+                for (s in stats) {
+                    idx.appendLine("| [${s.displayName}](symbols/${s.name}.md) | ${s.symbols} | ${s.types} | ${s.functions} |")
+                }
+            }
+            idx.appendLine()
+            out.writeText(idx.toString())
+            logger.lifecycle("OpenSpec: Generated symbol index (${stats.size} modules) at ${out.relativeTo(rootDir)}")
+        } else {
+            val index = SymbolIndex.build(allSourceFiles)
+            val sb = StringBuilder()
+            renderFullIndex(sb, index, rootDir)
+            out.writeText(sb.toString())
+            logger.lifecycle("OpenSpec: Generated symbol index at ${out.relativeTo(rootDir)}")
+        }
     }
 
     private fun renderFullIndex(sb: StringBuilder, index: SymbolIndex, rootDir: File) {

@@ -33,8 +33,16 @@ abstract class OpenSpecContextTask : DefaultTask() {
         val out = contextFile.get().asFile
         out.parentFile.mkdirs()
 
-        val sb = StringBuilder()
         val root = project.rootProject
+        val subprojects = root.subprojects
+        val isMultiModule = subprojects.isNotEmpty()
+
+        if (isMultiModule) {
+            generateMultiModule(out, root, subprojects)
+            return
+        }
+
+        val sb = StringBuilder()
 
         sb.appendLine("# Project Context")
         sb.appendLine()
@@ -53,7 +61,6 @@ abstract class OpenSpecContextTask : DefaultTask() {
         appendGitInfo(sb, root.projectDir)
 
         // ── Module Tree Diagram ──
-        val subprojects = root.subprojects
         val includedBuilds = project.gradle.includedBuilds
         if (subprojects.isNotEmpty() || includedBuilds.isNotEmpty()) {
             sb.appendLine()
@@ -114,7 +121,8 @@ abstract class OpenSpecContextTask : DefaultTask() {
             for (ib in includedBuilds) {
                 sb.appendLine("### ${ib.name}")
                 sb.appendLine("- **Path:** ${ib.projectDir.relativeTo(root.projectDir)}/")
-                appendGitInfo(sb, ib.projectDir, prefix = "  ")
+                appendGitInfo(sb, ib.projectDir, prefix = "- ")
+                sb.appendLine("- **OPSX tasks:** `./gradlew :${ib.name}:opsx-find`, `:${ib.name}:opsx-rename`, etc.")
                 sb.appendLine()
             }
         }
@@ -202,6 +210,133 @@ abstract class OpenSpecContextTask : DefaultTask() {
 
         out.writeText(sb.toString())
         logger.lifecycle("OpenSpec: Generated context at ${out.relativeTo(root.projectDir)}")
+    }
+
+    private fun generateMultiModule(out: File, root: Project, subprojects: Set<Project>) {
+        val subDir = out.parentFile.resolve("context")
+        subDir.mkdirs()
+
+        data class ModuleStats(val name: String, val displayName: String, val plugins: Int, val deps: Int)
+        val stats = mutableListOf<ModuleStats>()
+
+        val allProjects = listOf(root) + subprojects.sortedBy { it.path }
+        for (proj in allProjects) {
+            val moduleName = if (proj == root) "root" else proj.name
+            val displayName = if (proj == root) ":root" else proj.path
+
+            val sb = StringBuilder()
+            sb.appendLine("# Project Context — $displayName")
+            sb.appendLine()
+
+            val pluginIds = mutableSetOf<String>()
+            val frameworks = mutableListOf<String>()
+            val allDeps = mutableListOf<String>()
+            val errors = mutableListOf<String>()
+
+            collectPluginsAndFrameworks(proj, pluginIds, frameworks)
+            val userPlugins = pluginIds.filter { !it.startsWith("org.gradle.") }.sorted()
+            if (userPlugins.isNotEmpty()) {
+                sb.appendLine("## Plugins")
+                sb.appendLine()
+                for (p in userPlugins) sb.appendLine("- `$p`")
+            }
+
+            appendDependencies(sb, proj, errors, allDeps)
+            detectFrameworksFromDeps(allDeps, frameworks)
+
+            val distinctFrameworks = frameworks.distinct().sorted()
+            if (distinctFrameworks.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("## Frameworks Detected")
+                sb.appendLine()
+                for (f in distinctFrameworks) sb.appendLine("- $f")
+            }
+
+            val archPatterns = mutableListOf<String>()
+            detectArchitecturePatterns(proj, archPatterns)
+            if (archPatterns.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("## Architecture Patterns")
+                sb.appendLine()
+                for (p in archPatterns.distinct()) sb.appendLine("- $p")
+            }
+
+            appendPackageStructure(sb, proj)
+            appendSourceSets(sb, proj, root)
+
+            if (errors.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("## ⚠️ Errors & Warnings")
+                sb.appendLine()
+                for (e in errors) sb.appendLine("- $e")
+            }
+
+            File(subDir, "$moduleName.md").writeText(sb.toString())
+            stats.add(ModuleStats(moduleName, displayName, userPlugins.size, allDeps.size))
+        }
+
+        // Write index
+        val idx = StringBuilder()
+        idx.appendLine("# Project Context")
+        idx.appendLine()
+
+        idx.appendLine("## Overview")
+        idx.appendLine("- **Name:** ${root.name}")
+        if (root.group.toString().isNotBlank()) idx.appendLine("- **Group:** ${root.group}")
+        if (root.version.toString() != "unspecified" && root.version.toString().isNotBlank())
+            idx.appendLine("- **Version:** ${root.version}")
+        idx.appendLine("- **Gradle:** ${project.gradle.gradleVersion}")
+        idx.appendLine("- **Build:** ${root.buildFile.name}")
+        appendLanguageInfo(idx, root)
+        appendGitInfo(idx, root.projectDir)
+
+        val includedBuilds = project.gradle.includedBuilds
+        idx.appendLine()
+        idx.appendLine("## Module Tree")
+        idx.appendLine()
+        idx.appendLine("```")
+        appendModuleTree(idx, root, subprojects, includedBuilds)
+        idx.appendLine("```")
+
+        idx.appendLine()
+        idx.appendLine("## Modules (${subprojects.size})")
+        idx.appendLine()
+        idx.appendLine("| Module | Plugins | Dependencies |")
+        idx.appendLine("|--------|---------|-------------|")
+        for (s in stats) {
+            idx.appendLine("| [${s.displayName}](context/${s.name}.md) | ${s.plugins} | ${s.deps} |")
+        }
+        idx.appendLine()
+
+        // Global frameworks & hints
+        val allPluginIds = mutableSetOf<String>()
+        val allFrameworks = mutableListOf<String>()
+        val allDeps = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        collectPluginsAndFrameworks(root, allPluginIds, allFrameworks)
+        subprojects.forEach { collectPluginsAndFrameworks(it, allPluginIds, allFrameworks) }
+        appendDependencies(StringBuilder(), root, errors, allDeps)
+        subprojects.forEach { appendDependencies(StringBuilder(), it, errors, allDeps) }
+        detectFrameworksFromDeps(allDeps, allFrameworks)
+
+        val distinctFrameworks = allFrameworks.distinct().sorted()
+        if (distinctFrameworks.isNotEmpty()) {
+            idx.appendLine("## Frameworks Detected")
+            idx.appendLine()
+            for (f in distinctFrameworks) idx.appendLine("- $f")
+        }
+
+        val hints = generateHints(distinctFrameworks)
+        if (hints.isNotEmpty()) {
+            idx.appendLine()
+            idx.appendLine("## Architecture Hints")
+            idx.appendLine()
+            for (h in hints) idx.appendLine("- $h")
+        }
+
+        idx.appendLine()
+        out.writeText(idx.toString())
+        logger.lifecycle("OpenSpec: Generated context (${stats.size} modules) at ${out.relativeTo(root.projectDir)}")
     }
 
     // ── Language Info ──
