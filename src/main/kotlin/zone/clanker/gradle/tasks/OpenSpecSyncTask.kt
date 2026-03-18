@@ -54,7 +54,7 @@ abstract class OpenSpecSyncTask : DefaultTask() {
 
         val skills = SkillGenerator.generate(buildDir, toolList)
         val commands = CommandGenerator.generate(buildDir, toolList)
-        val instructions = InstructionsGenerator.generate(buildDir, toolList)
+        val instructionFiles = InstructionsGenerator.generate(buildDir, toolList)
         // Reconcile tasks against symbol index
         val warnings = try {
             TaskReconciler.reconcile(project.projectDir)
@@ -75,14 +75,24 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         }
 
         val taskCommands = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList, warnings)
-        val allFiles = skills + commands + instructions + taskCommands
+        val allFiles = skills + commands + taskCommands
 
-        logger.lifecycle("OpenSpec: Generated ${allFiles.size} files into ${buildDir.relativeTo(project.projectDir)}")
+        // Install instructions files separately (some need append mode)
+        for (file in instructionFiles) {
+            val adapter = toolList.mapNotNull { ToolAdapterRegistry.get(it) }
+                .firstOrNull { it.getInstructionsFilePath() == file.relativePath }
+            if (adapter != null) {
+                InstructionsGenerator.install(file, project.projectDir, adapter)
+            }
+        }
+
+        val totalCount = allFiles.size + instructionFiles.size
+        logger.lifecycle("OpenSpec: Generated $totalCount files into ${buildDir.relativeTo(project.projectDir)}")
 
         // Install to project root
         installFiles(allFiles)
 
-        logger.lifecycle("OpenSpec: Installed ${allFiles.size} files to project root")
+        logger.lifecycle("OpenSpec: Installed $totalCount files to project root")
     }
 
     private fun installFiles(files: List<GeneratedFile>) {
@@ -99,9 +109,9 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         var count = 0
         for (toolId in ToolAdapterRegistry.supportedTools()) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
-            // Clean instructions file
-            val instructionsFile = File(project.projectDir, adapter.getInstructionsFilePath())
-            if (instructionsFile.exists()) { instructionsFile.delete(); count++ }
+            // Clean instructions file (handles append-mode files with markers)
+            InstructionsGenerator.clean(project.projectDir, adapter)
+            count++
             // Clean all command files (static + dynamic task commands)
             val probePath = adapter.getCommandFilePath("__probe__")
             val probeFile = File(project.projectDir, probePath)

@@ -36,6 +36,8 @@ interface ToolAdapter {
     fun formatSkillFile(content: SkillContent): String
     /** Path to the root agent instructions file (e.g. CLAUDE.md, .github/copilot-instructions.md) */
     fun getInstructionsFilePath(): String
+    /** Whether instructions should be appended to an existing file (with markers) vs written fresh */
+    val appendInstructions: Boolean get() = false
 }
 
 /**
@@ -123,7 +125,8 @@ object CodexAdapter : ToolAdapter {
     }
     override fun getSkillFilePath(skillDirName: String) = ".codex/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
-    override fun getInstructionsFilePath() = ".codex/AGENTS.md"
+    override fun getInstructionsFilePath() = "AGENTS.md"
+    override val appendInstructions: Boolean get() = true
 }
 
 object OpenCodeAdapter : ToolAdapter {
@@ -142,7 +145,8 @@ object OpenCodeAdapter : ToolAdapter {
     // but they can be referenced from opencode.md or used as context)
     override fun getSkillFilePath(skillDirName: String) = ".opencode/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
-    override fun getInstructionsFilePath() = ".opencode/instructions.md"
+    override fun getInstructionsFilePath() = "AGENTS.md"
+    override val appendInstructions: Boolean get() = true
 }
 
 object CrushAdapter : ToolAdapter {
@@ -151,7 +155,8 @@ object CrushAdapter : ToolAdapter {
     override fun formatCommandFile(content: CommandContent) = formatYamlCommandWithFrontmatter(content)
     override fun getSkillFilePath(skillDirName: String) = ".crush/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
-    override fun getInstructionsFilePath() = ".crush/CRUSH.md"
+    override fun getInstructionsFilePath() = "AGENTS.md"
+    override val appendInstructions: Boolean get() = true
 }
 
 object ToolAdapterRegistry {

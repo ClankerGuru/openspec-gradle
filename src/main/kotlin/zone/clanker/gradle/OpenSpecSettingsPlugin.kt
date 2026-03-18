@@ -243,8 +243,8 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 dependsOn("opsx-clean")
             }
 
-            // Auto-generate discovery files on build
-            project.tasks.matching { it.name == "build" }.configureEach {
+            // Auto-generate discovery files on assemble (build depends on assemble, so this covers both)
+            project.tasks.matching { it.name == "assemble" }.configureEach {
                 dependsOn("opsx-sync")
             }
         }
