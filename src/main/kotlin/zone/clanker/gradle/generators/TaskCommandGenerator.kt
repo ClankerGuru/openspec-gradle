@@ -10,7 +10,8 @@ import java.io.File
  */
 object TaskCommandGenerator {
 
-    fun generate(projectDir: File, buildDir: File, tools: List<String>): List<GeneratedFile> {
+    fun generate(projectDir: File, buildDir: File, tools: List<String>, warnings: List<TaskWarning> = emptyList()): List<GeneratedFile> {
+        val warningsByCode = warnings.associateBy { it.taskCode }
         val proposals = ProposalScanner.scan(projectDir)
         if (proposals.isEmpty()) return emptyList()
 
@@ -54,6 +55,25 @@ object TaskCommandGenerator {
                         for (dep in taskItem.explicitDeps) {
                             appendLine("- `$dep` → `/opsx:$dep`")
                         }
+                    }
+
+                    // Add reconciliation warnings
+                    val warning = warningsByCode[taskItem.code]
+                    if (warning != null) {
+                        appendLine()
+                        appendLine("## ⚠️ Reconciliation Warning")
+                        appendLine()
+                        appendLine("This task references symbols not found in the codebase:")
+                        for (missing in warning.missingSymbols) {
+                            val suggestions = warning.suggestions[missing] ?: emptyList()
+                            if (suggestions.isNotEmpty()) {
+                                appendLine("- **`$missing`** — not found. Did you mean: ${suggestions.joinToString(", ") { "`$it`" }}?")
+                            } else {
+                                appendLine("- **`$missing`** — not found in current source")
+                            }
+                        }
+                        appendLine()
+                        appendLine("Review and update this task if the referenced code has changed.")
                     }
 
                     if (taskItem.children.isNotEmpty()) {

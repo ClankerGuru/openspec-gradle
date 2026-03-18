@@ -6,6 +6,7 @@ import zone.clanker.gradle.generators.GlobalGitignore
 import zone.clanker.gradle.generators.InstructionsGenerator
 import zone.clanker.gradle.generators.SkillGenerator
 import zone.clanker.gradle.generators.TaskCommandGenerator
+import zone.clanker.gradle.generators.TaskReconciler
 import zone.clanker.gradle.generators.ToolAdapterRegistry
 import zone.clanker.gradle.templates.TemplateRegistry
 import org.gradle.api.DefaultTask
@@ -54,7 +55,26 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         val skills = SkillGenerator.generate(buildDir, toolList)
         val commands = CommandGenerator.generate(buildDir, toolList)
         val instructions = InstructionsGenerator.generate(buildDir, toolList)
-        val taskCommands = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList)
+        // Reconcile tasks against symbol index
+        val warnings = try {
+            TaskReconciler.reconcile(project.projectDir)
+        } catch (e: Exception) {
+            logger.debug("OpenSpec: Task reconciliation skipped: ${e.message}")
+            emptyList()
+        }
+        if (warnings.isNotEmpty()) {
+            logger.lifecycle("")
+            logger.lifecycle("OpenSpec: ⚠️ Task reconciliation warnings:")
+            for (w in warnings) {
+                val suggest = if (w.suggestions.values.flatten().isNotEmpty()) {
+                    " → did you mean: ${w.suggestions.values.flatten().joinToString(", ")}?"
+                } else ""
+                logger.lifecycle("  ${w.taskCode} (${w.proposalName}): references missing symbol(s): ${w.missingSymbols.joinToString(", ")}$suggest")
+            }
+            logger.lifecycle("")
+        }
+
+        val taskCommands = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList, warnings)
         val allFiles = skills + commands + instructions + taskCommands
 
         logger.lifecycle("OpenSpec: Generated ${allFiles.size} files into ${buildDir.relativeTo(project.projectDir)}")
@@ -82,10 +102,21 @@ abstract class OpenSpecSyncTask : DefaultTask() {
             // Clean instructions file
             val instructionsFile = File(project.projectDir, adapter.getInstructionsFilePath())
             if (instructionsFile.exists()) { instructionsFile.delete(); count++ }
-            // Clean commands
-            for (cmd in TemplateRegistry.getCommandTemplates()) {
-                val file = File(project.projectDir, adapter.getCommandFilePath(cmd.id))
-                if (file.exists()) { file.delete(); count++ }
+            // Clean all command files (static + dynamic task commands)
+            val probePath = adapter.getCommandFilePath("__probe__")
+            val probeFile = File(project.projectDir, probePath)
+            val commandDir = probeFile.parentFile
+            if (commandDir != null && commandDir.exists() && commandDir.isDirectory) {
+                // If the command dir is opsx-specific (e.g. .claude/commands/opsx/), clean it entirely
+                // Otherwise clean only opsx-prefixed files (e.g. .github/prompts/opsx-*.prompt.md)
+                if (commandDir.name == "opsx") {
+                    commandDir.deleteRecursively()
+                    count++
+                } else {
+                    commandDir.listFiles()?.filter { it.isFile && it.name.startsWith("opsx-") }?.forEach {
+                        it.delete(); count++
+                    }
+                }
             }
             // Clean skills
             for (skill in TemplateRegistry.getSkillTemplates()) {

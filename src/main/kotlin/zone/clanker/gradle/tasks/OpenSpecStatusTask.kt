@@ -5,6 +5,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.options.Option
+import zone.clanker.gradle.generators.TaskReconciler
 import zone.clanker.gradle.tracking.DependencyGraph
 import zone.clanker.gradle.tracking.ProposalScanner
 import zone.clanker.gradle.tracking.Proposal
@@ -97,6 +98,24 @@ abstract class OpenSpecStatusTask : DefaultTask() {
             sb.appendLine()
             for (p in completed) {
                 sb.appendLine("- ✅ ~~${p.name}~~")
+            }
+            sb.appendLine()
+        }
+
+        // Task reconciliation warnings
+        val warnings = try {
+            TaskReconciler.reconcile(project.projectDir)
+        } catch (_: Exception) { emptyList() }
+        if (warnings.isNotEmpty()) {
+            sb.appendLine("## ⚠️ Stale Tasks")
+            sb.appendLine()
+            sb.appendLine("These tasks reference symbols not found in the codebase:")
+            sb.appendLine()
+            for (w in warnings) {
+                val suggest = w.suggestions.values.flatten().let {
+                    if (it.isNotEmpty()) " → did you mean: ${it.joinToString(", ") { s -> "`$s`" }}?" else ""
+                }
+                sb.appendLine("- `${w.taskCode}` (${w.proposalName}): missing `${w.missingSymbols.joinToString("`, `")}`$suggest")
             }
             sb.appendLine()
         }
