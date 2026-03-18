@@ -135,17 +135,68 @@ abstract class OpenSpecSymbolsTask : DefaultTask() {
         sb.appendLine("**${index.symbols.size} symbols** (${typeSymbols.size} types, ${funSymbols.size} functions, ${propSymbols.size} properties) from **${index.symbols.map { it.file }.distinct().size} files**")
         sb.appendLine()
 
-        // Types with usage counts
+        // Types with usage locations
         sb.appendLine("## Types")
         sb.appendLine()
-        sb.appendLine("| Type | Kind | Usages | Location |")
-        sb.appendLine("|------|------|--------|----------|")
         for (sym in typeSymbols.sortedBy { it.qualifiedName }) {
-            val usageCount = index.findUsages(sym.qualifiedName).size
+            val usages = index.findUsages(sym.qualifiedName)
             val relPath = sym.file.relativeTo(rootDir).path
-            sb.appendLine("| `${sym.name}` | ${sym.kind.label} | $usageCount | `$relPath:${sym.line}` |")
+            sb.appendLine("### `${sym.name}` (${sym.kind.label})")
+            sb.appendLine()
+            sb.appendLine("📍 `$relPath:${sym.line}`")
+            sb.appendLine()
+            if (usages.isEmpty()) {
+                sb.appendLine("_No usages found._")
+            } else {
+                sb.appendLine("**${usages.size} usages:**")
+                sb.appendLine()
+                for (ref in usages.sortedBy { "${it.file.name}:${it.line}" }) {
+                    val refPath = ref.file.relativeTo(rootDir).path
+                    sb.appendLine("- `$refPath:${ref.line}` (${ref.kind.label}) — `${ref.context.take(100)}`")
+                }
+            }
+            sb.appendLine()
         }
-        sb.appendLine()
+
+        // Functions with usage locations
+        if (funSymbols.isNotEmpty()) {
+            sb.appendLine("## Functions")
+            sb.appendLine()
+            for (sym in funSymbols.sortedBy { it.qualifiedName }) {
+                val usages = index.findUsages(sym.qualifiedName)
+                val relPath = sym.file.relativeTo(rootDir).path
+                if (usages.isEmpty()) {
+                    sb.appendLine("- `${sym.name}` — `$relPath:${sym.line}` — _no usages_")
+                } else {
+                    sb.appendLine("- `${sym.name}` — `$relPath:${sym.line}` — **${usages.size} usages:**")
+                    for (ref in usages.sortedBy { "${it.file.name}:${it.line}" }) {
+                        val refPath = ref.file.relativeTo(rootDir).path
+                        sb.appendLine("  - `$refPath:${ref.line}` (${ref.kind.label}) — `${ref.context.take(100)}`")
+                    }
+                }
+            }
+            sb.appendLine()
+        }
+
+        // Properties
+        if (propSymbols.isNotEmpty()) {
+            sb.appendLine("## Properties")
+            sb.appendLine()
+            for (sym in propSymbols.sortedBy { it.qualifiedName }) {
+                val usages = index.findUsages(sym.qualifiedName)
+                val relPath = sym.file.relativeTo(rootDir).path
+                if (usages.isEmpty()) {
+                    sb.appendLine("- `${sym.name}` — `$relPath:${sym.line}` — _no usages_")
+                } else {
+                    sb.appendLine("- `${sym.name}` — `$relPath:${sym.line}` — **${usages.size} usages:**")
+                    for (ref in usages.sortedBy { "${it.file.name}:${it.line}" }) {
+                        val refPath = ref.file.relativeTo(rootDir).path
+                        sb.appendLine("  - `$refPath:${ref.line}` (${ref.kind.label}) — `${ref.context.take(100)}`")
+                    }
+                }
+            }
+            sb.appendLine()
+        }
 
         // Most-used symbols
         val usageCounts = index.usageCounts().take(10)
@@ -153,9 +204,15 @@ abstract class OpenSpecSymbolsTask : DefaultTask() {
             sb.appendLine("## Most Used")
             sb.appendLine()
             for ((sym, count) in usageCounts) {
-                sb.appendLine("- `${sym.name}` — $count usages")
+                val usages = index.findUsages(sym.qualifiedName)
+                sb.appendLine("### `${sym.name}` — $count usages")
+                sb.appendLine()
+                for (ref in usages.sortedBy { "${it.file.name}:${it.line}" }) {
+                    val refPath = ref.file.relativeTo(rootDir).path
+                    sb.appendLine("- `$refPath:${ref.line}` (${ref.kind.label}) — `${ref.context.take(100)}`")
+                }
+                sb.appendLine()
             }
-            sb.appendLine()
         }
     }
 
