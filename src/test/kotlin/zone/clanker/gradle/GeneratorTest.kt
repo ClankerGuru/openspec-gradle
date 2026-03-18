@@ -16,16 +16,16 @@ class GeneratorTest {
     // ── SkillGenerator ──────────────────────────────────
 
     @Test
-    fun `SkillGenerator generates 11 skills per tool`() {
+    fun `SkillGenerator generates 16 skills per tool`() {
         val files = SkillGenerator.generate(buildDir, listOf("claude"))
-        assertEquals(11, files.size)
+        assertEquals(16, files.size)
         files.forEach { assertTrue(it.file.exists()) }
     }
 
     @Test
     fun `SkillGenerator generates for multiple tools`() {
         val files = SkillGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(22, files.size) // 11 skills * 2 tools
+        assertEquals(32, files.size) // 16 skills * 2 tools
     }
 
     @Test
@@ -51,15 +51,15 @@ class GeneratorTest {
     // ── CommandGenerator ────────────────────────────────
 
     @Test
-    fun `CommandGenerator generates 11 commands per tool`() {
+    fun `CommandGenerator generates 16 commands per tool`() {
         val files = CommandGenerator.generate(buildDir, listOf("claude"))
-        assertEquals(11, files.size)
+        assertEquals(16, files.size)
     }
 
     @Test
     fun `CommandGenerator generates for both tools`() {
         val files = CommandGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(22, files.size) // 11 commands * 2 tools
+        assertEquals(32, files.size) // 16 commands * 2 tools
     }
 
     @Test
@@ -86,8 +86,8 @@ class GeneratorTest {
     fun `both generators combined produce correct total for 2-tool setup`() {
         val skills = SkillGenerator.generate(buildDir, listOf("claude", "github-copilot"))
         val commands = CommandGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(22, skills.size)   // 11 * 2
-        assertEquals(22, commands.size) // 11 * 2
-        assertEquals(44, skills.size + commands.size)
+        assertEquals(32, skills.size)   // 16 * 2
+        assertEquals(32, commands.size) // 16 * 2
+        assertEquals(64, skills.size + commands.size)
     }
 }

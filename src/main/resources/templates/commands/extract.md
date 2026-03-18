@@ -1,0 +1,1 @@
+Extract a block of code into a new function. Usage: `./gradlew opsx-extract -PsourceFile=path/to/File.kt -PstartLine=10 -PendLine=25 -PnewName=myFunction`. Analyzes free variables, suggests parameters with placeholder types, and shows the call site replacement. Review and apply the suggestion.
