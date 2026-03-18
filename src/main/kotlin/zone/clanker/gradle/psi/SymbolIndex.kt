@@ -106,9 +106,9 @@ class SymbolIndex(
 
             for (target in resolvedTargets) {
                 if (target.file == ref.file && target.line == ref.line) continue
-                // Skip self-class calls for methods with same name (e.g., don't link execute->execute in different classes)
+                // Skip only true self-calls (same method calling itself)
                 val targetClassQN = target.qualifiedName.substringBeforeLast('.', "")
-                if (targetClassQN == callerClassQN && target.qualifiedName != caller.qualifiedName) continue
+                if (targetClassQN == callerClassQN && target.qualifiedName == caller.qualifiedName) continue
                 calls.add(MethodCall(caller = caller, target = target, file = ref.file, line = ref.line))
             }
         }
@@ -132,12 +132,11 @@ class SymbolIndex(
     /**
      * Build a map: file path -> (property name -> class qualified name)
      * from constructor parameters and property declarations with type annotations.
+     * Accumulates across all classes in a file.
      */
     private fun buildReceiverTypeMap(): Map<String, Map<String, String>> {
         val result = mutableMapOf<String, MutableMap<String, String>>()
 
-        // For each class, look at TYPE_REF references in the same file near the class declaration
-        // and match property names to imported types
         for (symbol in symbols) {
             if (symbol.kind !in setOf(SymbolKind.CLASS, SymbolKind.DATA_CLASS)) continue
             val filePath = symbol.file.absolutePath
@@ -146,11 +145,9 @@ class SymbolIndex(
                 .mapNotNull { ref -> ref.targetQualifiedName?.let { ref.targetName to it } }
                 .toMap()
 
-            // Read the file to find constructor params: (private val name: Type)
             try {
                 val lines = symbol.file.readLines()
                 val classLine = if (symbol.line - 1 in lines.indices) symbol.line - 1 else continue
-                // Look at lines around the class declaration for constructor params
                 val searchRange = classLine until minOf(classLine + 15, lines.size)
                 val paramPattern = Regex("""(?:val|var)\s+(\w+)\s*:\s*(\w+)""")
 
@@ -159,13 +156,14 @@ class SymbolIndex(
                     paramPattern.findAll(line).forEach { match ->
                         val propName = match.groupValues[1]
                         val typeName = match.groupValues[2]
-                        // Resolve type name to qualified name via imports
+                        // Resolve: imports -> same-package -> unique symbol match
                         val qualifiedType = imports[typeName]
+                            ?: bySimpleName[typeName]?.singleOrNull()?.qualifiedName
+                            ?: if (symbol.packageName.isNotEmpty()) "${symbol.packageName}.$typeName" else null
                         if (qualifiedType != null) {
                             result.getOrPut(filePath) { mutableMapOf() }[propName] = qualifiedType
                         }
                     }
-                    // Stop at the first { after class declaration
                     if (line.contains("{") && lineIdx > classLine) break
                 }
             } catch (_: Exception) { }

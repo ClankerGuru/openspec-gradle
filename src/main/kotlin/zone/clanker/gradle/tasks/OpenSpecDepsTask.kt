@@ -100,7 +100,7 @@ abstract class OpenSpecDepsTask : DefaultTask() {
         }
 
         // Fall back to declared deps if resolution failed
-        if (resolvedSections.isEmpty() && moduleDeps.isEmpty()) {
+        if (resolvedSections.isEmpty()) {
             val declared = mutableListOf<String>()
             for (configName in declaredConfigs) {
                 val config = try { proj.configurations.findByName(configName) } catch (_: Exception) { null } ?: continue
@@ -114,7 +114,7 @@ abstract class OpenSpecDepsTask : DefaultTask() {
                     declared.add("- `$configName`: $gav")
                 }
             }
-            if (declared.isEmpty()) return
+            if (declared.isEmpty() && moduleDeps.isEmpty()) return
 
             sb.appendLine("## $label")
             sb.appendLine()
@@ -124,14 +124,14 @@ abstract class OpenSpecDepsTask : DefaultTask() {
                 moduleDeps.forEach { sb.appendLine(it) }
                 sb.appendLine()
             }
-            sb.appendLine("### Declared Dependencies (unresolved)")
-            sb.appendLine()
-            declared.forEach { sb.appendLine(it) }
-            sb.appendLine()
+            if (declared.isNotEmpty()) {
+                sb.appendLine("### Declared Dependencies (unresolved)")
+                sb.appendLine()
+                declared.forEach { sb.appendLine(it) }
+                sb.appendLine()
+            }
             return
         }
-
-        if (resolvedSections.isEmpty() && moduleDeps.isEmpty()) return
 
         sb.appendLine("## $label")
         sb.appendLine()
