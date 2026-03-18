@@ -95,13 +95,14 @@ That's it. Your agent now has project context, skills, and commands.
 ./gradlew opsx-context
 ```
 
-Generates `.opsx/context.md` — a structured snapshot from the Gradle build model:
+Generates `.opsx/context.md` — a structured snapshot from the Gradle build model. For multi-module projects, per-module detail files are written to `.opsx/context/<module>.md` with a summary index:
 
 - Project metadata (name, group, version, Gradle/Java/Kotlin versions)
 - Module graph with inter-module dependencies
 - Resolved dependencies (actual versions after conflict resolution and BOMs)
 - Detected frameworks (Spring Boot, Android, Ktor, Compose, KMP, etc.)
 - Git info (branch, remote)
+- Composite build awareness (included builds with branch + available OPSX task paths)
 
 All cached via `@CacheableTask` — only regenerates when build files change.
 
@@ -111,7 +112,7 @@ All cached via `@CacheableTask` — only regenerates when build files change.
 ./gradlew opsx-arch
 ```
 
-Full architecture report: component classification (controllers, services, repositories, entities), dependency graph with Mermaid diagrams, sequence diagrams, layer analysis, hub classes, and code smell detection. Works on any project — JVM, KMP, Android, Spring, CLI, library.
+Full architecture report: component classification (controllers, services, repositories, entities), dependency graph with Mermaid diagrams, sequence diagrams, layer analysis, hub classes, and code smell detection. For multi-module projects, splits into `.opsx/arch/<module>.md` files. Works on any project — JVM, KMP, Android, Spring, CLI, library.
 
 ### Code Intelligence
 
@@ -130,11 +131,11 @@ Replaces `grep`/`sed`/Python scripts with build-aware symbol analysis. The index
 
 | Agent | Instructions file | Delivery |
 |---|---|---|
-| Claude | `.claude/CLAUDE.md` | Standalone (auto-discovered) |
-| Copilot | `.github/copilot-instructions.md` | Additive (merges with your own) |
+| Claude | `.claude/CLAUDE.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
+| Copilot | `.github/copilot-instructions.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
 | Codex / OpenCode / Crush | `AGENTS.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
 
-For Codex, OpenCode, and Crush — your existing `AGENTS.md` content is preserved. OPSX adds its section between markers and updates it on every sync.
+All agents use marker-based append mode — your existing instruction content is preserved. OPSX adds its section between markers and updates it on every sync.
 
 ### Agent Skills & Commands
 
@@ -249,10 +250,9 @@ Most AI context tools work outside the build system — scanning files, guessing
 
 ## Roadmap
 
-- **Composite build awareness** — Cross-build context and task coordination for included builds.
-- **Per-module output splitting** — Separate `.opsx/` files per module for large projects.
 - **Pre-approved execution** — Agents chain tasks without prompting for approval on each step.
 - **Architecture pattern detection** — Pluggable, community-driven skills that identify and enforce patterns.
+- **Worktree support** — Multi-session workflows across git worktrees.
 
 ---
 
