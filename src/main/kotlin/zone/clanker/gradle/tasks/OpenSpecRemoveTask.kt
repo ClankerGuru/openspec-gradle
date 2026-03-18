@@ -59,6 +59,13 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
             return
         }
 
+        if (hasSymbol && hasFile) {
+            val msg = "# Remove\n\n> Specify either `-Psymbol` or `-Pfile`, not both.\n"
+            out.writeText(msg)
+            logger.lifecycle(msg.trimEnd())
+            return
+        }
+
         if (hasFile) {
             removeLineRange(out, rootDir, preview)
         } else {
@@ -68,7 +75,14 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
 
     private fun removeLineRange(out: File, rootDir: File, preview: Boolean) {
         val filePath = sourceFile.get()
-        val file = rootDir.resolve(filePath)
+        val file = rootDir.resolve(filePath).canonicalFile
+        // Block path traversal outside project root
+        if (!file.canonicalPath.startsWith(rootDir.canonicalPath)) {
+            val msg = "# Remove\n\n> Path `$filePath` resolves outside the project root. Refusing to proceed.\n"
+            out.writeText(msg)
+            logger.lifecycle(msg.trimEnd())
+            return
+        }
         if (!file.exists()) {
             val msg = "# Remove\n\n> File not found: `$filePath`\n"
             out.writeText(msg)
@@ -150,12 +164,16 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
             return
         }
 
-        val classSym = if (classSymbols.size == 1) classSymbols.first() else {
-            classSymbols.firstOrNull { it.kind in setOf(
-                SymbolKind.CLASS, SymbolKind.DATA_CLASS, SymbolKind.INTERFACE,
-                SymbolKind.ENUM, SymbolKind.OBJECT,
-            ) } ?: classSymbols.first()
+        if (classSymbols.size > 1) {
+            val listing = classSymbols.joinToString("\n") { s ->
+                "- `${s.qualifiedName}` (${s.kind.label}) — `${s.file.relativeTo(rootDir).path}:${s.line}`"
+            }
+            val msg = "# Remove: `$name`\n\n> **Ambiguous:** found ${classSymbols.size} symbols named `$className`. Use the fully qualified name or specify `-Pmodule`:\n\n$listing\n"
+            out.writeText(msg)
+            logger.lifecycle(msg.trimEnd())
+            return
         }
+        val classSym = classSymbols.first()
 
         val sb = StringBuilder()
 
@@ -303,12 +321,13 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
         sb.appendLine("# Remove: `${classSym.name}.$memberName`")
         sb.appendLine()
 
-        // Find the member in the class file
+        // Find the member within the class body (not beyond the class closing brace)
         val fileLines = classSym.file.readLines()
+        val classEnd = findDeclarationEnd(fileLines, classSym.line - 1)
         val memberPattern = Regex("""(fun|val|var|override\s+fun|override\s+val|override\s+var|private\s+fun|internal\s+fun|protected\s+fun)\s+${Regex.escape(memberName)}\b""")
 
         var memberStart = -1
-        for (i in classSym.line until fileLines.size) {
+        for (i in classSym.line until minOf(classEnd + 1, fileLines.size)) {
             if (memberPattern.containsMatchIn(fileLines[i])) {
                 memberStart = i
                 break
