@@ -258,6 +258,21 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 }
             })
 
+            project.tasks.register("opsx-verify", OpenSpecVerifyTask::class.java).configure(object : org.gradle.api.Action<OpenSpecVerifyTask> {
+                override fun execute(task: OpenSpecVerifyTask) {
+                    if (project.hasProperty("module")) task.module.set(project.property("module").toString())
+                    if (project.hasProperty("maxWarnings")) task.maxWarnings.set(project.property("maxWarnings").toString().toInt())
+                    if (project.hasProperty("failOnWarning")) task.failOnWarning.set(project.property("failOnWarning").toString().lowercase() == "true")
+                    if (project.hasProperty("noCycles")) task.noCycles.set(project.property("noCycles").toString().lowercase() == "true")
+                    if (project.hasProperty("maxInheritanceDepth")) task.maxInheritanceDepth.set(project.property("maxInheritanceDepth").toString().toInt())
+                    if (project.hasProperty("maxClassSize")) task.maxClassSize.set(project.property("maxClassSize").toString().toInt())
+                    if (project.hasProperty("maxImports")) task.maxImports.set(project.property("maxImports").toString().toInt())
+                    if (project.hasProperty("maxMethods")) task.maxMethods.set(project.property("maxMethods").toString().toInt())
+                    if (project.hasProperty("noSmells")) task.noSmells.set(project.property("noSmells").toString().lowercase() == "true")
+                    task.outputFile.set(project.layout.projectDirectory.file(".opsx/verify.md"))
+                }
+            })
+
             // Dynamic task registration from proposals
             registerProposalTasks(project)
 
