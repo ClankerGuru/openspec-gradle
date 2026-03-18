@@ -51,8 +51,8 @@ object TaskReconciler {
         // Build symbol index from source files — scan src/ directories conventionally
         val sourceFiles = projectDir.walkTopDown()
             .filter { it.isFile && it.extension in setOf("kt", "java") }
-            .filter { it.path.contains("/src/") }
-            .filter { !it.path.contains("/build/") && !it.path.contains("/.gradle/") }
+            .filter { val p = it.path.replace('\\', '/'); p.contains("/src/") }
+            .filter { val p = it.path.replace('\\', '/'); !p.contains("/build/") && !p.contains("/.gradle/") }
             .toList()
 
         if (sourceFiles.isEmpty()) return emptyList()

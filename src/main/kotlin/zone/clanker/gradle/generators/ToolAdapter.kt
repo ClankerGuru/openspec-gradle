@@ -34,7 +34,7 @@ interface ToolAdapter {
     fun formatCommandFile(content: CommandContent): String
     fun getSkillFilePath(skillDirName: String): String
     fun formatSkillFile(content: SkillContent): String
-    /** Path to the root agent instructions file (e.g. CLAUDE.md, .github/copilot-instructions.md) */
+    /** Path to the root agent instructions file (e.g. .claude/CLAUDE.md, .github/instructions/opsx.instructions.md, AGENTS.md) */
     fun getInstructionsFilePath(): String
     /** Whether instructions should be appended to an existing file (with markers) vs written fresh */
     val appendInstructions: Boolean get() = false

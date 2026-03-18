@@ -15,8 +15,9 @@ object InstructionsGenerator {
     private const val MARKER_END = "<!-- OPSX:END -->"
 
     private val template: String by lazy {
-        this::class.java.classLoader.getResourceAsStream("templates/instructions.md")!!
-            .bufferedReader().readText()
+        val stream = this::class.java.classLoader.getResourceAsStream("templates/instructions.md")
+            ?: error("Missing resource: templates/instructions.md — plugin JAR may be corrupted")
+        stream.bufferedReader().readText()
     }
 
     fun generate(
@@ -76,7 +77,7 @@ object InstructionsGenerator {
         val startIdx = existing.indexOf(MARKER_START)
         val endIdx = existing.indexOf(MARKER_END)
 
-        if (startIdx >= 0 && endIdx >= 0) {
+        if (startIdx >= 0 && endIdx >= 0 && startIdx < endIdx) {
             // Replace existing OPSX section
             val before = existing.substring(0, startIdx)
             val after = existing.substring(endIdx + MARKER_END.length)
@@ -89,21 +90,22 @@ object InstructionsGenerator {
 
     /**
      * Remove OPSX section from an append-mode instructions file.
+     * Returns true if a file was actually modified or deleted.
      */
-    fun clean(projectDir: File, adapter: ToolAdapter) {
+    fun clean(projectDir: File, adapter: ToolAdapter): Boolean {
         val target = File(projectDir, adapter.getInstructionsFilePath())
-        if (!target.exists()) return
+        if (!target.exists()) return false
 
         if (!adapter.appendInstructions) {
             target.delete()
-            return
+            return true
         }
 
         val content = target.readText()
         val startIdx = content.indexOf(MARKER_START)
         val endIdx = content.indexOf(MARKER_END)
 
-        if (startIdx >= 0 && endIdx >= 0) {
+        if (startIdx >= 0 && endIdx >= 0 && startIdx < endIdx) {
             val before = content.substring(0, startIdx)
             val after = content.substring(endIdx + MARKER_END.length)
             val cleaned = (before + after).trim()
@@ -112,6 +114,8 @@ object InstructionsGenerator {
             } else {
                 target.writeText(cleaned + "\n")
             }
+            return true
         }
+        return false
     }
 }

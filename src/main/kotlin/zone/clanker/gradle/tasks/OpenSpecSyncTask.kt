@@ -89,10 +89,44 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         val totalCount = allFiles.size + instructionFiles.size
         logger.lifecycle("OpenSpec: Generated $totalCount files into ${buildDir.relativeTo(project.projectDir)}")
 
+        // Remove stale generated artifacts before installing the new set
+        removeStaleFiles(allFiles)
+
         // Install to project root
         installFiles(allFiles)
 
         logger.lifecycle("OpenSpec: Installed $totalCount files to project root")
+    }
+
+    /**
+     * Removes previously generated files that are no longer in the current output set.
+     * Prevents stale artifacts from lingering when agents are removed or templates change.
+     */
+    private fun removeStaleFiles(currentFiles: List<GeneratedFile>) {
+        val currentPaths = currentFiles.map { it.relativePath }.toSet()
+        val toolList = tools.get()
+        for (toolId in toolList) {
+            val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+            // Check command directories for stale opsx-prefixed files
+            val probePath = adapter.getCommandFilePath("__probe__")
+            val probeFile = File(project.projectDir, probePath)
+            val commandDir = probeFile.parentFile
+            if (commandDir != null && commandDir.exists() && commandDir.isDirectory) {
+                commandDir.listFiles()?.filter { it.name.startsWith("opsx-") }?.forEach { file ->
+                    val rel = file.relativeTo(project.projectDir).path
+                    if (file.isDirectory) {
+                        // For Codex-style skill dirs, check if the SKILL.md inside is in the current set
+                        val skillMd = File(file, "SKILL.md")
+                        val skillRel = skillMd.relativeTo(project.projectDir).path
+                        if (skillRel !in currentPaths) {
+                            file.deleteRecursively()
+                        }
+                    } else if (rel !in currentPaths) {
+                        file.delete()
+                    }
+                }
+            }
+        }
     }
 
     private fun installFiles(files: List<GeneratedFile>) {
@@ -110,21 +144,21 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         for (toolId in ToolAdapterRegistry.supportedTools()) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
             // Clean instructions file (handles append-mode files with markers)
-            InstructionsGenerator.clean(project.projectDir, adapter)
-            count++
+            if (InstructionsGenerator.clean(project.projectDir, adapter)) count++
             // Clean all command files (static + dynamic task commands)
             val probePath = adapter.getCommandFilePath("__probe__")
             val probeFile = File(project.projectDir, probePath)
             val commandDir = probeFile.parentFile
             if (commandDir != null && commandDir.exists() && commandDir.isDirectory) {
                 // If the command dir is opsx-specific (e.g. .claude/commands/opsx/), clean it entirely
-                // Otherwise clean only opsx-prefixed files (e.g. .github/prompts/opsx-*.prompt.md)
+                // Otherwise clean opsx-prefixed files and directories (e.g. .codex/skills/opsx-find/)
                 if (commandDir.name == "opsx") {
                     commandDir.deleteRecursively()
                     count++
                 } else {
-                    commandDir.listFiles()?.filter { it.isFile && it.name.startsWith("opsx-") }?.forEach {
-                        it.delete(); count++
+                    commandDir.listFiles()?.filter { it.name.startsWith("opsx-") }?.forEach {
+                        if (it.isDirectory) it.deleteRecursively() else it.delete()
+                        count++
                     }
                 }
             }

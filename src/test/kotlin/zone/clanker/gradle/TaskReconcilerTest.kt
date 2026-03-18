@@ -126,9 +126,8 @@ class TaskReconcilerTest {
 
         val warnings = TaskReconciler.reconcile(projectDir)
         // UserServce (typo) should be flagged, UserService should be suggested
-        if (warnings.isNotEmpty()) {
-            val suggestions = warnings[0].suggestions.values.flatten()
-            assertTrue(suggestions.contains("UserService"))
-        }
+        assertTrue(warnings.isNotEmpty(), "Expected warnings for typo 'UserServce'")
+        val suggestions = warnings[0].suggestions.values.flatten()
+        assertTrue(suggestions.contains("UserService"), "Expected 'UserService' as suggestion for 'UserServce'")
     }
 }

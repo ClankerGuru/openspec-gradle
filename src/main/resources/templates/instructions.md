@@ -12,6 +12,7 @@ All project understanding comes from OPSX tasks. All file operations go through 
 Run any task with `./gradlew <task>` (or `./gradlew :<module>:<task>` for subprojects).
 
 ### Discovery
+
 | Task | What it does |
 |------|-------------|
 | `opsx-context` | Project metadata, build stack, frameworks, git info |
@@ -21,15 +22,17 @@ Run any task with `./gradlew <task>` (or `./gradlew :<module>:<task>` for subpro
 | `opsx-devloop` | Build commands, test framework, run commands |
 
 ### Code Intelligence
+
 | Task | What it does |
 |------|-------------|
 | `opsx-arch` | Architecture analysis — component graph, layers, data flow |
 | `opsx-symbols` | Symbol index — classes, functions, interfaces with locations |
-| `opsx-find` | Find symbol by name (use `-Pquery=<name>`) |
-| `opsx-calls` | Call graph for a symbol (use `-Pquery=<name>`) |
-| `opsx-rename` | Preview rename refactoring (use `-Pold=<old> -Pnew=<new>`) |
+| `opsx-find` | Find symbol by name (use `-Psymbol=<name>`) |
+| `opsx-calls` | Call graph for a symbol (use `-Psymbol=<name>`) |
+| `opsx-rename` | Preview rename refactoring (use `-Pfrom=<old> -Pto=<new> -PdryRun=true`) |
 
 ### Workflow
+
 | Task | What it does |
 |------|-------------|
 | `opsx-propose` | Create a new change proposal |
@@ -38,6 +41,7 @@ Run any task with `./gradlew <task>` (or `./gradlew :<module>:<task>` for subpro
 | `opsx-status` | Show status of all changes |
 
 ### Utilities
+
 | Task | What it does |
 |------|-------------|
 | `opsx` | Show task catalog |

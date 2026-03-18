@@ -10,6 +10,9 @@ import java.io.File
  */
 object TaskCommandGenerator {
 
+    // Only allow alphanumeric, hyphens, dots, and underscores in task codes used as file paths
+    private val SAFE_CODE_REGEX = Regex("""^[a-zA-Z0-9][a-zA-Z0-9._-]*$""")
+
     fun generate(projectDir: File, buildDir: File, tools: List<String>, warnings: List<TaskWarning> = emptyList()): List<GeneratedFile> {
         val warningsByCode = warnings.associateBy { it.taskCode }
         val proposals = ProposalScanner.scan(projectDir)
@@ -20,6 +23,8 @@ object TaskCommandGenerator {
         for (proposal in proposals) {
             for (taskItem in proposal.flatten()) {
                 if (taskItem.code.isBlank()) continue
+                // Sanitize task codes to prevent path traversal
+                if (!SAFE_CODE_REGEX.matches(taskItem.code)) continue
 
                 val statusIcon = when (taskItem.status) {
                     TaskStatus.DONE -> "✅"

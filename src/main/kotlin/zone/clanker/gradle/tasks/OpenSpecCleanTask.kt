@@ -1,5 +1,6 @@
 package zone.clanker.gradle.tasks
 
+import zone.clanker.gradle.generators.InstructionsGenerator
 import zone.clanker.gradle.generators.ToolAdapterRegistry
 import zone.clanker.gradle.templates.TemplateRegistry
 import org.gradle.api.DefaultTask
@@ -25,8 +26,16 @@ abstract class OpenSpecCleanTask : DefaultTask() {
         val toolList = tools.get()
         var count = 0
 
+        val seenInstructionPaths = mutableSetOf<String>()
         for (toolId in toolList) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+
+            // Clean instructions file (handles append-mode files with markers)
+            val instrPath = adapter.getInstructionsFilePath()
+            if (instrPath !in seenInstructionPaths) {
+                seenInstructionPaths.add(instrPath)
+                if (InstructionsGenerator.clean(project.projectDir, adapter)) count++
+            }
 
             for (cmd in TemplateRegistry.getCommandTemplates()) {
                 val file = File(project.projectDir, adapter.getCommandFilePath(cmd.id))
