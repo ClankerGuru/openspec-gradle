@@ -172,6 +172,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     }
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/rename.md"))
+                    task.finalizedBy("opsx-sync")
                 }
             })
 
@@ -196,6 +197,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     }
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/move.md"))
+                    task.finalizedBy("opsx-sync")
                 }
             })
 
