@@ -1,6 +1,6 @@
 # openspec-gradle
 
-[![🤖 clanker](https://img.shields.io/badge/🤖-clanker-black?style=flat-square)](https://github.com/ClankerGuru) [![Kotlin](https://img.shields.io/badge/Kotlin-2.1-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org) [![CI](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml/badge.svg)](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml) [![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/zone.clanker.gradle?label=Gradle%20Plugin%20Portal&style=flat-square)](https://plugins.gradle.org/plugin/zone.clanker.gradle) [![Maven Central](https://img.shields.io/maven-central/v/zone.clanker/openspec-gradle?label=Maven%20Central&style=flat-square)](https://central.sonatype.com/artifact/zone.clanker/openspec-gradle) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![🤖 clanker](https://img.shields.io/badge/🤖-clanker-black?style=flat-square)](https://github.com/ClankerGuru) [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org) [![CI](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml/badge.svg)](https://github.com/ClankerGuru/openspec-gradle/actions/workflows/ci.yml) [![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/zone.clanker.gradle?label=Gradle%20Plugin%20Portal&style=flat-square)](https://plugins.gradle.org/plugin/zone.clanker.gradle) [![Maven Central](https://img.shields.io/maven-central/v/zone.clanker/openspec-gradle?label=Maven%20Central&style=flat-square)](https://central.sonatype.com/artifact/zone.clanker/openspec-gradle) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 **Gradle as a dynamic context engine for AI coding agents.**
 
@@ -29,7 +29,7 @@ plugins {
 That's it. Your agent now has project context, skills, and commands.
 
 > **Go global** — `./gradlew opsx-install` installs an init script at `~/.gradle/init.d/`.
-> Every Gradle project on your machine gets OpenSpec automatically. No `plugins {}` block needed.
+> Every Gradle project on your machine gets OPSX automatically. No `plugins {}` block needed.
 
 ---
 
@@ -48,16 +48,16 @@ That's it. Your agent now has project context, skills, and commands.
 | `opsx-deps` | Resolved dependency tree (actual versions after conflict resolution) |
 | `opsx-modules` | Module graph with source counts, detected types, Mermaid diagram |
 | `opsx-devloop` | Dev workflow: build stack, test frameworks, useful flags, module table |
-| `opsx-arch` | Architecture analysis: dependency graph, layers, entry points, smells |
 
 ### 🧠 Code Intelligence — Replace grep with Gradle
 
 | Task | What it does | Key options |
 |---|---|---|
+| `opsx-arch` | Architecture: dependency graph, layers, entry points, smells | — |
 | `opsx-symbols` | Full symbol index with usage counts | `-Psymbol=Name` `-Pfile=path` |
 | `opsx-find` | Find all usages of a symbol (imports, calls, type refs) | `-Psymbol=BookRepository` |
+| `opsx-calls` | Method-level call graph with Mermaid diagrams | `-Psymbol=ClassName` `-Pmodule=shared` |
 | `opsx-rename` | Safe rename across the codebase with preview | `-Pfrom=Old -Pto=New -PdryRun=true` |
-| `opsx-calls` | Method-level call graph with Mermaid diagrams | `-Pmodule=shared` |
 
 > Code intelligence works on **Kotlin** and **Java** — including KMP multi-source-set projects.
 
@@ -65,16 +65,16 @@ That's it. Your agent now has project context, skills, and commands.
 
 | Task | What it does |
 |---|---|
-| `opsx-sync` | Generate all agent files (context + skills + commands) |
 | `opsx-propose` | Create a change proposal with task scaffolding |
 | `opsx-apply` | Mark a proposal ready to implement |
 | `opsx-archive` | Archive a completed proposal |
-| `opsx-status` | Dashboard with progress bars for proposals |
+| `opsx-status` | Dashboard with progress bars for active proposals |
 
 ### 🛠️ Utilities
 
 | Task | What it does |
 |---|---|
+| `opsx-sync` | Generate all agent files (context + skills + commands + instructions) |
 | `opsx-clean` | Remove all generated files |
 | `opsx-install` | Install globally via init script |
 
@@ -104,26 +104,55 @@ All cached via `@CacheableTask` — only regenerates when build files change.
 ./gradlew opsx-arch
 ```
 
-Generates a full architecture report: component classification (controllers, services, repositories, entities), dependency graph with Mermaid diagrams, sequence diagrams, layer analysis, hub classes, and code smell detection. Works on any project — JVM, KMP, Android, Spring, CLI, library.
+Full architecture report: component classification (controllers, services, repositories, entities), dependency graph with Mermaid diagrams, sequence diagrams, layer analysis, hub classes, and code smell detection. Works on any project — JVM, KMP, Android, Spring, CLI, library.
 
 ### Code Intelligence
 
 ```bash
 ./gradlew opsx-symbols                          # all symbols
 ./gradlew opsx-find -Psymbol=BookRepository     # find usages
-./gradlew opsx-calls -Pmodule=shared            # call graph
+./gradlew opsx-calls -Psymbol=BookService       # call graph
 ./gradlew opsx-rename -Pfrom=Foo -Pto=Bar -PdryRun=true  # preview rename
 ```
 
 Replaces `grep`/`sed`/Python scripts with build-aware symbol analysis. The index resolves qualified names through imports, distinguishes declaration/call/type-ref/constructor/supertype references, and generates Mermaid flowcharts and sequence diagrams for call graphs.
 
+### Agent Instructions
+
+`opsx-sync` generates root instruction files that teach agents about available tasks:
+
+| Agent | Instructions file | Delivery |
+|---|---|---|
+| Claude | `.claude/CLAUDE.md` | Standalone (auto-discovered) |
+| Copilot | `.github/instructions/opsx.instructions.md` | Additive (merges with your own) |
+| Codex / OpenCode / Crush | `AGENTS.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
+
+For Codex, OpenCode, and Crush — your existing `AGENTS.md` content is preserved. OPSX adds its section between markers and updates it on every sync.
+
 ### Agent Skills & Commands
 
-```bash
-./gradlew opsx-sync
+Skills encode workflows (propose, apply, archive, explore, verify) so the agent knows *how* to work with your project — not just what's in it. Commands give agents slash-command-style actions (`/opsx:find`, `/opsx:rename`, `/opsx:status`).
+
+### Dynamic Task Commands
+
+Every task code in your proposals becomes a slash command automatically:
+
+```markdown
+- [ ] `aua-1` Create User model
+- [ ] `aua-2` JWT service → depends: aua-1
 ```
 
-Generates skill and command files formatted for your agent. Skills encode workflows (propose, apply, archive, explore, sync, verify) so the agent knows *how* to work with your project — not just what's in it.
+On next build: `/opsx:aua-1` and `/opsx:aua-2` appear as agent commands, each with full context — the proposal, design, dependencies, and implementation instructions.
+
+### Task Reconciler
+
+The reconciler checks task descriptions against the current codebase symbol index. If a task references a class that no longer exists, you get a warning:
+
+```
+⚠️ aua-3 (add-user-auth): references missing symbol(s): UserController → did you mean: BookController?
+```
+
+Warnings appear in `opsx-status` and in the generated task commands.
 
 ### Task Tracking
 
@@ -151,6 +180,15 @@ Track progress:
 ./gradlew opsx-aua-1 --set=done        # finish it
 ```
 
+### Lifecycle Hooks
+
+OPSX hooks into the standard Gradle lifecycle:
+
+- **`assemble`** → triggers `opsx-sync` (regenerates all agent files)
+- **`clean`** → triggers `opsx-clean` (removes `.opsx/` and generated files)
+
+Every `./gradlew assemble` (or `./gradlew build`) keeps your agent context fresh automatically.
+
 ---
 
 ## Configuration
@@ -161,7 +199,7 @@ One property in `gradle.properties`:
 zone.clanker.openspec.agents=claude
 ```
 
-| Value | Agent | Where files go |
+| Value | Agent | Skills & commands |
 |---|---|---|
 | `github` | GitHub Copilot | `.github/prompts/` · `.github/skills/` |
 | `claude` | Claude Code | `.claude/commands/` · `.claude/skills/` |
@@ -179,7 +217,7 @@ Combine agents: `github,claude` · Per-project overrides global · Set `none` to
 ./gradlew opsx-install
 ```
 
-Installs to `~/.gradle/init.d/openspec-init.gradle.kts`. Every Gradle project on your machine gets OpenSpec — no `plugins {}` block needed. Set your agent once in `~/.gradle/gradle.properties`:
+Installs to `~/.gradle/init.d/openspec-init.gradle.kts`. Every Gradle project on your machine gets OPSX — no `plugins {}` block needed. Set your agent once in `~/.gradle/gradle.properties`:
 
 ```properties
 zone.clanker.openspec.agents=claude
@@ -204,10 +242,10 @@ Most AI context tools work outside the build system — scanning files, guessing
 
 ## Roadmap
 
-- **`opsx-verify`** — Validate that code changes conform to declared architecture rules (e.g., UI packages don't import data packages directly).
-- **Deterministic refactoring.** Expand `opsx-rename` into a full refactoring toolkit — extract, move, inline — with IDE-quality safety.
-- **Pre-approved execution.** Gradle tasks are sandboxed and declarative — agents chain tasks without prompting for approval on each step.
-- **Architecture pattern detection.** Pluggable, community-driven skills that identify and enforce patterns (MVVM, Clean Architecture, etc.).
+- **`opsx-verify`** — Architecture rule enforcement. Validate that code changes conform to declared boundaries.
+- **Deterministic refactoring** — Expand `opsx-rename` into a full refactoring toolkit (extract, move, inline) with IDE-quality safety.
+- **Pre-approved execution** — Agents chain tasks without prompting for approval on each step.
+- **Architecture pattern detection** — Pluggable, community-driven skills that identify and enforce patterns.
 
 ---
 
@@ -216,7 +254,7 @@ Most AI context tools work outside the build system — scanning files, guessing
 - **Zero config.** One property. No DSL blocks. No YAML files.
 - **Nothing committed.** All generated content excluded via global gitignore.
 - **Gradle is the API.** Every output comes from a cacheable, composable task.
-- **Code is truth.** Architecture analysis reads code, not docs. Documentation can lie; code can't.
+- **Code is truth.** Architecture analysis reads code, not docs.
 - **Agent-agnostic.** Same structured context, formatted for each agent's conventions.
 - **Per-developer.** Different agents, different proposals, no conflicts.
 
