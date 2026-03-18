@@ -213,7 +213,6 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     if (project.hasProperty("startLine")) task.startLine.set(project.property("startLine").toString().toInt())
                     if (project.hasProperty("endLine")) task.endLine.set(project.property("endLine").toString().toInt())
                     if (project.hasProperty("newName")) task.newName.set(project.property("newName").toString())
-                    if (project.hasProperty("targetFile")) task.targetFile.set(project.property("targetFile").toString())
                     if (project.hasProperty("dryRun")) {
                         val value = project.property("dryRun").toString().lowercase()
                         if (value !in setOf("true", "false")) {

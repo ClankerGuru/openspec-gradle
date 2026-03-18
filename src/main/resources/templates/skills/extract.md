@@ -17,5 +17,4 @@ Extract a block of code into a new function or class.
 
 - The task suggests but does NOT auto-apply (extraction needs human judgment)
 - Free variable detection is heuristic — review the parameter list
-- For extracting to a new file, add `-PtargetFile=path/NewFile.kt`
 - Works best with Kotlin; Java support is basic

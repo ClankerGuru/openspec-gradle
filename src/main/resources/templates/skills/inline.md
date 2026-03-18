@@ -1,4 +1,4 @@
-Inline a function or class — replace call sites with the implementation body. This is the reverse of extract.
+Inline a function/method — replace call sites with the implementation body. This is the reverse of extract.
 
 ## Steps
 

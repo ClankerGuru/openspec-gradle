@@ -24,9 +24,6 @@ abstract class OpenSpecExtractTask : DefaultTask() {
     abstract val newName: Property<String>
 
     @get:Input @get:Optional
-    abstract val targetFile: Property<String>
-
-    @get:Input @get:Optional
     abstract val dryRun: Property<Boolean>
 
     @get:OutputFile
@@ -36,8 +33,7 @@ abstract class OpenSpecExtractTask : DefaultTask() {
         group = "opsx"
         description = "[tool] Extract a block of code into a new function or class. " +
             "Output: .opsx/extract.md. " +
-            "Options: -PsourceFile=path -PstartLine=N -PendLine=M -PnewName=Name (required), " +
-            "-PtargetFile=path (optional, for extracting to new file), -PdryRun=true (preview only). " +
+            "Options: -PsourceFile=path -PstartLine=N -PendLine=M -PnewName=Name (required), -PdryRun=true (preview only). " +
             "Use when: You want to extract a method, function, or class from existing code. " +
             "Chain: Run opsx-usages after to verify the extraction."
     }
@@ -125,7 +121,7 @@ abstract class OpenSpecExtractTask : DefaultTask() {
         sb.appendLine()
         if (freeVars.isNotEmpty()) {
             sb.appendLine("```kotlin")
-            sb.appendLine("private fun $name(${freeVars.sorted().joinToString(", ") { "$it: TODO()" }}) {")
+            sb.appendLine("private fun $name(${freeVars.sorted().joinToString(", ") { "$it: Any /* TODO: refine type */" }}) {")
             for (line in extractedLines) {
                 sb.appendLine(line.removePrefix(baseIndent).prependIndent("    "))
             }

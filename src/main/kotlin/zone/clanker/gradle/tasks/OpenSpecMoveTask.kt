@@ -109,8 +109,15 @@ abstract class OpenSpecMoveTask : DefaultTask() {
             val lines = file.readLines()
             lines.forEachIndexed { idx, line ->
                 val trimmed = line.trim()
-                if (trimmed == "import $oldQualified" || trimmed == "import ${oldPkg}.*") {
-                    importEdits.add(ImportEdit(file, idx + 1, line, "import $newQualified"))
+                when {
+                    trimmed == "import $oldQualified" ->
+                        importEdits.add(ImportEdit(file, idx + 1, line, "import $newQualified"))
+                    trimmed == "import ${oldPkg}.*" ->
+                        importEdits.add(ImportEdit(file, idx + 1, line, "import $newQualified"))
+                    trimmed.startsWith("import $oldQualified as ") -> {
+                        val alias = trimmed.substringAfter("import $oldQualified as ").trim()
+                        importEdits.add(ImportEdit(file, idx + 1, line, "import $newQualified as $alias"))
+                    }
                 }
             }
         }
@@ -146,6 +153,9 @@ abstract class OpenSpecMoveTask : DefaultTask() {
             )
             newFile.parentFile.mkdirs()
             newFile.writeText(updatedContent)
+            if (!newFile.exists() || newFile.readText() != updatedContent) {
+                throw org.gradle.api.GradleException("Failed to write moved file to ${newFile.path}")
+            }
             sourceFile.delete()
 
             // Clean up empty parent dirs

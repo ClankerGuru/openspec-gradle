@@ -69,6 +69,8 @@ abstract class OpenSpecUsagesTask : DefaultTask() {
             sb.appendLine("📍 **Declared at:** `$relPath:${sym.line}`")
             sb.appendLine()
 
+            val wordBoundary = Regex("\\b${Regex.escape(sym.name)}\\b")
+
             // Find all lines in all files that reference this symbol
             val usageLocations = mutableListOf<UsageLocation>()
             for (file in sourceFiles) {
@@ -79,8 +81,8 @@ abstract class OpenSpecUsagesTask : DefaultTask() {
                     val trimmed = line.trim()
                     // Skip blank lines and package declarations
                     if (trimmed.isBlank() || trimmed.startsWith("package ")) return@forEachIndexed
-                    // Check if line references the symbol name
-                    if (line.contains(sym.name)) {
+                    // Check if line references the symbol name (word boundary)
+                    if (wordBoundary.containsMatchIn(line)) {
                         val kind = when {
                             trimmed.startsWith("import ") -> "import"
                             trimmed.contains("${sym.name}(") -> "call"
@@ -100,7 +102,7 @@ abstract class OpenSpecUsagesTask : DefaultTask() {
                 if (lineNum == sym.line) return@forEachIndexed
                 val trimmed = line.trim()
                 if (trimmed.isBlank() || trimmed.startsWith("package ")) return@forEachIndexed
-                if (line.contains(sym.name)) {
+                if (wordBoundary.containsMatchIn(line)) {
                     val kind = when {
                         trimmed.startsWith("import ") -> "import"
                         trimmed.contains("${sym.name}(") -> "call"
