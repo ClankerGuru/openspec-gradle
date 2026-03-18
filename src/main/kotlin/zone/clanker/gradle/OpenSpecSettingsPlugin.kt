@@ -10,6 +10,12 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.initialization.Settings
 import java.io.File
 
+private fun Project.intProperty(name: String): Int? =
+    if (hasProperty(name)) {
+        val raw = property(name).toString()
+        raw.toIntOrNull() ?: throw org.gradle.api.GradleException("Invalid integer value '$raw' for property '$name'")
+    } else null
+
 class OpenSpecSettingsPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
@@ -198,7 +204,11 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     }
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/rename.md"))
-                    task.finalizedBy("opsx-sync")
+                    // Only auto-sync after successful mutation (not dry-run)
+                    val isDryRun = project.hasProperty("dryRun") && project.property("dryRun").toString().lowercase() == "true"
+                    if (!isDryRun) {
+                        task.finalizedBy("opsx-sync")
+                    }
                 }
             })
 
@@ -223,7 +233,10 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     }
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/move.md"))
-                    task.finalizedBy("opsx-sync")
+                    val isDryRun = project.hasProperty("dryRun") && project.property("dryRun").toString().lowercase() == "true"
+                    if (!isDryRun) {
+                        task.finalizedBy("opsx-sync")
+                    }
                 }
             })
 
@@ -238,8 +251,8 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             project.tasks.register("opsx-extract", OpenSpecExtractTask::class.java).configure(object : org.gradle.api.Action<OpenSpecExtractTask> {
                 override fun execute(task: OpenSpecExtractTask) {
                     if (project.hasProperty("sourceFile")) task.sourceFile.set(project.property("sourceFile").toString())
-                    if (project.hasProperty("startLine")) task.startLine.set(project.property("startLine").toString().toInt())
-                    if (project.hasProperty("endLine")) task.endLine.set(project.property("endLine").toString().toInt())
+                    project.intProperty("startLine")?.let { task.startLine.set(it) }
+                    project.intProperty("endLine")?.let { task.endLine.set(it) }
                     if (project.hasProperty("newName")) task.newName.set(project.property("newName").toString())
                     if (project.hasProperty("dryRun")) {
                         val value = project.property("dryRun").toString().lowercase()
@@ -293,13 +306,13 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             project.tasks.register("opsx-verify", OpenSpecVerifyTask::class.java).configure(object : org.gradle.api.Action<OpenSpecVerifyTask> {
                 override fun execute(task: OpenSpecVerifyTask) {
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
-                    if (project.hasProperty("maxWarnings")) task.maxWarnings.set(project.property("maxWarnings").toString().toInt())
+                    project.intProperty("maxWarnings")?.let { task.maxWarnings.set(it) }
                     if (project.hasProperty("failOnWarning")) task.failOnWarning.set(project.property("failOnWarning").toString().lowercase() == "true")
                     if (project.hasProperty("noCycles")) task.noCycles.set(project.property("noCycles").toString().lowercase() == "true")
-                    if (project.hasProperty("maxInheritanceDepth")) task.maxInheritanceDepth.set(project.property("maxInheritanceDepth").toString().toInt())
-                    if (project.hasProperty("maxClassSize")) task.maxClassSize.set(project.property("maxClassSize").toString().toInt())
-                    if (project.hasProperty("maxImports")) task.maxImports.set(project.property("maxImports").toString().toInt())
-                    if (project.hasProperty("maxMethods")) task.maxMethods.set(project.property("maxMethods").toString().toInt())
+                    project.intProperty("maxInheritanceDepth")?.let { task.maxInheritanceDepth.set(it) }
+                    project.intProperty("maxClassSize")?.let { task.maxClassSize.set(it) }
+                    project.intProperty("maxImports")?.let { task.maxImports.set(it) }
+                    project.intProperty("maxMethods")?.let { task.maxMethods.set(it) }
                     if (project.hasProperty("noSmells")) task.noSmells.set(project.property("noSmells").toString().lowercase() == "true")
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/verify.md"))
                 }

@@ -93,13 +93,19 @@ abstract class OpenSpecVerifyTask : DefaultTask() {
         val maxImp = maxImports.getOrElse(30)
         val maxMeth = maxMethods.getOrElse(25)
 
+        // Track which components have custom threshold violations to avoid double-counting
+        // with detectGodClasses (which uses the same default thresholds)
+        val thresholdViolatedNames = mutableSetOf<String>()
+
         for (c in components) {
+            var hasViolation = false
             if (c.source.lineCount > maxSize) {
                 customViolations.add(Violation(
                     Violation.Level.WARNING,
                     "`${c.source.simpleName}` exceeds max class size (${c.source.lineCount} > $maxSize lines)",
                     c.source.file.relativeTo(rootDir),
                 ))
+                hasViolation = true
             }
             if (c.source.imports.size > maxImp) {
                 customViolations.add(Violation(
@@ -107,6 +113,7 @@ abstract class OpenSpecVerifyTask : DefaultTask() {
                     "`${c.source.simpleName}` exceeds max imports (${c.source.imports.size} > $maxImp)",
                     c.source.file.relativeTo(rootDir),
                 ))
+                hasViolation = true
             }
             if (c.source.methods.size > maxMeth) {
                 customViolations.add(Violation(
@@ -114,7 +121,18 @@ abstract class OpenSpecVerifyTask : DefaultTask() {
                     "`${c.source.simpleName}` exceeds max methods (${c.source.methods.size} > $maxMeth)",
                     c.source.file.relativeTo(rootDir),
                 ))
+                hasViolation = true
             }
+            // Enforce inheritance depth
+            if (c.source.supertypes.size > maxDepth) {
+                customViolations.add(Violation(
+                    Violation.Level.WARNING,
+                    "`${c.source.simpleName}` exceeds max inheritance depth (${c.source.supertypes.size} > $maxDepth)",
+                    c.source.file.relativeTo(rootDir),
+                ))
+                hasViolation = true
+            }
+            if (hasViolation) thresholdViolatedNames.add(c.source.simpleName)
         }
 
         // Check cycles
@@ -131,7 +149,12 @@ abstract class OpenSpecVerifyTask : DefaultTask() {
             it.message.contains("helper class", ignoreCase = true) ||
             it.message.contains("util class", ignoreCase = true)
         }
-        val otherPatterns = antiPatterns - cyclePatterns.toSet() - smellPatterns.toSet()
+        // Filter out god-class anti-patterns for components already caught by custom thresholds
+        val godClassPatterns = antiPatterns.filter { it.message.contains("may be doing too much") }
+        val deduplicatedGodClass = godClassPatterns.filter { pattern ->
+            thresholdViolatedNames.none { name -> pattern.message.contains("`$name`") }
+        }
+        val otherPatterns = (antiPatterns - cyclePatterns.toSet() - smellPatterns.toSet() - godClassPatterns.toSet()) + deduplicatedGodClass
 
         // Build report
         val sb = StringBuilder()
