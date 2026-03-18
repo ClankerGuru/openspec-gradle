@@ -91,6 +91,7 @@ object ClaudeAdapter : ToolAdapter {
     override fun getSkillFilePath(skillDirName: String) = ".claude/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
     override fun getInstructionsFilePath() = ".claude/CLAUDE.md"
+    override val appendInstructions: Boolean get() = true
 }
 
 object GitHubCopilotAdapter : ToolAdapter {
@@ -106,7 +107,8 @@ object GitHubCopilotAdapter : ToolAdapter {
     }
     override fun getSkillFilePath(skillDirName: String) = ".github/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
-    override fun getInstructionsFilePath() = ".github/instructions/opsx.instructions.md"
+    override fun getInstructionsFilePath() = ".github/copilot-instructions.md"
+    override val appendInstructions: Boolean get() = true
 }
 
 object CodexAdapter : ToolAdapter {

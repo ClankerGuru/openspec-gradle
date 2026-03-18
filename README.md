@@ -58,7 +58,14 @@ That's it. Your agent now has project context, skills, and commands.
 | `opsx-find` | Find all usages of a symbol (imports, calls, type refs) | `-Psymbol=BookRepository` |
 | `opsx-calls` | Method-level call graph with Mermaid diagrams | `-Psymbol=ClassName` `-Pmodule=shared` |
 | `opsx-rename` | Safe rename across the codebase with preview | `-Pfrom=Old -Pto=New -PdryRun=true` |
+| `opsx-move` | Move symbol to a different package | `-Psymbol=Name -PtargetPackage=pkg` |
+| `opsx-usages` | Find all usages of a symbol with context | `-Psymbol=Name` |
+| `opsx-extract` | Extract lines into a new function | `-PsourceFile=path -PstartLine=N -PendLine=M -PnewName=name` |
+| `opsx-remove` | Remove a symbol or line range, cleaning up imports | `-Psymbol=Name` or `-Pfile=path -PstartLine=N -PendLine=M` |
+| `opsx-verify` | Enforce architecture rules, fail build on violations | `-PnoCycles -PnoSmells -PmaxClassSize=500` |
 
+> All refactoring tasks default to **dry-run** (`-PdryRun=true`). Add `-PdryRun=false` to execute.
+>
 > Code intelligence works on **Kotlin** and **Java** — including KMP multi-source-set projects.
 
 ### 📋 Workflow — Proposals & Tracking
@@ -242,8 +249,8 @@ Most AI context tools work outside the build system — scanning files, guessing
 
 ## Roadmap
 
-- **`opsx-verify`** — Architecture rule enforcement. Validate that code changes conform to declared boundaries.
-- **Deterministic refactoring** — Expand `opsx-rename` into a full refactoring toolkit (extract, move, inline) with IDE-quality safety.
+- **Composite build awareness** — Cross-build context and task coordination for included builds.
+- **Per-module output splitting** — Separate `.opsx/` files per module for large projects.
 - **Pre-approved execution** — Agents chain tasks without prompting for approval on each step.
 - **Architecture pattern detection** — Pluggable, community-driven skills that identify and enforce patterns.
 
