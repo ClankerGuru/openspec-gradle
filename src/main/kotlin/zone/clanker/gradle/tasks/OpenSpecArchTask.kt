@@ -39,69 +39,83 @@ abstract class OpenSpecArchTask : DefaultTask() {
 
         val root = project.rootProject
         val rootDir = root.projectDir
+        val isMultiModule = root.subprojects.isNotEmpty() && !module.isPresent
+
+        if (isMultiModule) {
+            analyzeMultiModule(out, root, rootDir)
+        } else {
+            analyzeSingleModule(out, root, rootDir)
+        }
+    }
+
+    private fun analyzeSingleModule(out: File, root: org.gradle.api.Project, rootDir: File) {
         val projects = resolveProjects()
-
-        val srcDirs = projects.flatMap { proj ->
-            val dirs = mutableListOf<java.io.File>()
-
-            // Java/Kotlin JVM source sets
-            val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java)
-            javaExt?.sourceSets?.forEach { ss ->
-                dirs.addAll(ss.allSource.srcDirs.filter { it.exists() })
-            }
-
-            // KMP source sets — discover via the kotlin extension reflectively
-            if (dirs.isEmpty()) {
-                try {
-                    val kotlinExt = proj.extensions.findByName("kotlin")
-                    if (kotlinExt != null) {
-                        val sourceSets = kotlinExt.javaClass.getMethod("getSourceSets").invoke(kotlinExt)
-                        if (sourceSets is Iterable<*>) {
-                            for (ss in sourceSets) {
-                                if (ss == null) continue
-                                val kotlin = ss.javaClass.getMethod("getKotlin").invoke(ss)
-                                if (kotlin != null) {
-                                    val srcDirSet = kotlin.javaClass.getMethod("getSrcDirs").invoke(kotlin)
-                                    if (srcDirSet is Set<*>) {
-                                        srcDirSet.filterIsInstance<java.io.File>().filter { it.exists() }.forEach { dirs.add(it) }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (_: Exception) {}
-            }
-
-            // Fallback: scan conventional source directories
-            if (dirs.isEmpty()) {
-                val srcDir = proj.file("src")
-                if (srcDir.exists()) {
-                    srcDir.listFiles()?.forEach { setDir ->
-                        val kotlinDir = java.io.File(setDir, "kotlin")
-                        val javaDir = java.io.File(setDir, "java")
-                        if (kotlinDir.exists()) dirs.add(kotlinDir)
-                        if (javaDir.exists()) dirs.add(javaDir)
-                    }
-                }
-            }
-
-            dirs
-        }.distinctBy { it.absolutePath }
-
+        val srcDirs = discoverSrcDirs(projects)
         val sources = scanSources(srcDirs).distinctBy { it.file.absolutePath }
+
         if (sources.isEmpty()) {
             out.writeText("# Architecture Analysis\n\n> No source files found.\n")
             logger.lifecycle("OpenSpec: No sources found for architecture analysis.")
             return
         }
 
+        out.writeText(generateArchContent("Architecture Analysis", sources, rootDir))
+        logger.lifecycle("OpenSpec: Generated architecture analysis at ${out.relativeTo(rootDir)}")
+    }
+
+    private fun analyzeMultiModule(out: File, root: org.gradle.api.Project, rootDir: File) {
+        val subDir = out.parentFile.resolve("arch")
+        subDir.mkdirs()
+
+        data class ModuleStats(val name: String, val displayName: String, val files: Int, val deps: Int, val warnings: Int)
+        val stats = mutableListOf<ModuleStats>()
+
+        val allProjects = listOf(root) + root.subprojects.sortedBy { it.path }
+        for (proj in allProjects) {
+            val srcDirs = discoverSrcDirs(listOf(proj))
+            val sources = scanSources(srcDirs).distinctBy { it.file.absolutePath }
+            if (sources.isEmpty()) continue
+
+            val moduleName = if (proj == root) "root" else proj.name
+            val displayName = if (proj == root) ":root" else proj.path
+
+            val components = classifyAll(sources)
+            val edges = buildDependencyGraph(components)
+            val antiPatterns = detectAntiPatterns(components, edges, rootDir)
+            val warnings = antiPatterns.count { it.severity == AntiPattern.Severity.WARNING }
+
+            val content = generateArchContent("Architecture Analysis — $displayName", sources, rootDir)
+            File(subDir, "$moduleName.md").writeText(content)
+
+            stats.add(ModuleStats(moduleName, displayName, sources.size, edges.size, warnings))
+        }
+
+        // Write index
+        val sb = StringBuilder()
+        sb.appendLine("# Architecture Analysis")
+        sb.appendLine()
+        if (stats.isEmpty()) {
+            sb.appendLine("> No source files found.")
+        } else {
+            sb.appendLine("| Module | Files | Dependencies | Warnings |")
+            sb.appendLine("|--------|-------|-------------|----------|")
+            for (s in stats) {
+                sb.appendLine("| [${s.displayName}](arch/${s.name}.md) | ${s.files} | ${s.deps} | ${s.warnings} |")
+            }
+        }
+        sb.appendLine()
+        out.writeText(sb.toString())
+        logger.lifecycle("OpenSpec: Generated architecture analysis (${stats.size} modules) at ${out.relativeTo(rootDir)}")
+    }
+
+    private fun generateArchContent(title: String, sources: List<SourceFile>, rootDir: File): String {
         val components = classifyAll(sources)
         val edges = buildDependencyGraph(components)
         val antiPatterns = detectAntiPatterns(components, edges, rootDir)
         val hubs = findHubClasses(components, edges)
 
         val sb = StringBuilder()
-        sb.appendLine("# Architecture Analysis")
+        sb.appendLine("# $title")
         sb.appendLine()
 
         // ── Summary ──
@@ -179,8 +193,53 @@ abstract class OpenSpecArchTask : DefaultTask() {
             sb.appendLine()
         }
 
-        out.writeText(sb.toString())
-        logger.lifecycle("OpenSpec: Generated architecture analysis at ${out.relativeTo(rootDir)}")
+        return sb.toString()
+    }
+
+    private fun discoverSrcDirs(projects: List<org.gradle.api.Project>): List<File> {
+        return projects.flatMap { proj ->
+            val dirs = mutableListOf<java.io.File>()
+
+            val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java)
+            javaExt?.sourceSets?.forEach { ss ->
+                dirs.addAll(ss.allSource.srcDirs.filter { it.exists() })
+            }
+
+            if (dirs.isEmpty()) {
+                try {
+                    val kotlinExt = proj.extensions.findByName("kotlin")
+                    if (kotlinExt != null) {
+                        val sourceSets = kotlinExt.javaClass.getMethod("getSourceSets").invoke(kotlinExt)
+                        if (sourceSets is Iterable<*>) {
+                            for (ss in sourceSets) {
+                                if (ss == null) continue
+                                val kotlin = ss.javaClass.getMethod("getKotlin").invoke(ss)
+                                if (kotlin != null) {
+                                    val srcDirSet = kotlin.javaClass.getMethod("getSrcDirs").invoke(kotlin)
+                                    if (srcDirSet is Set<*>) {
+                                        srcDirSet.filterIsInstance<java.io.File>().filter { it.exists() }.forEach { dirs.add(it) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (dirs.isEmpty()) {
+                val srcDir = proj.file("src")
+                if (srcDir.exists()) {
+                    srcDir.listFiles()?.forEach { setDir ->
+                        val kotlinDir = java.io.File(setDir, "kotlin")
+                        val javaDir = java.io.File(setDir, "java")
+                        if (kotlinDir.exists()) dirs.add(kotlinDir)
+                        if (javaDir.exists()) dirs.add(javaDir)
+                    }
+                }
+            }
+
+            dirs
+        }.distinctBy { it.absolutePath }
     }
 
     private fun appendPackageStructure(sb: StringBuilder, components: List<ClassifiedComponent>, rootDir: File) {
