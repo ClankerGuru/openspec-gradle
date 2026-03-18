@@ -237,6 +237,16 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     }
                 }
             })
+
+            // Hook opsx-clean into clean
+            project.tasks.matching { it.name == "clean" }.configureEach {
+                dependsOn("opsx-clean")
+            }
+
+            // Auto-generate discovery files on build
+            project.tasks.matching { it.name == "build" }.configureEach {
+                dependsOn("opsx-sync")
+            }
         }
 
         /**

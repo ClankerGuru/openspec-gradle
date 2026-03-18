@@ -69,16 +69,21 @@ abstract class OpenSpecStatusTask : DefaultTask() {
 
         sb.appendLine("# Status")
         sb.appendLine()
-        sb.appendLine("**${proposals.size} proposals** — $activeCount active, $completedCount completed — **$doneTasks/$totalTasks tasks done** (${progressPercent(doneTasks, totalTasks)}%)")
+        val overallPct = progressPercent(doneTasks, totalTasks)
+        sb.appendLine("${progressBar(overallPct)} **$doneTasks/$totalTasks tasks done**")
+        sb.appendLine()
+        sb.appendLine("📊 **${proposals.size} proposals** — $activeCount active, $completedCount completed")
         sb.appendLine()
 
         // Active proposals
         val active = proposals.filter { it.progressPercent < 100 }
         if (active.isNotEmpty()) {
-            sb.appendLine("## Active")
+            sb.appendLine("## 🔄 Active")
             sb.appendLine()
             for (p in active) {
-                sb.appendLine("### ${p.name} (${p.progressPercent}%)")
+                sb.appendLine("### ${p.name}")
+                sb.appendLine()
+                sb.appendLine("${progressBar(p.progressPercent)} ${p.progressPercent}% — ${p.doneCount}/${p.totalCount} tasks")
                 sb.appendLine()
                 renderTasks(sb, p.tasks, "")
                 sb.appendLine()
@@ -88,10 +93,10 @@ abstract class OpenSpecStatusTask : DefaultTask() {
         // Completed
         val completed = proposals.filter { it.progressPercent == 100 }
         if (completed.isNotEmpty()) {
-            sb.appendLine("## Completed")
+            sb.appendLine("## ✅ Completed")
             sb.appendLine()
             for (p in completed) {
-                sb.appendLine("- ~~${p.name}~~ ✅")
+                sb.appendLine("- ✅ ~~${p.name}~~")
             }
             sb.appendLine()
         }
@@ -114,9 +119,9 @@ abstract class OpenSpecStatusTask : DefaultTask() {
     private fun renderTasks(sb: StringBuilder, tasks: List<zone.clanker.gradle.tracking.TaskItem>, indent: String) {
         for (task in tasks) {
             val icon = when (task.status) {
-                TaskStatus.DONE -> "- [x]"
-                TaskStatus.IN_PROGRESS -> "- [~]"
-                TaskStatus.TODO -> "- [ ]"
+                TaskStatus.DONE -> "- ✅"
+                TaskStatus.IN_PROGRESS -> "- 🔄"
+                TaskStatus.TODO -> "- ⬜"
             }
             val code = if (task.code.isNotBlank()) "`${task.code}` " else ""
             sb.appendLine("$indent$icon $code${task.description}")
@@ -128,4 +133,10 @@ abstract class OpenSpecStatusTask : DefaultTask() {
 
     private fun progressPercent(done: Int, total: Int): Int =
         if (total == 0) 0 else (done * 100) / total
+
+    private fun progressBar(percent: Int): String {
+        val filled = percent / 10
+        val empty = 10 - filled
+        return "[" + "█".repeat(filled) + "░".repeat(empty) + "] ${percent}%"
+    }
 }

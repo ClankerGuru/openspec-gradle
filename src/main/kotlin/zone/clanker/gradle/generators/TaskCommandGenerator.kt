@@ -1,0 +1,95 @@
+package zone.clanker.gradle.generators
+
+import zone.clanker.gradle.tracking.ProposalScanner
+import zone.clanker.gradle.tracking.TaskStatus
+import java.io.File
+
+/**
+ * Generates dynamic slash commands for each task item in open proposals.
+ * Every task code (e.g., T1, auth-2.1) becomes a slash command (e.g., /opsx:T1).
+ */
+object TaskCommandGenerator {
+
+    fun generate(projectDir: File, buildDir: File, tools: List<String>): List<GeneratedFile> {
+        val proposals = ProposalScanner.scan(projectDir)
+        if (proposals.isEmpty()) return emptyList()
+
+        val generated = mutableListOf<GeneratedFile>()
+
+        for (proposal in proposals) {
+            for (taskItem in proposal.flatten()) {
+                if (taskItem.code.isBlank()) continue
+
+                val statusIcon = when (taskItem.status) {
+                    TaskStatus.DONE -> "✅"
+                    TaskStatus.IN_PROGRESS -> "🔄"
+                    TaskStatus.TODO -> "⬜"
+                }
+
+                val changeDir = "opsx/changes/${proposal.name}"
+
+                val body = buildString {
+                    appendLine("$statusIcon **${taskItem.code}**: ${taskItem.description}")
+                    appendLine()
+                    appendLine("**Proposal:** ${proposal.name}")
+                    appendLine()
+                    appendLine("## Context")
+                    appendLine()
+                    appendLine("Read these files before starting:")
+                    appendLine("- `$changeDir/proposal.md` — what & why")
+                    appendLine("- `$changeDir/design.md` — how")
+                    appendLine("- `$changeDir/tasks.md` — all tasks & progress")
+                    appendLine()
+                    appendLine("## Implementation")
+                    appendLine()
+                    appendLine("1. Read the context files above")
+                    appendLine("2. Implement this task: **${taskItem.description}**")
+                    appendLine("3. When complete, mark done: `./gradlew opsx-${taskItem.code} --set=done`")
+
+                    if (taskItem.explicitDeps.isNotEmpty()) {
+                        appendLine()
+                        appendLine("## Dependencies")
+                        appendLine()
+                        appendLine("Complete these first:")
+                        for (dep in taskItem.explicitDeps) {
+                            appendLine("- `$dep` → `/opsx:$dep`")
+                        }
+                    }
+
+                    if (taskItem.children.isNotEmpty()) {
+                        appendLine()
+                        appendLine("## Subtasks")
+                        appendLine()
+                        for (child in taskItem.children) {
+                            val childIcon = when (child.status) {
+                                TaskStatus.DONE -> "✅"
+                                TaskStatus.IN_PROGRESS -> "🔄"
+                                TaskStatus.TODO -> "⬜"
+                            }
+                            appendLine("- $childIcon `${child.code}`: ${child.description}")
+                        }
+                    }
+                }
+
+                val content = CommandContent(
+                    id = taskItem.code,
+                    name = "OPSX: ${taskItem.code}",
+                    description = "${taskItem.description} (${proposal.name})",
+                    category = "Task",
+                    tags = listOf("task", proposal.name),
+                    body = body
+                )
+
+                for (toolId in tools) {
+                    val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+                    val relativePath = adapter.getCommandFilePath(taskItem.code)
+                    val file = File(buildDir, relativePath)
+                    file.parentFile.mkdirs()
+                    file.writeText(adapter.formatCommandFile(content))
+                    generated.add(GeneratedFile(relativePath, file))
+                }
+            }
+        }
+        return generated
+    }
+}

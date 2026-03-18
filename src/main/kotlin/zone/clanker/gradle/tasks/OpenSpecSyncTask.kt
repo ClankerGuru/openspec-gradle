@@ -3,7 +3,9 @@ package zone.clanker.gradle.tasks
 import zone.clanker.gradle.generators.CommandGenerator
 import zone.clanker.gradle.generators.GeneratedFile
 import zone.clanker.gradle.generators.GlobalGitignore
+import zone.clanker.gradle.generators.InstructionsGenerator
 import zone.clanker.gradle.generators.SkillGenerator
+import zone.clanker.gradle.generators.TaskCommandGenerator
 import zone.clanker.gradle.generators.ToolAdapterRegistry
 import zone.clanker.gradle.templates.TemplateRegistry
 import org.gradle.api.DefaultTask
@@ -51,7 +53,9 @@ abstract class OpenSpecSyncTask : DefaultTask() {
 
         val skills = SkillGenerator.generate(buildDir, toolList)
         val commands = CommandGenerator.generate(buildDir, toolList)
-        val allFiles = skills + commands
+        val instructions = InstructionsGenerator.generate(buildDir, toolList)
+        val taskCommands = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList)
+        val allFiles = skills + commands + instructions + taskCommands
 
         logger.lifecycle("OpenSpec: Generated ${allFiles.size} files into ${buildDir.relativeTo(project.projectDir)}")
 
@@ -75,10 +79,15 @@ abstract class OpenSpecSyncTask : DefaultTask() {
         var count = 0
         for (toolId in ToolAdapterRegistry.supportedTools()) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+            // Clean instructions file
+            val instructionsFile = File(project.projectDir, adapter.getInstructionsFilePath())
+            if (instructionsFile.exists()) { instructionsFile.delete(); count++ }
+            // Clean commands
             for (cmd in TemplateRegistry.getCommandTemplates()) {
                 val file = File(project.projectDir, adapter.getCommandFilePath(cmd.id))
                 if (file.exists()) { file.delete(); count++ }
             }
+            // Clean skills
             for (skill in TemplateRegistry.getSkillTemplates()) {
                 val file = File(project.projectDir, adapter.getSkillFilePath(skill.dirName))
                 if (file.exists()) {
