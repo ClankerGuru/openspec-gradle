@@ -163,7 +163,13 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 override fun execute(task: OpenSpecRenameTask) {
                     if (project.hasProperty("from")) task.from.set(project.property("from").toString())
                     if (project.hasProperty("to")) task.to.set(project.property("to").toString())
-                    if (project.hasProperty("dryRun")) task.dryRun.set(project.property("dryRun").toString().toBoolean())
+                    if (project.hasProperty("dryRun")) {
+                        val value = project.property("dryRun").toString().lowercase()
+                        if (value !in setOf("true", "false")) {
+                            throw org.gradle.api.GradleException("Invalid dryRun value '$value' — must be 'true' or 'false'")
+                        }
+                        task.dryRun.set(value == "true")
+                    }
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/rename.md"))
                 }

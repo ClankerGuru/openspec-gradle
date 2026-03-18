@@ -46,7 +46,9 @@ abstract class OpenSpecArchiveTask : DefaultTask() {
             throw org.gradle.api.GradleException("Archive '$dateName' already exists")
         }
 
-        changeDir.renameTo(target)
+        if (!changeDir.renameTo(target)) {
+            throw org.gradle.api.GradleException("Failed to archive '$name' — could not move to opsx/changes/archive/$dateName/")
+        }
         logger.lifecycle("OpenSpec: Archived '$name' to opsx/changes/archive/$dateName/")
     }
 }

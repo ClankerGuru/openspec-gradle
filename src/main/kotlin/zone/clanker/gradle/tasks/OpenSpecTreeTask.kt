@@ -51,28 +51,37 @@ abstract class OpenSpecTreeTask : DefaultTask() {
         val scopeFilter = if (scope.isPresent) scope.get().lowercase() else null
         var totalFiles = 0
         var totalDirs = 0
+        var renderedModules = 0
 
         for (proj in projects) {
             val srcDirs = SourceDiscovery.discoverSourceDirs(proj)
             val filteredDirs = if (scopeFilter != null) {
                 srcDirs.filter { dir ->
-                    val path = dir.absolutePath.lowercase()
+                    // Extract the source set segment from paths like src/<sourceSet>/kotlin
+                    val segments = dir.toPath().iterator().asSequence().map { it.toString() }.toList()
+                    val srcIdx = segments.indexOf("src")
+                    val sourceSetName = if (srcIdx >= 0 && srcIdx + 1 < segments.size) segments[srcIdx + 1].lowercase() else ""
                     when (scopeFilter) {
-                        "main" -> !path.contains("test")
-                        "test" -> path.contains("test")
+                        "main" -> !sourceSetName.contains("test")
+                        "test" -> sourceSetName.contains("test")
                         else -> true
                     }
                 }
             } else srcDirs
 
             if (filteredDirs.isEmpty()) continue
+            renderedModules++
 
             val label = if (proj == root && root.subprojects.isEmpty()) "Root" else proj.path
             sb.appendLine("## $label")
             sb.appendLine()
 
             for (srcDir in filteredDirs) {
-                val relPath = srcDir.relativeTo(root.projectDir).path
+                val relPath = if (srcDir.toPath().startsWith(root.projectDir.toPath())) {
+                    srcDir.relativeTo(root.projectDir).path
+                } else {
+                    srcDir.absolutePath
+                }
                 val stats = countFiles(srcDir)
                 totalFiles += stats.first
                 totalDirs += stats.second
@@ -87,7 +96,7 @@ abstract class OpenSpecTreeTask : DefaultTask() {
         }
 
         // Add summary at the top
-        val summary = "**$totalFiles source files** across **${projects.size} modules**\n\n"
+        val summary = "**$totalFiles source files** across **$renderedModules modules**\n\n"
         sb.insert(sb.indexOf("\n") + 1, "\n$summary")
 
         out.writeText(sb.toString())
