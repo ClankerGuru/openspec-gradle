@@ -16,16 +16,16 @@ class GeneratorTest {
     // ── SkillGenerator ──────────────────────────────────
 
     @Test
-    fun `SkillGenerator generates 7 skills per tool`() {
+    fun `SkillGenerator generates 11 skills per tool`() {
         val files = SkillGenerator.generate(buildDir, listOf("claude"))
-        assertEquals(7, files.size)
+        assertEquals(11, files.size)
         files.forEach { assertTrue(it.file.exists()) }
     }
 
     @Test
     fun `SkillGenerator generates for multiple tools`() {
         val files = SkillGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(14, files.size) // 7 skills * 2 tools
+        assertEquals(22, files.size) // 11 skills * 2 tools
     }
 
     @Test
@@ -51,15 +51,15 @@ class GeneratorTest {
     // ── CommandGenerator ────────────────────────────────
 
     @Test
-    fun `CommandGenerator generates 7 commands per tool`() {
+    fun `CommandGenerator generates 11 commands per tool`() {
         val files = CommandGenerator.generate(buildDir, listOf("claude"))
-        assertEquals(7, files.size)
+        assertEquals(11, files.size)
     }
 
     @Test
     fun `CommandGenerator generates for both tools`() {
         val files = CommandGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(14, files.size) // 7 commands * 2 tools
+        assertEquals(22, files.size) // 11 commands * 2 tools
     }
 
     @Test
@@ -86,8 +86,8 @@ class GeneratorTest {
     fun `both generators combined produce correct total for 2-tool setup`() {
         val skills = SkillGenerator.generate(buildDir, listOf("claude", "github-copilot"))
         val commands = CommandGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(14, skills.size)   // 7 * 2
-        assertEquals(14, commands.size) // 7 * 2
-        assertEquals(28, skills.size + commands.size)
+        assertEquals(22, skills.size)   // 11 * 2
+        assertEquals(22, commands.size) // 11 * 2
+        assertEquals(44, skills.size + commands.size)
     }
 }

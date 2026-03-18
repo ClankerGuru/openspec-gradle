@@ -16,7 +16,7 @@ Start a new change using the artifact-driven approach.
    ./gradlew opsx-propose --name=<name>
    ```
 
-3. **Create `.openspec.yaml`** with change metadata:
+3. **Create `.opsx.yaml`** with change metadata:
    ```yaml
    name: <name>
    schema: spec-driven

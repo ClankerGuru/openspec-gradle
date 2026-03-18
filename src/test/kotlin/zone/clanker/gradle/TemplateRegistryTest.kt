@@ -8,17 +8,17 @@ import kotlin.test.assertTrue
 class TemplateRegistryTest {
 
     @Test
-    fun `has 7 command templates`() {
+    fun `has 11 command templates`() {
         val commands = TemplateRegistry.getCommandTemplates()
-        assertEquals(7, commands.size)
+        assertEquals(11, commands.size)
         val ids = commands.map { it.id }.toSet()
-        assertTrue(ids.containsAll(setOf("propose", "apply", "archive", "explore", "new", "sync", "verify")))
+        assertTrue(ids.containsAll(setOf("propose", "apply", "archive", "explore", "new", "sync", "verify", "find", "calls", "rename", "status")))
     }
 
     @Test
-    fun `has 7 skill templates`() {
+    fun `has 11 skill templates`() {
         val skills = TemplateRegistry.getSkillTemplates()
-        assertEquals(7, skills.size)
+        assertEquals(11, skills.size)
     }
 
     @Test

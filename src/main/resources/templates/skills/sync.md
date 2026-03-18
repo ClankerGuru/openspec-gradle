@@ -11,9 +11,9 @@ Sync delta specs from a change to main specs.
    ./gradlew opsx-status
    ```
 
-2. **Find delta specs** in `openspec/changes/<name>/specs/*/spec.md`
+2. **Find delta specs** in `opsx/changes/<name>/specs/*/spec.md`
 
-3. **For each delta spec, apply changes to main specs** at `openspec/specs/<capability>/spec.md`
+3. **For each delta spec, apply changes to main specs** at `opsx/specs/<capability>/spec.md`
    - ADDED Requirements → add to main spec
    - MODIFIED Requirements → merge into main spec
    - REMOVED Requirements → remove from main spec

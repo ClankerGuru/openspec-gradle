@@ -1,6 +1,6 @@
 Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
-**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create OpenSpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
+**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create OPSX artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
@@ -49,13 +49,13 @@ Depending on what the user brings, you might:
 ## Project Context
 
 Read these files for project understanding (run `./gradlew opsx-sync` to generate all):
-- `.openspec/context.md` — project config, plugins, frameworks, git info
-- `.openspec/tree.md` — source layout per module
-- `.openspec/deps.md` — dependencies with versions
-- `.openspec/modules.md` — module graph and boundaries
-- `.openspec/devloop.md` — build/test/run commands
+- `.opsx/context.md` — project config, plugins, frameworks, git info
+- `.opsx/tree.md` — source layout per module
+- `.opsx/deps.md` — dependencies with versions
+- `.opsx/modules.md` — module graph and boundaries
+- `.opsx/devloop.md` — build/test/run commands
 
-## OpenSpec Awareness
+## OPSX Awareness
 
 Check for existing changes at the start:
 ```bash
@@ -70,7 +70,7 @@ When insights crystallize, offer to capture them — but let the user decide.
 
 ## Guardrails
 
-- **Don't implement** - Never write code. Creating OpenSpec artifacts is fine.
+- **Don't implement** - Never write code. Creating OPSX artifacts is fine.
 - **Don't fake understanding** - If something is unclear, dig deeper
 - **Don't rush** - Discovery is thinking time
 - **Do visualize** - A good diagram is worth many paragraphs

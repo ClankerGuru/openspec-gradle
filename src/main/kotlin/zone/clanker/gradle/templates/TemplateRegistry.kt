@@ -19,7 +19,11 @@ object TemplateRegistry {
         exploreCommand(),
         newCommand(),
         syncCommand(),
-        verifyCommand()
+        verifyCommand(),
+        findCommand(),
+        callsCommand(),
+        renameCommand(),
+        statusCommand()
     )
 
     fun getSkillTemplates(): List<SkillContent> = listOf(
@@ -29,7 +33,11 @@ object TemplateRegistry {
         exploreSkill(),
         newSkill(),
         syncSkill(),
-        verifySkill()
+        verifySkill(),
+        findSkill(),
+        callsSkill(),
+        renameSkill(),
+        statusSkill()
     )
 
     // ── Propose ──────────────────────────────────────────
@@ -149,5 +157,73 @@ object TemplateRegistry {
         dirName = "opsx-verify",
         description = "Verify that implementation matches the specs and tasks for a change.",
         instructions = loadResource("templates/skills/verify.md")
+    )
+
+    // ── Find ─────────────────────────────────────────────
+
+    private fun findCommand() = CommandContent(
+        id = "find",
+        name = "OPSX: Find",
+        description = "Find a symbol by name in the project",
+        category = "Code Intelligence",
+        tags = listOf("symbols", "search"),
+        body = loadResource("templates/commands/find.md")
+    )
+
+    private fun findSkill() = SkillContent(
+        dirName = "opsx-find",
+        description = "Find a symbol by name in the project. Use when the user wants to locate a class, function, or variable.",
+        instructions = loadResource("templates/skills/find.md")
+    )
+
+    // ── Calls ────────────────────────────────────────────
+
+    private fun callsCommand() = CommandContent(
+        id = "calls",
+        name = "OPSX: Calls",
+        description = "Show call graph for a symbol",
+        category = "Code Intelligence",
+        tags = listOf("symbols", "call-graph"),
+        body = loadResource("templates/commands/calls.md")
+    )
+
+    private fun callsSkill() = SkillContent(
+        dirName = "opsx-calls",
+        description = "Show the call graph for a symbol. Use when the user wants to understand what calls a function or what a function calls.",
+        instructions = loadResource("templates/skills/calls.md")
+    )
+
+    // ── Rename ───────────────────────────────────────────
+
+    private fun renameCommand() = CommandContent(
+        id = "rename",
+        name = "OPSX: Rename",
+        description = "Preview or execute a rename refactoring",
+        category = "Code Intelligence",
+        tags = listOf("refactoring", "rename"),
+        body = loadResource("templates/commands/rename.md")
+    )
+
+    private fun renameSkill() = SkillContent(
+        dirName = "opsx-rename",
+        description = "Preview or execute a rename refactoring. Use when the user wants to rename a symbol across the codebase.",
+        instructions = loadResource("templates/skills/rename.md")
+    )
+
+    // ── Status ───────────────────────────────────────────
+
+    private fun statusCommand() = CommandContent(
+        id = "status",
+        name = "OPSX: Status",
+        description = "Show status of all open changes/proposals",
+        category = "Workflow",
+        tags = listOf("workflow", "status"),
+        body = loadResource("templates/commands/status.md")
+    )
+
+    private fun statusSkill() = SkillContent(
+        dirName = "opsx-status",
+        description = "Show status of all open changes and proposals. Use when the user wants to see what changes are in progress.",
+        instructions = loadResource("templates/skills/status.md")
     )
 }

@@ -18,7 +18,7 @@ Archive a completed change in the experimental workflow.
 
 2. **Check artifact completion status**
 
-   Read `openspec/changes/<name>/.openspec.yaml` to check artifact completion.
+   Read `opsx/changes/<name>/.opsx.yaml` to check artifact completion.
 
    **If any artifacts are not `done`:**
    - Display warning listing incomplete artifacts
@@ -40,18 +40,18 @@ Archive a completed change in the experimental workflow.
 
 4. **Assess delta spec sync state**
 
-   Check for delta specs at `openspec/changes/<name>/specs/`. If none exist, proceed without sync prompt.
+   Check for delta specs at `opsx/changes/<name>/specs/`. If none exist, proceed without sync prompt.
 
    **If delta specs exist:**
-   - Compare each delta spec with its corresponding main spec at `openspec/specs/<capability>/spec.md`
+   - Compare each delta spec with its corresponding main spec at `opsx/specs/<capability>/spec.md`
    - Determine what changes would be applied
    - Show a combined summary before prompting
 
 5. **Perform the archive**
 
    ```bash
-   mkdir -p openspec/changes/archive
-   mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
+   mkdir -p opsx/changes/archive
+   mv opsx/changes/<name> opsx/changes/archive/YYYY-MM-DD-<name>
    ```
 
 6. **Display summary**
@@ -65,5 +65,5 @@ Archive a completed change in the experimental workflow.
 **Guardrails**
 - Always prompt for change selection if not provided
 - Don't block archive on warnings - just inform and confirm
-- Preserve .openspec.yaml when moving to archive (it moves with the directory)
+- Preserve .opsx.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
