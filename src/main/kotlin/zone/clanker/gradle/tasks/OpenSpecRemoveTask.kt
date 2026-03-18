@@ -271,13 +271,16 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
             // Clean up consecutive blank lines left behind
             sym.file.writeText(remaining.joinToString("\n") + "\n")
 
-            // Clean up imports
-            for (imp in importLines) {
-                val content = imp.file.readLines().toMutableList()
-                if (imp.line - 1 < content.size) {
-                    content.removeAt(imp.line - 1)
-                    imp.file.writeText(content.joinToString("\n") + "\n")
+            // Clean up imports — process bottom-to-top per file to preserve line indices
+            for ((file, imps) in importLines.groupBy { it.file }) {
+                val content = file.readLines().toMutableList()
+                for (imp in imps.sortedByDescending { it.line }) {
+                    val idx = imp.line - 1
+                    if (idx in content.indices) {
+                        content.removeAt(idx)
+                    }
                 }
+                file.writeText(content.joinToString("\n") + "\n")
             }
 
             sb.appendLine("✅ **Applied.** Removed `${sym.qualifiedName}` ($declLineCount lines) and cleaned ${importLines.size} imports.")
@@ -388,6 +391,9 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
     /**
      * Find the end line of a declaration starting at [startIdx].
      * Tracks brace depth to find the matching closing brace.
+     *
+     * Note: This does not account for braces inside string literals or comments.
+     * This is a known limitation shared with other regex-based analysis in the plugin.
      */
     private fun findDeclarationEnd(lines: List<String>, startIdx: Int): Int {
         var braceDepth = 0

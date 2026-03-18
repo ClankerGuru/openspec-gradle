@@ -12,7 +12,7 @@ class TemplateRegistryTest {
         val commands = TemplateRegistry.getCommandTemplates()
         assertEquals(17, commands.size)
         val ids = commands.map { it.id }.toSet()
-        assertTrue(ids.containsAll(setOf("propose", "apply", "archive", "explore", "new", "sync", "verify", "find", "calls", "rename", "status", "move", "usages", "extract", "inline", "deps")))
+        assertTrue(ids.containsAll(setOf("propose", "apply", "archive", "explore", "new", "sync", "verify", "find", "calls", "rename", "status", "move", "usages", "extract", "inline", "deps", "remove")))
     }
 
     @Test

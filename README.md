@@ -131,7 +131,7 @@ Replaces `grep`/`sed`/Python scripts with build-aware symbol analysis. The index
 | Agent | Instructions file | Delivery |
 |---|---|---|
 | Claude | `.claude/CLAUDE.md` | Standalone (auto-discovered) |
-| Copilot | `.github/instructions/opsx.instructions.md` | Additive (merges with your own) |
+| Copilot | `.github/copilot-instructions.md` | Additive (merges with your own) |
 | Codex / OpenCode / Crush | `AGENTS.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
 
 For Codex, OpenCode, and Crush — your existing `AGENTS.md` content is preserved. OPSX adds its section between markers and updates it on every sync.
