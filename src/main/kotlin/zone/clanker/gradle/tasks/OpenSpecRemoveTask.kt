@@ -291,14 +291,14 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
 
             // Clean up imports — process bottom-to-top per file to preserve line indices
             for ((file, imps) in importLines.groupBy { it.file }) {
-                val content = file.readLines().toMutableList()
+                val originalContent = file.readLines()
+                val content = originalContent.toMutableList()
                 for (imp in imps.sortedByDescending { it.line }) {
                     val idx = imp.line - 1
                     if (idx in content.indices) {
                         content.removeAt(idx)
                     }
                 }
-                val originalContent = file.readLines()
                 file.writeText(preserveTrailingNewline(originalContent, content))
             }
 
@@ -441,15 +441,24 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
 
     /**
      * Write modified lines back, preserving the original trailing newline behavior.
-     * Avoids the double-newline bug from `lines.joinToString("\n") + "\n"`.
+     * Uses file text to reliably detect trailing newlines (readLines() strips them).
      */
+    private fun preserveTrailingNewline(originalFile: java.io.File, modifiedLines: List<String>): String {
+        val joined = modifiedLines.joinToString("\n")
+        val originalEndsWithNewline = originalFile.readText().endsWith("\n")
+        return if (originalEndsWithNewline && !joined.endsWith("\n")) {
+            joined + "\n"
+        } else {
+            joined
+        }
+    }
+
+    /** Overload accepting original lines list — detects trailing newline from last empty element. */
     private fun preserveTrailingNewline(originalLines: List<String>, modifiedLines: List<String>): String {
         val joined = modifiedLines.joinToString("\n")
-        // If original had trailing newline (last element is empty from readLines/split),
-        // and the modified list no longer has that trailing empty, add one newline
-        val originalEndsWithNewline = originalLines.isNotEmpty() && originalLines.last().isEmpty()
-        val modifiedEndsWithNewline = modifiedLines.isNotEmpty() && modifiedLines.last().isEmpty()
-        return if (originalEndsWithNewline && !modifiedEndsWithNewline) {
+        // lines() includes trailing empty string for files ending with \n, but readLines() does not.
+        // Since callers use readLines(), we always append \n for non-empty output (most source files end with newline).
+        return if (modifiedLines.isNotEmpty() && !joined.endsWith("\n")) {
             joined + "\n"
         } else {
             joined
