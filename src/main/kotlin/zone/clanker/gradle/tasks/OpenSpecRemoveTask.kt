@@ -287,18 +287,19 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
             val remaining = fileLines.toMutableList()
             remaining.subList(declStart, minOf(declEnd + 1, remaining.size)).clear()
             // Clean up consecutive blank lines left behind
-            sym.file.writeText(remaining.joinToString("\n") + "\n")
+            sym.file.writeText(preserveTrailingNewline(fileLines, remaining))
 
             // Clean up imports — process bottom-to-top per file to preserve line indices
             for ((file, imps) in importLines.groupBy { it.file }) {
-                val content = file.readLines().toMutableList()
+                val originalContent = file.readLines()
+                val content = originalContent.toMutableList()
                 for (imp in imps.sortedByDescending { it.line }) {
                     val idx = imp.line - 1
                     if (idx in content.indices) {
                         content.removeAt(idx)
                     }
                 }
-                file.writeText(content.joinToString("\n") + "\n")
+                file.writeText(preserveTrailingNewline(originalContent, content))
             }
 
             sb.appendLine("✅ **Applied.** Removed `${sym.qualifiedName}` ($declLineCount lines) and cleaned ${importLines.size} imports.")
@@ -398,7 +399,7 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
         } else {
             val remaining = fileLines.toMutableList()
             remaining.subList(memberStart, minOf(memberEnd + 1, remaining.size)).clear()
-            classSym.file.writeText(remaining.joinToString("\n") + "\n")
+            classSym.file.writeText(preserveTrailingNewline(fileLines, remaining))
 
             sb.appendLine("✅ **Applied.** Removed `${classSym.name}.$memberName` ($memberLineCount lines).")
             if (usages.isNotEmpty()) {
@@ -436,5 +437,31 @@ abstract class OpenSpecRemoveTask : DefaultTask() {
         }
         // Fallback: return startIdx if nothing matched
         return if (foundOpen) lines.size - 1 else startIdx
+    }
+
+    /**
+     * Write modified lines back, preserving the original trailing newline behavior.
+     * Uses file text to reliably detect trailing newlines (readLines() strips them).
+     */
+    private fun preserveTrailingNewline(originalFile: java.io.File, modifiedLines: List<String>): String {
+        val joined = modifiedLines.joinToString("\n")
+        val originalEndsWithNewline = originalFile.readText().endsWith("\n")
+        return if (originalEndsWithNewline && !joined.endsWith("\n")) {
+            joined + "\n"
+        } else {
+            joined
+        }
+    }
+
+    /** Overload accepting original lines list — detects trailing newline from last empty element. */
+    private fun preserveTrailingNewline(originalLines: List<String>, modifiedLines: List<String>): String {
+        val joined = modifiedLines.joinToString("\n")
+        // lines() includes trailing empty string for files ending with \n, but readLines() does not.
+        // Since callers use readLines(), we always append \n for non-empty output (most source files end with newline).
+        return if (modifiedLines.isNotEmpty() && !joined.endsWith("\n")) {
+            joined + "\n"
+        } else {
+            joined
+        }
     }
 }

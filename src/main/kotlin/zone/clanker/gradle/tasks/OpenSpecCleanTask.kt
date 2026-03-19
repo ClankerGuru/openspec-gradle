@@ -65,17 +65,7 @@ abstract class OpenSpecCleanTask : DefaultTask() {
             logger.lifecycle("OpenSpec: Removed .opsx/ directory")
         }
 
-        // Remove opsx/changes/ directory (proposals)
-        val changesDir = File(project.projectDir, "opsx/changes")
-        if (changesDir.exists()) {
-            changesDir.deleteRecursively()
-            // Clean up empty opsx/ parent
-            val opsxParent = changesDir.parentFile
-            if (opsxParent.exists() && opsxParent.list()?.isEmpty() == true) {
-                opsxParent.delete()
-            }
-            logger.lifecycle("OpenSpec: Removed opsx/changes/ directory")
-        }
+        // NOTE: opsx/changes/ is intentionally preserved — proposals are committed work.
 
         logger.lifecycle("OpenSpec: Cleaned $count generated files")
     }
