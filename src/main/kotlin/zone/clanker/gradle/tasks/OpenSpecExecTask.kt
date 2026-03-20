@@ -46,7 +46,7 @@ abstract class OpenSpecExecTask : DefaultTask() {
             "Options: -Pprompt=\"...\" (inline prompt), -Pspec=path/to/task.md (task spec file), " +
             "-Pagent=copilot|claude|codex|opencode (override agent), " +
             "-PmaxRetries=3 (retry attempts), -Pverify=true (run opsx-verify after), " +
-            "-PsyncBefore=true (fresh opsx-sync before each attempt), -PexecTimeout=300 (seconds). " +
+            "-PsyncBefore=true (fresh opsx-sync before each attempt), -PexecTimeout=600 (seconds). " +
             "Use when: you want Gradle to drive an AI agent end-to-end with retry and verification. " +
             "Chain: opsx-sync → opsx-exec → opsx-verify."
     }
@@ -127,7 +127,7 @@ abstract class OpenSpecExecTask : DefaultTask() {
         val resolvedVerify = taskSpec.verify
             ?: (if (this@OpenSpecExecTask.verify.isPresent) this@OpenSpecExecTask.verify.get() else true)
         val resolvedSyncBefore = if (this@OpenSpecExecTask.syncBefore.isPresent) this@OpenSpecExecTask.syncBefore.get() else true
-        val resolvedTimeout = if (this@OpenSpecExecTask.execTimeout.isPresent) this@OpenSpecExecTask.execTimeout.get().toLong() else 300L
+        val resolvedTimeout = if (this@OpenSpecExecTask.execTimeout.isPresent) this@OpenSpecExecTask.execTimeout.get().toLong() else 600L
 
         // Resolve agent
         val configuredAgents = resolveConfiguredAgents()
@@ -292,7 +292,7 @@ abstract class OpenSpecExecTask : DefaultTask() {
                 explicit = meta.agent ?: (if (agent.isPresent) agent.get() else null),
                 configured = resolveConfiguredAgents(),
             )
-            val resolvedTimeout = if (execTimeout.isPresent) execTimeout.get().toLong() else 300L
+            val resolvedTimeout = if (execTimeout.isPresent) execTimeout.get().toLong() else 600L
 
             // Build file references (not content — agents read files themselves)
             val changeDir = "opsx/changes/${proposal.name}"
@@ -381,6 +381,7 @@ abstract class OpenSpecExecTask : DefaultTask() {
         appendLine("## Task")
         appendLine(taskDescription)
         appendLine()
+        appendLine("IMPORTANT: Only implement this specific task. Do not make changes beyond what is described above.")
         appendLine("When done, ensure the build passes with ./gradlew build")
         if (previousLogs.isNotBlank()) {
             appendLine()
