@@ -294,11 +294,15 @@ abstract class OpenSpecExecTask : DefaultTask() {
             )
             val resolvedTimeout = if (execTimeout.isPresent) execTimeout.get().toLong() else 300L
 
-            // Build context
-            val proposalFile = File(projectDir, "opsx/changes/${proposal.name}/proposal.md")
-            val designFile = File(projectDir, "opsx/changes/${proposal.name}/design.md")
-            val proposalContext = if (proposalFile.exists()) proposalFile.readText() else ""
-            val designContext = if (designFile.exists()) designFile.readText() else ""
+            // Build file references (not content — agents read files themselves)
+            val changeDir = "opsx/changes/${proposal.name}"
+            val contextFiles = mutableListOf<String>()
+            if (File(projectDir, "$changeDir/proposal.md").exists()) contextFiles.add("$changeDir/proposal.md")
+            if (File(projectDir, "$changeDir/design.md").exists()) contextFiles.add("$changeDir/design.md")
+            if (File(projectDir, "$changeDir/tasks.md").exists()) contextFiles.add("$changeDir/tasks.md")
+            if (File(projectDir, ".opsx/context.md").exists()) contextFiles.add(".opsx/context.md")
+            if (File(projectDir, ".opsx/arch.md").exists()) contextFiles.add(".opsx/arch.md")
+            if (File(projectDir, ".opsx/tree.md").exists()) contextFiles.add(".opsx/tree.md")
 
             // Collect previous attempt logs from tasks.md
             val previousLogs = extractAttemptLogs(tasksFile, code)
@@ -308,7 +312,7 @@ abstract class OpenSpecExecTask : DefaultTask() {
                 logger.lifecycle("Attempt $attempt/$resolvedRetries (agent: $resolvedAgent)")
 
                 val prompt = buildTaskPrompt(
-                    proposalContext, designContext, taskItem.description,
+                    contextFiles, taskItem.description,
                     previousLogs, attempt, resolvedRetries
                 )
 
@@ -363,25 +367,21 @@ abstract class OpenSpecExecTask : DefaultTask() {
     }
 
     private fun buildTaskPrompt(
-        proposalContext: String,
-        designContext: String,
+        contextFiles: List<String>,
         taskDescription: String,
         previousLogs: String,
         attempt: Int,
         maxAttempts: Int,
     ): String = buildString {
-        if (proposalContext.isNotBlank()) {
-            appendLine("## Proposal Context")
-            appendLine(proposalContext)
-            appendLine()
+        appendLine("Read these files for context before starting:")
+        for (file in contextFiles) {
+            appendLine("- $file")
         }
-        if (designContext.isNotBlank()) {
-            appendLine("## Design")
-            appendLine(designContext)
-            appendLine()
-        }
+        appendLine()
         appendLine("## Task")
         appendLine(taskDescription)
+        appendLine()
+        appendLine("When done, ensure the build passes with ./gradlew build")
         if (previousLogs.isNotBlank()) {
             appendLine()
             appendLine("## Previous Attempts")
@@ -391,7 +391,7 @@ abstract class OpenSpecExecTask : DefaultTask() {
             appendLine()
             appendLine("---")
             appendLine("RETRY CONTEXT (attempt $attempt/$maxAttempts):")
-            appendLine("Fix the issue without reintroducing previous errors.")
+            appendLine("Fix the issue without reintroducing previous errors. Try a different approach.")
         }
     }
 
