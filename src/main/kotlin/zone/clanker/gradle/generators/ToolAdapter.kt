@@ -151,23 +151,12 @@ object OpenCodeAdapter : ToolAdapter {
     override val appendInstructions: Boolean get() = true
 }
 
-object CrushAdapter : ToolAdapter {
-    override val toolId = "crush"
-    override fun getCommandFilePath(commandId: String) = ".crush/commands/opsx/$commandId.md"
-    override fun formatCommandFile(content: CommandContent) = formatYamlCommandWithFrontmatter(content)
-    override fun getSkillFilePath(skillDirName: String) = ".crush/skills/$skillDirName/SKILL.md"
-    override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
-    override fun getInstructionsFilePath() = "AGENTS.md"
-    override val appendInstructions: Boolean get() = true
-}
-
 object ToolAdapterRegistry {
     private val adapters = mapOf(
         "claude" to ClaudeAdapter,
         "github-copilot" to GitHubCopilotAdapter,
         "codex" to CodexAdapter,
         "opencode" to OpenCodeAdapter,
-        "crush" to CrushAdapter
     )
 
     fun get(toolId: String): ToolAdapter? = adapters[toolId]

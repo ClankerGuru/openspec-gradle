@@ -28,9 +28,6 @@ object GlobalGitignore {
         "# OpenCode",
         ".opencode/commands/opsx-*",
         ".opencode/skills/opsx-*",
-        "# Crush",
-        ".crush/commands/opsx/",
-        ".crush/skills/opsx-*",
     )
 
     /**

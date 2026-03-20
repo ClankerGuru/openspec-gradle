@@ -6,7 +6,7 @@ import java.io.File
  * Generates root agent instructions files (CLAUDE.md, copilot-instructions.md, etc.)
  * that teach agents about OPSX tasks.
  *
- * For agents that use AGENTS.md (Codex, OpenCode, Crush), the content is appended
+ * For agents that use AGENTS.md (Codex, OpenCode), the content is appended
  * between markers so user content is preserved.
  */
 object InstructionsGenerator {

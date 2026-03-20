@@ -45,13 +45,6 @@ class ExecTest {
     }
 
     @Test
-    fun `buildCommand crush throws`() {
-        assertThrows<IllegalArgumentException> {
-            AgentRunner.buildCommand("crush", "hello")
-        }
-    }
-
-    @Test
     fun `buildCommand unknown throws`() {
         assertThrows<IllegalArgumentException> {
             AgentRunner.buildCommand("unknown-agent", "hello")
@@ -71,16 +64,9 @@ class ExecTest {
     }
 
     @Test
-    fun `resolveAgent skips crush`() {
-        val agent = AgentRunner.resolveAgent(null, listOf("crush", "claude"))
+    fun `resolveAgent uses first from configured list`() {
+        val agent = AgentRunner.resolveAgent(null, listOf("claude", "codex"))
         assertEquals("claude", agent)
-    }
-
-    @Test
-    fun `resolveAgent all crush throws`() {
-        assertThrows<IllegalArgumentException> {
-            AgentRunner.resolveAgent(null, listOf("crush"))
-        }
     }
 
     // ── CycleDetector ──

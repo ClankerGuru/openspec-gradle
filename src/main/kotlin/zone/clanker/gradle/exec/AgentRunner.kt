@@ -25,9 +25,6 @@ object AgentRunner {
         "claude" -> listOf("claude", "-p", prompt, "--dangerously-skip-permissions")
         "codex" -> listOf("codex", "exec", prompt, "--full-auto")
         "opencode" -> listOf("opencode", "run", prompt)
-        "crush" -> throw IllegalArgumentException(
-            "Crush is TUI-only and cannot run in non-interactive mode. Use a different agent."
-        )
         else -> throw IllegalArgumentException("Unknown agent: $agent")
     }
 
@@ -40,11 +37,7 @@ object AgentRunner {
 
         // Use first configured agent
         if (configured.isNotEmpty()) {
-            val first = configured.first()
-            if (first != "crush") return first
-            // Skip crush, try next
-            return configured.firstOrNull { it != "crush" }
-                ?: throw IllegalArgumentException("No non-interactive agent available. Crush is TUI-only.")
+            return configured.first()
         }
 
         // Scan PATH for known CLIs

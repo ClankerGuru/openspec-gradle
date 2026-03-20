@@ -51,16 +51,9 @@ class InstructionsGeneratorTest {
     }
 
     @Test
-    fun `crush generates to root AGENTS md with markers`() {
-        val files = InstructionsGenerator.generate(buildDir, listOf("crush"))
-        assertEquals(1, files.size)
-        assertEquals("AGENTS.md", files[0].relativePath)
-    }
-
-    @Test
     fun `deduplicates AGENTS md when multiple agents share it`() {
-        val files = InstructionsGenerator.generate(buildDir, listOf("codex", "opencode", "crush"))
-        assertEquals(1, files.size) // not 3!
+        val files = InstructionsGenerator.generate(buildDir, listOf("codex", "opencode"))
+        assertEquals(1, files.size) // not 2!
         assertEquals("AGENTS.md", files[0].relativePath)
     }
 
