@@ -34,7 +34,7 @@ class TaskWriterTest {
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.IN_PROGRESS))
 
         val content = file.readText()
-        assertTrue(content.contains("[ ] 🔄 `t-1`"), "Expected emoji IN_PROGRESS, got: $content")
+        assertTrue(content.contains("[/] 🔄 `t-1`"), "Expected [/] + emoji IN_PROGRESS, got: $content")
     }
 
     @Test

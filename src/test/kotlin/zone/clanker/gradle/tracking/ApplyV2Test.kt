@@ -13,15 +13,15 @@ class ApplyV2Test {
     // ── TaskStatus GitHub-compatible format ──
 
     @Test
-    fun `BLOCKED uses unchecked checkbox with emoji`() {
-        assertEquals("[ ]", TaskStatus.BLOCKED.checkbox)
+    fun `BLOCKED uses tilde checkbox with emoji`() {
+        assertEquals("[~]", TaskStatus.BLOCKED.checkbox)
         assertEquals("⛔ ", TaskStatus.BLOCKED.emoji)
         assertEquals("⛔", TaskStatus.BLOCKED.icon)
     }
 
     @Test
-    fun `IN_PROGRESS uses unchecked checkbox with emoji`() {
-        assertEquals("[ ]", TaskStatus.IN_PROGRESS.checkbox)
+    fun `IN_PROGRESS uses slash checkbox with emoji`() {
+        assertEquals("[/]", TaskStatus.IN_PROGRESS.checkbox)
         assertEquals("🔄 ", TaskStatus.IN_PROGRESS.emoji)
         assertEquals("🔄", TaskStatus.IN_PROGRESS.icon)
     }
@@ -165,21 +165,21 @@ class ApplyV2Test {
     // ── TaskWriter writes GitHub-compatible format ──
 
     @Test
-    fun `write BLOCKED status uses emoji format`() {
+    fun `write BLOCKED status uses both checkbox and emoji`() {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [ ] `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.BLOCKED))
         val content = file.readText()
-        assertTrue(content.contains("[ ] ⛔ `t-1`"), "Expected emoji BLOCKED format, got: $content")
+        assertTrue(content.contains("[~] ⛔ `t-1`"), "Expected [~] + emoji, got: $content")
     }
 
     @Test
-    fun `write IN_PROGRESS uses emoji format`() {
+    fun `write IN_PROGRESS uses both checkbox and emoji`() {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [ ] `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.IN_PROGRESS))
         val content = file.readText()
-        assertTrue(content.contains("[ ] 🔄 `t-1`"), "Expected emoji IN_PROGRESS format, got: $content")
+        assertTrue(content.contains("[/] 🔄 `t-1`"), "Expected [/] + emoji, got: $content")
     }
 
     @Test
@@ -188,16 +188,16 @@ class ApplyV2Test {
         file.writeText("- [ ] `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE))
         val content = file.readText()
-        assertTrue(content.contains("[x] `t-1`"), "Expected checked DONE format, got: $content")
+        assertTrue(content.contains("[x] `t-1`"), "Expected [x] DONE, got: $content")
     }
 
     @Test
-    fun `write TODO clears emoji`() {
+    fun `write TODO clears emoji and resets checkbox`() {
         val file = File(tempDir, "tasks.md")
-        file.writeText("- [ ] 🔄 `t-1` A task\n")
+        file.writeText("- [/] 🔄 `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.TODO))
         val content = file.readText()
-        assertTrue(content.contains("[ ] `t-1`"), "Expected clean TODO format, got: $content")
+        assertTrue(content.contains("[ ] `t-1`"), "Expected clean TODO, got: $content")
         assertFalse(content.contains("🔄"))
     }
 
