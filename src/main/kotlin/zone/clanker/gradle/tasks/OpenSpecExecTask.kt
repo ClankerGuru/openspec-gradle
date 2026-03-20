@@ -294,14 +294,10 @@ abstract class OpenSpecExecTask : DefaultTask() {
             )
             val resolvedTimeout = if (execTimeout.isPresent) execTimeout.get().toLong() else 600L
 
-            // Build file references (not content — agents read files themselves)
-            val changeDir = "opsx/changes/${proposal.name}"
+            // Build file references — only project context, NOT the proposal
+            // The task description is the scope. The proposal is vision — agents go wild if they see it.
             val contextFiles = mutableListOf<String>()
-            if (File(projectDir, "$changeDir/proposal.md").exists()) contextFiles.add("$changeDir/proposal.md")
-            if (File(projectDir, "$changeDir/design.md").exists()) contextFiles.add("$changeDir/design.md")
-            if (File(projectDir, "$changeDir/tasks.md").exists()) contextFiles.add("$changeDir/tasks.md")
             if (File(projectDir, ".opsx/context.md").exists()) contextFiles.add(".opsx/context.md")
-            if (File(projectDir, ".opsx/arch.md").exists()) contextFiles.add(".opsx/arch.md")
             if (File(projectDir, ".opsx/tree.md").exists()) contextFiles.add(".opsx/tree.md")
 
             // Collect previous attempt logs from tasks.md
