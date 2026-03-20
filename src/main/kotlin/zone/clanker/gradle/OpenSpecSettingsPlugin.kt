@@ -346,6 +346,7 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
 
             project.tasks.register("opsx-exec", OpenSpecExecTask::class.java).configure(object : org.gradle.api.Action<OpenSpecExecTask> {
                 override fun execute(task: OpenSpecExecTask) {
+                    if (project.hasProperty("task")) task.taskCodes.set(project.property("task").toString())
                     if (project.hasProperty("prompt")) task.prompt.set(project.property("prompt").toString())
                     if (project.hasProperty("spec")) task.spec.set(project.property("spec").toString())
                     if (project.hasProperty("agent")) task.agent.set(project.property("agent").toString())

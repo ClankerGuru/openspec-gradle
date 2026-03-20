@@ -6,7 +6,7 @@ import java.io.File
  * Parses tasks.md Markdown files into structured [TaskItem] trees.
  *
  * Supports:
- * - `- [ ]` (TODO), `- [~]` (IN_PROGRESS), `- [x]`/`- [X]` (DONE)
+ * - `- [ ]` (TODO), `- [/]` (IN_PROGRESS), `- [x]`/`- [X]` (DONE), `- [~]` (BLOCKED)
  * - Backtick-wrapped task codes: `ttd-1.2`
  * - Nested tasks via indentation (2 or 4 spaces per level)
  * - Explicit dependencies via `→ depends:` suffix
@@ -15,8 +15,10 @@ object TaskParser {
 
     // Matches: optional whitespace, dash, space, checkbox, space, optional code, description, optional deps
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*)-\s+\[([ xX~])]\s+(?:`([^`]+)`\s+)?(.+)$"""
+        """^(\s*)-\s+\[([ xX~/])]\s+(?:`([^`]+)`\s+)?(.+)$"""
     )
+
+    private val METADATA_REGEX = Regex("""(agent|retries|cooldown):(\S+)""")
 
     private val DEPENDS_REGEX = Regex(
         """→\s*depends:\s*(.+)$"""
@@ -44,7 +46,8 @@ object TaskParser {
 
             val status = when (checkChar) {
                 "x", "X" -> TaskStatus.DONE
-                "~" -> TaskStatus.IN_PROGRESS
+                "~" -> TaskStatus.BLOCKED
+                "/" -> TaskStatus.IN_PROGRESS
                 else -> TaskStatus.TODO
             }
 
@@ -54,17 +57,39 @@ object TaskParser {
                 m.groupValues[1].split(",").map { it.trim() }.filter { it.isNotBlank() }
             } ?: emptyList()
 
-            // Clean description (remove the → depends: suffix)
-            val description = if (depsMatch != null) {
+            // Remove → depends: suffix before parsing metadata
+            val withoutDeps = if (depsMatch != null) {
                 rawDescription.substring(0, depsMatch.range.first).trim()
             } else {
                 rawDescription.trim()
             }
 
+            // Split on em dash to separate metadata from description
+            val emDashIdx = withoutDeps.indexOf('\u2014')
+            val (metadataStr, description) = if (emDashIdx >= 0) {
+                withoutDeps.substring(0, emDashIdx).trim() to withoutDeps.substring(emDashIdx + 1).trim()
+            } else {
+                "" to withoutDeps
+            }
+
+            // Parse inline metadata from the metadata portion
+            val metadataMatches = METADATA_REGEX.findAll(metadataStr)
+            var agent: String? = null
+            var retries: Int? = null
+            var cooldown: Int? = null
+            for (m in metadataMatches) {
+                when (m.groupValues[1]) {
+                    "agent" -> agent = m.groupValues[2]
+                    "retries" -> retries = m.groupValues[2].toIntOrNull()
+                    "cooldown" -> cooldown = m.groupValues[2].toIntOrNull()
+                }
+            }
+            val metadata = TaskMetadata(agent = agent, retries = retries, cooldown = cooldown)
+
             // Calculate depth from indentation (2 or 4 spaces per level)
             val depth = if (indent >= 4) indent / 4 else if (indent >= 2) indent / 2 else 0
 
-            parsed.add(ParsedLine(depth, code, description, status, explicitDeps))
+            parsed.add(ParsedLine(depth, code, description, status, explicitDeps, metadata))
         }
 
         return buildTree(parsed, 0)
@@ -75,7 +100,8 @@ object TaskParser {
         val code: String,
         val description: String,
         val status: TaskStatus,
-        val explicitDeps: List<String>
+        val explicitDeps: List<String>,
+        val metadata: TaskMetadata = TaskMetadata()
     )
 
     /**
@@ -119,7 +145,8 @@ object TaskParser {
                     status = line.status,
                     children = childItems,
                     explicitDeps = line.explicitDeps,
-                    depth = line.depth
+                    depth = line.depth,
+                    metadata = line.metadata
                 )
             )
 

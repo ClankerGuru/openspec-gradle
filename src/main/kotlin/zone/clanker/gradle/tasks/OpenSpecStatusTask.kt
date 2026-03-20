@@ -141,6 +141,7 @@ abstract class OpenSpecStatusTask : DefaultTask() {
                 TaskStatus.DONE -> "- ✅"
                 TaskStatus.IN_PROGRESS -> "- 🔄"
                 TaskStatus.TODO -> "- ⬜"
+                TaskStatus.BLOCKED -> "- 🚫"
             }
             val code = if (task.code.isNotBlank()) "`${task.code}` " else ""
             sb.appendLine("$indent$icon $code${task.description}")

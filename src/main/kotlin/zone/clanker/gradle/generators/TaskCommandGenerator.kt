@@ -30,6 +30,7 @@ object TaskCommandGenerator {
                     TaskStatus.DONE -> "✅"
                     TaskStatus.IN_PROGRESS -> "🔄"
                     TaskStatus.TODO -> "⬜"
+                    TaskStatus.BLOCKED -> "🚫"
                 }
 
                 val changeDir = "opsx/changes/${proposal.name}"
@@ -90,6 +91,7 @@ object TaskCommandGenerator {
                                 TaskStatus.DONE -> "✅"
                                 TaskStatus.IN_PROGRESS -> "🔄"
                                 TaskStatus.TODO -> "⬜"
+                                TaskStatus.BLOCKED -> "🚫"
                             }
                             appendLine("- $childIcon `${child.code}`: ${child.description}")
                         }

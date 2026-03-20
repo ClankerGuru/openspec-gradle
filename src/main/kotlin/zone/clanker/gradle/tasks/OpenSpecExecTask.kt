@@ -7,6 +7,7 @@ import org.gradle.api.tasks.*
 import zone.clanker.gradle.exec.AgentRunner
 import zone.clanker.gradle.exec.CycleDetector
 import zone.clanker.gradle.exec.SpecParser
+import zone.clanker.gradle.tracking.*
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -35,6 +36,9 @@ abstract class OpenSpecExecTask : DefaultTask() {
     @get:Input @get:Optional
     abstract val execTimeout: Property<Int>
 
+    @get:Input @get:Optional
+    abstract val taskCodes: Property<String>
+
     init {
         group = "opsx"
         description = "[tool] Execute an AI agent with a prompt, verify output, retry on failure. " +
@@ -49,6 +53,12 @@ abstract class OpenSpecExecTask : DefaultTask() {
 
     @TaskAction
     fun execute() {
+        // Task chain mode: -Ptask=code1,code2
+        if (taskCodes.isPresent) {
+            executeTaskChain(taskCodes.get())
+            return
+        }
+
         val projectDir = project.projectDir
         val outputDir = File(projectDir, ".opsx/exec").also { it.mkdirs() }
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmm"))
@@ -210,6 +220,200 @@ abstract class OpenSpecExecTask : DefaultTask() {
 
         writeSummary(outputDir, timestamp, taskId, attempts, "FAILED")
         return false
+    }
+
+    /**
+     * Execute a chain of task codes from proposals.
+     */
+    private fun executeTaskChain(codesStr: String) {
+        val projectDir = project.projectDir
+        val codes = codesStr.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        val outputDir = File(projectDir, ".opsx/exec").also { it.mkdirs() }
+        val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmm"))
+
+        logger.lifecycle("")
+        logger.lifecycle("opsx-exec: task chain — ${codes.joinToString(", ")}")
+        logger.lifecycle("─".repeat(50))
+
+        // Find proposals and validate all codes exist
+        val taskEntries = codes.map { code ->
+            val found = ProposalScanner.findProposalByTaskCode(projectDir, code)
+                ?: throw GradleException("Task code '$code' not found in any proposal")
+            found
+        }
+
+        // Validate dependency chain
+        val firstProposal = taskEntries.first().first
+        val allTasks = firstProposal.flatten()
+        val graph = DependencyGraph(firstProposal.tasks)
+
+        for ((i, code) in codes.withIndex()) {
+            val task = allTasks.find { it.code == code } ?: continue
+            if (task.status == TaskStatus.DONE) continue // will be skipped
+
+            for (depCode in task.explicitDeps) {
+                val dep = allTasks.find { it.code == depCode }
+                if (dep != null && dep.status != TaskStatus.DONE) {
+                    // Check if dep is earlier in chain
+                    val depIdx = codes.indexOf(depCode)
+                    if (depIdx < 0 || depIdx >= i) {
+                        throw GradleException(
+                            "Task '$code' depends on '$depCode' which is not DONE and not earlier in chain"
+                        )
+                    }
+                }
+            }
+        }
+
+        // Execute sequentially
+        for ((proposal, taskItem) in taskEntries) {
+            val code = taskItem.code
+            val tasksFile = File(projectDir, "opsx/changes/${proposal.name}/tasks.md")
+
+            // Re-parse to get fresh status
+            val freshTasks = TaskParser.parse(tasksFile)
+            val freshTask = freshTasks.flatMap { it.flatten() }.find { it.code == code }
+            if (freshTask?.status == TaskStatus.DONE) {
+                logger.lifecycle("\n⏭ $code — already DONE, skipping")
+                continue
+            }
+
+            logger.lifecycle("\n── $code: ${taskItem.description} ──")
+
+            // Mark as IN_PROGRESS
+            TaskWriter.updateStatus(tasksFile, code, TaskStatus.IN_PROGRESS)
+
+            // Resolve execution parameters from metadata
+            val meta = freshTask?.metadata ?: taskItem.metadata
+            val resolvedRetries = meta.retries
+                ?: (if (maxRetries.isPresent) maxRetries.get() else 3)
+            val resolvedCooldown = meta.cooldown ?: 0
+            val resolvedAgent = AgentRunner.resolveAgent(
+                explicit = meta.agent ?: (if (agent.isPresent) agent.get() else null),
+                configured = resolveConfiguredAgents(),
+            )
+            val resolvedTimeout = if (execTimeout.isPresent) execTimeout.get().toLong() else 300L
+
+            // Build context
+            val proposalFile = File(projectDir, "opsx/changes/${proposal.name}/proposal.md")
+            val designFile = File(projectDir, "opsx/changes/${proposal.name}/design.md")
+            val proposalContext = if (proposalFile.exists()) proposalFile.readText() else ""
+            val designContext = if (designFile.exists()) designFile.readText() else ""
+
+            // Collect previous attempt logs from tasks.md
+            val previousLogs = extractAttemptLogs(tasksFile, code)
+
+            var success = false
+            for (attempt in 1..resolvedRetries) {
+                logger.lifecycle("Attempt $attempt/$resolvedRetries (agent: $resolvedAgent)")
+
+                val prompt = buildTaskPrompt(
+                    proposalContext, designContext, taskItem.description,
+                    previousLogs, attempt, resolvedRetries
+                )
+
+                val result = AgentRunner.run(
+                    agent = resolvedAgent,
+                    prompt = prompt,
+                    workingDir = projectDir,
+                    timeoutSeconds = resolvedTimeout,
+                )
+
+                val outputFile = File(outputDir, "$timestamp-$code-attempt-$attempt.md")
+                outputFile.writeText(buildOutputReport(resolvedAgent, attempt, result))
+
+                if (result.success) {
+                    // Verify if enabled
+                    val resolvedVerify = if (verify.isPresent) verify.get() else true
+                    if (resolvedVerify) {
+                        val verifyPassed = runGradleTaskSafe("opsx-verify")
+                        if (verifyPassed) {
+                            success = true
+                            break
+                        } else {
+                            val msg = "Verification failed (exit 0 but verify failed)"
+                            TaskWriter.appendAttemptLog(tasksFile, code, attempt, msg)
+                        }
+                    } else {
+                        success = true
+                        break
+                    }
+                } else {
+                    val errorMsg = result.stderr.take(200).ifBlank { "exit code ${result.exitCode}" }
+                    TaskWriter.appendAttemptLog(tasksFile, code, attempt, errorMsg)
+                }
+
+                if (attempt < resolvedRetries && resolvedCooldown > 0) {
+                    logger.lifecycle("Cooldown: ${resolvedCooldown}s")
+                    Thread.sleep(resolvedCooldown * 1000L)
+                }
+            }
+
+            if (success) {
+                TaskWriter.updateStatus(tasksFile, code, TaskStatus.DONE)
+                logger.lifecycle("✓ $code — DONE")
+            } else {
+                TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
+                logger.lifecycle("✗ $code — BLOCKED after all retries")
+                throw GradleException("Task '$code' failed — chain stopped")
+            }
+        }
+
+        logger.lifecycle("\n✓ Task chain completed successfully")
+    }
+
+    private fun buildTaskPrompt(
+        proposalContext: String,
+        designContext: String,
+        taskDescription: String,
+        previousLogs: String,
+        attempt: Int,
+        maxAttempts: Int,
+    ): String = buildString {
+        if (proposalContext.isNotBlank()) {
+            appendLine("## Proposal Context")
+            appendLine(proposalContext)
+            appendLine()
+        }
+        if (designContext.isNotBlank()) {
+            appendLine("## Design")
+            appendLine(designContext)
+            appendLine()
+        }
+        appendLine("## Task")
+        appendLine(taskDescription)
+        if (previousLogs.isNotBlank()) {
+            appendLine()
+            appendLine("## Previous Attempts")
+            appendLine(previousLogs)
+        }
+        if (attempt > 1) {
+            appendLine()
+            appendLine("---")
+            appendLine("RETRY CONTEXT (attempt $attempt/$maxAttempts):")
+            appendLine("Fix the issue without reintroducing previous errors.")
+        }
+    }
+
+    private fun extractAttemptLogs(tasksFile: File, code: String): String {
+        val lines = tasksFile.readLines()
+        val codePattern = "`$code`"
+        val logs = mutableListOf<String>()
+        var found = false
+        for (line in lines) {
+            if (line.contains(codePattern) && line.trimStart().startsWith("- [")) {
+                found = true
+                continue
+            }
+            if (found) {
+                if (line.trimStart().startsWith("> **Attempt")) {
+                    logs.add(line.trim())
+                } else if (line.trimStart().startsWith("- [")) {
+                    break // next task
+                }
+            }
+        }
+        return logs.joinToString("\n")
     }
 
     private fun buildRetryPrompt(

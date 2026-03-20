@@ -9,7 +9,7 @@ import java.io.File
 object TaskWriter {
 
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*-\s+)\[([ xX~])]\s+(`[^`]+`\s+.+)$"""
+        """^(\s*-\s+)\[([ xX~/])]\s+(`[^`]+`\s+.+)$"""
     )
 
     /**
@@ -60,6 +60,33 @@ object TaskWriter {
         val completed = mutableListOf<String>()
         propagateRecursive(file, tasks, completed)
         return completed
+    }
+
+    /**
+     * Append an attempt log line under a task in the tasks.md file.
+     * Inserts `  > **Attempt N** (timestamp): message` right after the task line.
+     */
+    fun appendAttemptLog(file: File, code: String, attemptNum: Int, message: String): Boolean {
+        val lines = file.readLines().toMutableList()
+        val codePattern = "`$code`"
+        val timestamp = java.time.LocalDateTime.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        val logLine = "  > **Attempt $attemptNum** ($timestamp): $message"
+
+        for (i in lines.indices) {
+            if (!lines[i].contains(codePattern)) continue
+            if (TASK_LINE_REGEX.matchEntire(lines[i]) == null) continue
+
+            // Find insertion point: after this line and any existing log lines
+            var insertAt = i + 1
+            while (insertAt < lines.size && lines[insertAt].trimStart().startsWith("> **Attempt")) {
+                insertAt++
+            }
+            lines.add(insertAt, logLine)
+            file.writeText(lines.joinToString("\n") + "\n")
+            return true
+        }
+        return false
     }
 
     private fun propagateRecursive(file: File, tasks: List<TaskItem>, completed: MutableList<String>) {

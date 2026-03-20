@@ -32,8 +32,13 @@ abstract class OpenSpecTaskItemTask : DefaultTask() {
 
     @get:Input
     @get:Optional
-    @get:Option(option = "set", description = "Set task status: todo, progress, done")
+    @get:Option(option = "set", description = "Set task status: todo, progress, done, blocked")
     abstract val setStatus: Property<String>
+
+    @get:Input
+    @get:Optional
+    @get:Option(option = "run", description = "Execute this task via the exec engine")
+    abstract val runTask: Property<String>
 
     init {
         group = "opsx"
@@ -56,13 +61,23 @@ abstract class OpenSpecTaskItemTask : DefaultTask() {
         val taskItem = allFlat.find { it.code == code }
             ?: throw GradleException("Task '$code' not found in $name/tasks.md")
 
+        // --run flag: delegate to exec engine
+        if (runTask.isPresent) {
+            val execTask = project.tasks.findByName("opsx-exec") as? OpenSpecExecTask
+                ?: throw GradleException("opsx-exec task not found")
+            execTask.taskCodes.set(code)
+            execTask.execute()
+            return
+        }
+
         if (setStatus.isPresent) {
             val newStatus = when (setStatus.get().lowercase()) {
                 "todo", "t" -> TaskStatus.TODO
                 "progress", "p", "wip" -> TaskStatus.IN_PROGRESS
                 "done", "d", "x" -> TaskStatus.DONE
+                "blocked", "b" -> TaskStatus.BLOCKED
                 else -> throw GradleException(
-                    "Invalid status '${setStatus.get()}'. Use: todo, progress, done"
+                    "Invalid status '${setStatus.get()}'. Use: todo, progress, done, blocked"
                 )
             }
 

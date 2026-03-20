@@ -129,7 +129,7 @@ class StatusTaskTest {
         assertTrue(result.output.contains("IN_PROGRESS"))
 
         val content = File(projectDir, "opsx/changes/my-feature/tasks.md").readText()
-        assertTrue(content.contains("[~] `mf-1`"))
+        assertTrue(content.contains("[/] `mf-1`"))
     }
 
     @Test

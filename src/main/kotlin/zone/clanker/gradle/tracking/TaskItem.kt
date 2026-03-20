@@ -6,20 +6,23 @@ package zone.clanker.gradle.tracking
 enum class TaskStatus {
     TODO,
     IN_PROGRESS,
-    DONE;
+    DONE,
+    BLOCKED;
 
     val icon: String
         get() = when (this) {
             TODO -> "[ ]"
-            IN_PROGRESS -> "[~]"
+            IN_PROGRESS -> "[/]"
             DONE -> "[x]"
+            BLOCKED -> "[~]"
         }
 
     val checkbox: String
         get() = when (this) {
             TODO -> "[ ]"
-            IN_PROGRESS -> "[~]"
+            IN_PROGRESS -> "[/]"
             DONE -> "[x]"
+            BLOCKED -> "[~]"
         }
 }
 
@@ -33,13 +36,23 @@ enum class TaskStatus {
  * @param explicitDeps Cross-cutting dependency codes declared via → depends: syntax
  * @param depth Nesting level (0 = top-level)
  */
+/**
+ * Inline metadata parsed from task lines (e.g., agent:copilot retries:3 cooldown:60).
+ */
+data class TaskMetadata(
+    val agent: String? = null,
+    val retries: Int? = null,
+    val cooldown: Int? = null, // seconds
+)
+
 data class TaskItem(
     val code: String,
     val description: String,
     val status: TaskStatus,
     val children: List<TaskItem> = emptyList(),
     val explicitDeps: List<String> = emptyList(),
-    val depth: Int = 0
+    val depth: Int = 0,
+    val metadata: TaskMetadata = TaskMetadata()
 ) {
     /** Total count of this task + all descendants */
     val totalCount: Int
