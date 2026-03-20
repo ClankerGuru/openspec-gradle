@@ -344,6 +344,18 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 }
             })
 
+            project.tasks.register("opsx-exec", OpenSpecExecTask::class.java).configure(object : org.gradle.api.Action<OpenSpecExecTask> {
+                override fun execute(task: OpenSpecExecTask) {
+                    if (project.hasProperty("prompt")) task.prompt.set(project.property("prompt").toString())
+                    if (project.hasProperty("spec")) task.spec.set(project.property("spec").toString())
+                    if (project.hasProperty("agent")) task.agent.set(project.property("agent").toString())
+                    project.intProperty("maxRetries")?.let { task.maxRetries.set(it) }
+                    if (project.hasProperty("verify")) task.verify.set(project.property("verify").toString().lowercase() == "true")
+                    if (project.hasProperty("syncBefore")) task.syncBefore.set(project.property("syncBefore").toString().lowercase() == "true")
+                    project.intProperty("execTimeout")?.let { task.execTimeout.set(it) }
+                }
+            })
+
             // Dynamic task registration from proposals
             registerProposalTasks(project)
 
