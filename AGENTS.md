@@ -47,11 +47,11 @@ src/test/kotlin/                 # 236 tests (unit + Gradle TestKit integration)
 - **Settings plugin** — applies in `beforeSettings {}` block, not a project plugin
 - **Init script** — lives at `~/.gradle/init.d/`, auto-applies to all projects
 - **Agent property** — `zone.clanker.openspec.agents` (lazy provider, project overrides global)
-- **5 adapters** — Claude, Copilot, Codex, OpenCode, Crush (each formats files differently)
+- **4 adapters** — Claude, Copilot, Codex, OpenCode (each formats files differently)
 - **Instructions delivery**:
   - Claude → `.claude/CLAUDE.md` (standalone)
   - Copilot → `.github/instructions/opsx.instructions.md` (additive)
-  - Codex/OpenCode/Crush → root `AGENTS.md` with `<!-- OPSX:BEGIN -->` markers
+  - Codex/OpenCode → root `AGENTS.md` with `<!-- OPSX:BEGIN -->` markers
 - **Lifecycle hooks** — `assemble` → `opsx-sync`, `clean` → `opsx-clean`
 - **Version from git tag** — `git describe --tags --abbrev=0`, no hardcoded version
 - **All generated files** go in global gitignore (per-developer, not committed)
