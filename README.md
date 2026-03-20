@@ -266,6 +266,12 @@ Most AI context tools work outside the build system — scanning files, guessing
 
 ---
 
+## Resources
+
+- 📖 [Agentic Execution Lessons](https://github.com/ClankerGuru/openspec-gradle/wiki/Agentic-Execution-Lessons) — Real-world lessons from running AI agents via Gradle
+
+---
+
 ## License
 
 [MIT](LICENSE)
