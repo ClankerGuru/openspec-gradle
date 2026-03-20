@@ -10,32 +10,62 @@ class ApplyV2Test {
     @TempDir
     lateinit var tempDir: File
 
-    // ── TaskStatus changes ──
+    // ── TaskStatus GitHub-compatible format ──
 
     @Test
-    fun `BLOCKED status has tilde checkbox`() {
-        assertEquals("[~]", TaskStatus.BLOCKED.checkbox)
-        assertEquals("[~]", TaskStatus.BLOCKED.icon)
+    fun `BLOCKED uses unchecked checkbox with emoji`() {
+        assertEquals("[ ]", TaskStatus.BLOCKED.checkbox)
+        assertEquals("⛔ ", TaskStatus.BLOCKED.emoji)
+        assertEquals("⛔", TaskStatus.BLOCKED.icon)
     }
 
     @Test
-    fun `IN_PROGRESS status has slash checkbox`() {
-        assertEquals("[/]", TaskStatus.IN_PROGRESS.checkbox)
-        assertEquals("[/]", TaskStatus.IN_PROGRESS.icon)
+    fun `IN_PROGRESS uses unchecked checkbox with emoji`() {
+        assertEquals("[ ]", TaskStatus.IN_PROGRESS.checkbox)
+        assertEquals("🔄 ", TaskStatus.IN_PROGRESS.emoji)
+        assertEquals("🔄", TaskStatus.IN_PROGRESS.icon)
     }
 
-    // ── Parsing [/] and [~] ──
+    @Test
+    fun `TODO has no emoji`() {
+        assertEquals("[ ]", TaskStatus.TODO.checkbox)
+        assertEquals("", TaskStatus.TODO.emoji)
+    }
 
     @Test
-    fun `parse slash as IN_PROGRESS`() {
+    fun `DONE uses checked checkbox no emoji`() {
+        assertEquals("[x]", TaskStatus.DONE.checkbox)
+        assertEquals("", TaskStatus.DONE.emoji)
+    }
+
+    // ── Parsing legacy [/] and [~] (backward compat) ──
+
+    @Test
+    fun `parse legacy slash as IN_PROGRESS`() {
         val tasks = TaskParser.parse(listOf("- [/] `t-1` Working on it"))
         assertEquals(1, tasks.size)
         assertEquals(TaskStatus.IN_PROGRESS, tasks[0].status)
     }
 
     @Test
-    fun `parse tilde as BLOCKED`() {
+    fun `parse legacy tilde as BLOCKED`() {
         val tasks = TaskParser.parse(listOf("- [~] `t-1` Stuck on something"))
+        assertEquals(1, tasks.size)
+        assertEquals(TaskStatus.BLOCKED, tasks[0].status)
+    }
+
+    // ── Parsing new emoji format ──
+
+    @Test
+    fun `parse emoji IN_PROGRESS`() {
+        val tasks = TaskParser.parse(listOf("- [ ] 🔄 `t-1` Working on it"))
+        assertEquals(1, tasks.size)
+        assertEquals(TaskStatus.IN_PROGRESS, tasks[0].status)
+    }
+
+    @Test
+    fun `parse emoji BLOCKED`() {
+        val tasks = TaskParser.parse(listOf("- [ ] ⛔ `t-1` Stuck"))
         assertEquals(1, tasks.size)
         assertEquals(TaskStatus.BLOCKED, tasks[0].status)
     }
@@ -44,9 +74,24 @@ class ApplyV2Test {
     fun `all four statuses parse correctly`() {
         val lines = listOf(
             "- [ ] `t-1` Todo",
-            "- [/] `t-2` In progress",
+            "- [ ] 🔄 `t-2` In progress",
             "- [x] `t-3` Done",
-            "- [~] `t-4` Blocked",
+            "- [ ] ⛔ `t-4` Blocked",
+        )
+        val tasks = TaskParser.parse(lines)
+        assertEquals(TaskStatus.TODO, tasks[0].status)
+        assertEquals(TaskStatus.IN_PROGRESS, tasks[1].status)
+        assertEquals(TaskStatus.DONE, tasks[2].status)
+        assertEquals(TaskStatus.BLOCKED, tasks[3].status)
+    }
+
+    @Test
+    fun `legacy statuses still parse in mixed format`() {
+        val lines = listOf(
+            "- [ ] `t-1` Todo",
+            "- [/] `t-2` Legacy in progress",
+            "- [x] `t-3` Done",
+            "- [~] `t-4` Legacy blocked",
         )
         val tasks = TaskParser.parse(lines)
         assertEquals(TaskStatus.TODO, tasks[0].status)
@@ -106,22 +151,54 @@ class ApplyV2Test {
         assertEquals(listOf("t-1"), tasks[0].explicitDeps)
     }
 
-    // ── TaskWriter BLOCKED status ──
+    @Test
+    fun `metadata with emoji status`() {
+        val lines = listOf(
+            "- [ ] 🔄 `t-1` agent:copilot retries:2 \u2014 In progress task"
+        )
+        val tasks = TaskParser.parse(lines)
+        assertEquals(TaskStatus.IN_PROGRESS, tasks[0].status)
+        assertEquals("copilot", tasks[0].metadata.agent)
+        assertEquals("In progress task", tasks[0].description)
+    }
+
+    // ── TaskWriter writes GitHub-compatible format ──
 
     @Test
-    fun `write BLOCKED status`() {
+    fun `write BLOCKED status uses emoji format`() {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [ ] `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.BLOCKED))
-        assertTrue(file.readText().contains("[~] `t-1`"))
+        val content = file.readText()
+        assertTrue(content.contains("[ ] ⛔ `t-1`"), "Expected emoji BLOCKED format, got: $content")
     }
 
     @Test
-    fun `write IN_PROGRESS with slash`() {
+    fun `write IN_PROGRESS uses emoji format`() {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [ ] `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.IN_PROGRESS))
-        assertTrue(file.readText().contains("[/] `t-1`"))
+        val content = file.readText()
+        assertTrue(content.contains("[ ] 🔄 `t-1`"), "Expected emoji IN_PROGRESS format, got: $content")
+    }
+
+    @Test
+    fun `write DONE uses checked checkbox`() {
+        val file = File(tempDir, "tasks.md")
+        file.writeText("- [ ] `t-1` A task\n")
+        assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE))
+        val content = file.readText()
+        assertTrue(content.contains("[x] `t-1`"), "Expected checked DONE format, got: $content")
+    }
+
+    @Test
+    fun `write TODO clears emoji`() {
+        val file = File(tempDir, "tasks.md")
+        file.writeText("- [ ] 🔄 `t-1` A task\n")
+        assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.TODO))
+        val content = file.readText()
+        assertTrue(content.contains("[ ] `t-1`"), "Expected clean TODO format, got: $content")
+        assertFalse(content.contains("🔄"))
     }
 
     // ── Attempt log appending ──
@@ -129,7 +206,7 @@ class ApplyV2Test {
     @Test
     fun `appendAttemptLog inserts after task line`() {
         val file = File(tempDir, "tasks.md")
-        file.writeText("- [/] `t-1` My task\n- [ ] `t-2` Next task\n")
+        file.writeText("- [ ] 🔄 `t-1` My task\n- [ ] `t-2` Next task\n")
 
         assertTrue(TaskWriter.appendAttemptLog(file, "t-1", 1, "Build failed"))
         val lines = file.readLines()
@@ -142,7 +219,7 @@ class ApplyV2Test {
     @Test
     fun `appendAttemptLog stacks multiple attempts`() {
         val file = File(tempDir, "tasks.md")
-        file.writeText("- [/] `t-1` My task\n- [ ] `t-2` Next\n")
+        file.writeText("- [ ] 🔄 `t-1` My task\n- [ ] `t-2` Next\n")
 
         TaskWriter.appendAttemptLog(file, "t-1", 1, "First fail")
         TaskWriter.appendAttemptLog(file, "t-1", 2, "Second fail")
@@ -192,7 +269,6 @@ class ApplyV2Test {
             TaskItem("t-1", "Done task", TaskStatus.DONE),
             TaskItem("t-2", "Todo task", TaskStatus.TODO),
         )
-        // Just verifying status check works
         assertTrue(tasks[0].status == TaskStatus.DONE)
         assertFalse(tasks[1].status == TaskStatus.DONE)
     }
@@ -243,10 +319,10 @@ class ApplyV2Test {
         assertNull(ProposalScanner.findProposalByTaskCode(tempDir, "unknown"))
     }
 
-    // ── TaskWriter handles [/] lines ──
+    // ── TaskWriter handles legacy lines ──
 
     @Test
-    fun `TaskWriter can update status on slash-checkbox lines`() {
+    fun `TaskWriter can update status on legacy slash-checkbox lines`() {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [/] `t-1` In progress task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE))
@@ -254,10 +330,18 @@ class ApplyV2Test {
     }
 
     @Test
-    fun `TaskWriter can update status on tilde-checkbox lines`() {
+    fun `TaskWriter can update status on legacy tilde-checkbox lines`() {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [~] `t-1` Blocked task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.TODO))
         assertTrue(file.readText().contains("[ ] `t-1`"))
+    }
+
+    @Test
+    fun `TaskWriter can update status on emoji lines`() {
+        val file = File(tempDir, "tasks.md")
+        file.writeText("- [ ] 🔄 `t-1` In progress task\n")
+        assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE))
+        assertTrue(file.readText().contains("[x] `t-1`"))
     }
 }

@@ -13,9 +13,9 @@ import java.io.File
  */
 object TaskParser {
 
-    // Matches: optional whitespace, dash, space, checkbox, space, optional code, description, optional deps
+    // Matches: optional whitespace, dash, space, checkbox, space, optional emoji, optional code, description
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*)-\s+\[([ xX~/])]\s+(?:`([^`]+)`\s+)?(.+)$"""
+        """^(\s*)-\s+\[([ xX~/])]\s+(?:([🔄⛔])\s+)?(?:`([^`]+)`\s+)?(.+)$"""
     )
 
     private val METADATA_REGEX = Regex("""(agent|retries|cooldown):(\S+)""")
@@ -41,13 +41,17 @@ object TaskParser {
             val match = TASK_LINE_REGEX.matchEntire(line) ?: continue
             val indent = match.groupValues[1].length
             val checkChar = match.groupValues[2]
-            val code = match.groupValues[3] // empty string if no code
-            val rawDescription = match.groupValues[4]
+            val emojiMarker = match.groupValues[3]
+            val code = match.groupValues[4] // empty string if no code
+            val rawDescription = match.groupValues[5]
 
-            val status = when (checkChar) {
-                "x", "X" -> TaskStatus.DONE
-                "~" -> TaskStatus.BLOCKED
-                "/" -> TaskStatus.IN_PROGRESS
+            // Status: emoji markers take priority, then checkbox chars
+            val status = when {
+                emojiMarker == "🔄" -> TaskStatus.IN_PROGRESS
+                emojiMarker == "⛔" -> TaskStatus.BLOCKED
+                checkChar == "x" || checkChar == "X" -> TaskStatus.DONE
+                checkChar == "~" -> TaskStatus.BLOCKED       // legacy
+                checkChar == "/" -> TaskStatus.IN_PROGRESS   // legacy
                 else -> TaskStatus.TODO
             }
 

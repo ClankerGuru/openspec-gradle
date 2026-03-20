@@ -8,8 +8,9 @@ import java.io.File
  */
 object TaskWriter {
 
+    // Matches checkbox + optional emoji + code + rest
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*-\s+)\[([ xX~/])]\s+(`[^`]+`\s+.+)$"""
+        """^(\s*-\s+)\[([ xX~/])]\s+(?:[🔄⛔]\s+)?(`[^`]+`\s+.+)$"""
     )
 
     /**
@@ -43,7 +44,7 @@ object TaskWriter {
             val prefix = match.groupValues[1]    // indent + "- "
             val rest = match.groupValues[3]      // "`code` description..."
 
-            lines[i] = "${prefix}[${newStatus.checkbox.removePrefix("[").removeSuffix("]")}] $rest"
+            lines[i] = "${prefix}${newStatus.checkbox} ${newStatus.emoji}$rest"
             return true
         }
         return false

@@ -9,20 +9,29 @@ enum class TaskStatus {
     DONE,
     BLOCKED;
 
-    val icon: String
-        get() = when (this) {
-            TODO -> "[ ]"
-            IN_PROGRESS -> "[/]"
-            DONE -> "[x]"
-            BLOCKED -> "[~]"
-        }
-
+    /** GitHub-compatible checkbox — only [ ] and [x] */
     val checkbox: String
         get() = when (this) {
-            TODO -> "[ ]"
-            IN_PROGRESS -> "[/]"
             DONE -> "[x]"
-            BLOCKED -> "[~]"
+            else -> "[ ]"
+        }
+
+    /** Emoji status indicator placed after the checkbox */
+    val emoji: String
+        get() = when (this) {
+            TODO -> ""
+            IN_PROGRESS -> "🔄 "
+            DONE -> ""
+            BLOCKED -> "⛔ "
+        }
+
+    /** Display icon for CLI/log output */
+    val icon: String
+        get() = when (this) {
+            TODO -> "⬜"
+            IN_PROGRESS -> "🔄"
+            DONE -> "✅"
+            BLOCKED -> "⛔"
         }
 }
 

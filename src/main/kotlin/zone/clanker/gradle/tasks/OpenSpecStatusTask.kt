@@ -137,12 +137,7 @@ abstract class OpenSpecStatusTask : DefaultTask() {
 
     private fun renderTasks(sb: StringBuilder, tasks: List<zone.clanker.gradle.tracking.TaskItem>, indent: String) {
         for (task in tasks) {
-            val icon = when (task.status) {
-                TaskStatus.DONE -> "- ✅"
-                TaskStatus.IN_PROGRESS -> "- 🔄"
-                TaskStatus.TODO -> "- ⬜"
-                TaskStatus.BLOCKED -> "- 🚫"
-            }
+            val icon = "- ${task.status.icon}"
             val code = if (task.code.isNotBlank()) "`${task.code}` " else ""
             sb.appendLine("$indent$icon $code${task.description}")
             if (task.children.isNotEmpty()) {
