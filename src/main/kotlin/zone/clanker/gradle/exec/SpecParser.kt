@@ -45,7 +45,6 @@ object SpecParser {
 
         // Extract metadata (key: value lines before ## Prompt)
         val metadata = mutableMapOf<String, String>()
-        var inMetadata = true
         var promptStartIndex = -1
 
         for ((i, line) in lines.withIndex()) {
@@ -53,7 +52,7 @@ object SpecParser {
                 promptStartIndex = i + 1
                 break
             }
-            if (inMetadata && line.matches(Regex("^[a-z-]+:\\s*.+"))) {
+            if (line.matches(Regex("^[a-z-]+:\\s*.+"))) {
                 val (key, value) = line.split(":", limit = 2).map { it.trim() }
                 metadata[key] = value
             }

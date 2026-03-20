@@ -294,9 +294,15 @@ abstract class OpenSpecExecTask : DefaultTask() {
         return ext?.tools?.orNull ?: emptyList()
     }
 
+    private fun resolveGradlew(): String {
+        val isWindows = System.getProperty("os.name").lowercase().contains("win")
+        val wrapperName = if (isWindows) "gradlew.bat" else "gradlew"
+        return File(project.rootDir, wrapperName).absolutePath
+    }
+
     private fun runGradleTask(taskName: String) {
         val proc = ProcessBuilder(
-            "${project.rootDir}/gradlew", taskName,
+            resolveGradlew(), taskName,
             "--no-daemon", "-p", project.projectDir.absolutePath,
         )
             .directory(project.rootDir)
@@ -309,7 +315,7 @@ abstract class OpenSpecExecTask : DefaultTask() {
     private fun runGradleTaskSafe(taskName: String): Boolean {
         return try {
             val proc = ProcessBuilder(
-                "${project.rootDir}/gradlew", taskName,
+                resolveGradlew(), taskName,
                 "--no-daemon", "-p", project.projectDir.absolutePath,
             )
                 .directory(project.rootDir)

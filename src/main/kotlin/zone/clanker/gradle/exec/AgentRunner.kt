@@ -75,11 +75,6 @@ object AgentRunner {
 
         val startTime = System.currentTimeMillis()
 
-        // Read stdout and stderr concurrently to avoid deadlocks
-        val stdoutThread = Thread { process.inputStream.bufferedReader().readText() }
-        val stderrThread = Thread { process.errorStream.bufferedReader().readText() }
-
-        // Use simple capture approach
         val stdout = StringBuilder()
         val stderr = StringBuilder()
 
@@ -118,13 +113,18 @@ object AgentRunner {
     }
 
     private fun isOnPath(binary: String): Boolean {
-        return try {
-            val process = ProcessBuilder("which", binary)
-                .redirectErrorStream(true)
-                .start()
-            process.waitFor(5, TimeUnit.SECONDS) && process.exitValue() == 0
-        } catch (_: Exception) {
-            false
+        val pathDirs = System.getenv("PATH")?.split(java.io.File.pathSeparator) ?: return false
+        val isWindows = System.getProperty("os.name").lowercase().contains("win")
+        val extensions = if (isWindows) {
+            (System.getenv("PATHEXT") ?: ".COM;.EXE;.BAT;.CMD").split(";")
+        } else {
+            listOf("")
+        }
+        return pathDirs.any { dir ->
+            extensions.any { ext ->
+                val file = java.io.File(dir, binary + ext)
+                file.exists() && file.canExecute()
+            }
         }
     }
 }
