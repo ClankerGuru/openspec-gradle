@@ -21,9 +21,9 @@ enum class TaskStatus {
     /** Emoji status indicator placed after the checkbox (visual redundancy) */
     val emoji: String
         get() = when (this) {
-            TODO -> ""
+            TODO -> "⬜ "
             IN_PROGRESS -> "🔄 "
-            DONE -> ""
+            DONE -> "✅ "
             BLOCKED -> "⛔ "
         }
 

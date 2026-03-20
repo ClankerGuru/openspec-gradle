@@ -15,7 +15,7 @@ object TaskParser {
 
     // Matches: optional whitespace, dash, space, checkbox, space, optional emoji, optional code, description
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*)-\s+\[([ xX~/])]\s+(?:([🔄⛔])\s+)?(?:`([^`]+)`\s+)?(.+)$"""
+        """^(\s*)-\s+\[([ xX~/])]\s+(?:([⬜🔄✅⛔])\s+)?(?:`([^`]+)`\s+)?(.+)$"""
     )
 
     private val METADATA_REGEX = Regex("""(agent|retries|cooldown):(\S+)""")
@@ -49,6 +49,8 @@ object TaskParser {
             val status = when {
                 emojiMarker == "🔄" -> TaskStatus.IN_PROGRESS
                 emojiMarker == "⛔" -> TaskStatus.BLOCKED
+                emojiMarker == "✅" -> TaskStatus.DONE
+                emojiMarker == "⬜" -> TaskStatus.TODO
                 checkChar == "x" || checkChar == "X" -> TaskStatus.DONE
                 checkChar == "~" -> TaskStatus.BLOCKED       // legacy
                 checkChar == "/" -> TaskStatus.IN_PROGRESS   // legacy

@@ -27,15 +27,15 @@ class ApplyV2Test {
     }
 
     @Test
-    fun `TODO has no emoji`() {
+    fun `TODO uses unchecked checkbox with emoji`() {
         assertEquals("[ ]", TaskStatus.TODO.checkbox)
-        assertEquals("", TaskStatus.TODO.emoji)
+        assertEquals("⬜ ", TaskStatus.TODO.emoji)
     }
 
     @Test
-    fun `DONE uses checked checkbox no emoji`() {
+    fun `DONE uses checked checkbox with emoji`() {
         assertEquals("[x]", TaskStatus.DONE.checkbox)
-        assertEquals("", TaskStatus.DONE.emoji)
+        assertEquals("✅ ", TaskStatus.DONE.emoji)
     }
 
     // ── Parsing legacy [/] and [~] (backward compat) ──
@@ -183,21 +183,21 @@ class ApplyV2Test {
     }
 
     @Test
-    fun `write DONE uses checked checkbox`() {
+    fun `write DONE uses checked checkbox with emoji`() {
         val file = File(tempDir, "tasks.md")
-        file.writeText("- [ ] `t-1` A task\n")
+        file.writeText("- [ ] ⬜ `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE))
         val content = file.readText()
-        assertTrue(content.contains("[x] `t-1`"), "Expected [x] DONE, got: $content")
+        assertTrue(content.contains("[x] ✅ `t-1`"), "Expected [x] + ✅, got: $content")
     }
 
     @Test
-    fun `write TODO clears emoji and resets checkbox`() {
+    fun `write TODO resets checkbox and emoji`() {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [/] 🔄 `t-1` A task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.TODO))
         val content = file.readText()
-        assertTrue(content.contains("[ ] `t-1`"), "Expected clean TODO, got: $content")
+        assertTrue(content.contains("[ ] ⬜ `t-1`"), "Expected [ ] + ⬜, got: $content")
         assertFalse(content.contains("🔄"))
     }
 
@@ -326,7 +326,7 @@ class ApplyV2Test {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [/] `t-1` In progress task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE))
-        assertTrue(file.readText().contains("[x] `t-1`"))
+        assertTrue(file.readText().contains("[x] ✅ `t-1`"))
     }
 
     @Test
@@ -334,7 +334,7 @@ class ApplyV2Test {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [~] `t-1` Blocked task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.TODO))
-        assertTrue(file.readText().contains("[ ] `t-1`"))
+        assertTrue(file.readText().contains("[ ] ⬜ `t-1`"))
     }
 
     @Test
@@ -342,6 +342,6 @@ class ApplyV2Test {
         val file = File(tempDir, "tasks.md")
         file.writeText("- [ ] 🔄 `t-1` In progress task\n")
         assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE))
-        assertTrue(file.readText().contains("[x] `t-1`"))
+        assertTrue(file.readText().contains("[x] ✅ `t-1`"))
     }
 }
