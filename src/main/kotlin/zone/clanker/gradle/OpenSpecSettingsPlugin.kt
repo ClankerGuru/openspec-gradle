@@ -77,10 +77,15 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
             // since findProperty() may not see project-level properties from init scripts.
             val toolsProvider = project.provider {
                 val prop = "zone.clanker.openspec.agents"
-                // Resolution order: -P flag > project gradle.properties > global ~/.gradle/gradle.properties > default
-                val agentsProp = project.findProperty(prop)?.toString()?.trim()
-                    ?: readGradleProperty(File(project.projectDir, "gradle.properties"), prop)
-                    ?: readGradleProperty(File(System.getProperty("user.home"), ".gradle/gradle.properties"), prop)
+                // Resolution order (closest scope wins, no merging):
+                // 1. -P flag (command line): ./gradlew opsx-sync -Pzone.clanker.openspec.agents=claude
+                // 2. System property: set via systemProp.zone.clanker.openspec.agents=claude in
+                //    the ROOT PROJECT's gradle.properties (Gradle strips the systemProp. prefix).
+                //    Only the root project's gradle.properties is checked for systemProp.* entries.
+                // 3. Global ~/.gradle/gradle.properties (as systemProp or direct property)
+                // 4. Default: github
+                val agentsProp = project.gradle.startParameter.projectProperties[prop]
+                    ?: System.getProperty(prop)
                     ?: "github"
                 parseAgents(agentsProp)
             }
