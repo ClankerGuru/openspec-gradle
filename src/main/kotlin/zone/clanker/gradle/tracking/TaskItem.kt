@@ -6,22 +6,43 @@ package zone.clanker.gradle.tracking
 enum class TaskStatus {
     TODO,
     IN_PROGRESS,
-    DONE;
+    DONE,
+    BLOCKED;
 
-    val icon: String
-        get() = when (this) {
-            TODO -> "[ ]"
-            IN_PROGRESS -> "[~]"
-            DONE -> "[x]"
-        }
-
+    /** GitHub-compatible checkbox: only `[ ]` and `[x]` render as checkboxes */
     val checkbox: String
         get() = when (this) {
-            TODO -> "[ ]"
-            IN_PROGRESS -> "[~]"
             DONE -> "[x]"
+            else -> "[ ]"
+        }
+
+    /** Emoji status indicator placed after the checkbox (differentiates non-done states) */
+    val emoji: String
+        get() = when (this) {
+            TODO -> ""
+            IN_PROGRESS -> "🔄 "
+            DONE -> ""
+            BLOCKED -> "⛔ "
+        }
+
+    /** Display icon for CLI/log output */
+    val icon: String
+        get() = when (this) {
+            TODO -> "⬜"
+            IN_PROGRESS -> "🔄"
+            DONE -> "✅"
+            BLOCKED -> "⛔"
         }
 }
+
+/**
+ * Inline metadata parsed from task lines (e.g., agent:copilot retries:3 cooldown:60).
+ */
+data class TaskMetadata(
+    val agent: String? = null,
+    val retries: Int? = null,
+    val cooldown: Int? = null, // seconds
+)
 
 /**
  * A single task item parsed from a tasks.md file.
@@ -32,6 +53,7 @@ enum class TaskStatus {
  * @param children Nested subtasks
  * @param explicitDeps Cross-cutting dependency codes declared via → depends: syntax
  * @param depth Nesting level (0 = top-level)
+ * @param metadata Inline metadata (agent, retries, cooldown)
  */
 data class TaskItem(
     val code: String,
@@ -39,7 +61,8 @@ data class TaskItem(
     val status: TaskStatus,
     val children: List<TaskItem> = emptyList(),
     val explicitDeps: List<String> = emptyList(),
-    val depth: Int = 0
+    val depth: Int = 0,
+    val metadata: TaskMetadata = TaskMetadata()
 ) {
     /** Total count of this task + all descendants */
     val totalCount: Int

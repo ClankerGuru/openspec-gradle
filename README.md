@@ -8,7 +8,7 @@
 
 Your build tool already knows more about your project than any shell script ever will — resolved dependencies, module relationships, framework versions, source structure, symbol graphs. openspec-gradle turns that knowledge into structured context that AI coding agents can actually use.
 
-Works with **GitHub Copilot**, **Claude Code**, **OpenAI Codex**, **OpenCode**, and **Crush**.
+Works with **GitHub Copilot**, **Claude Code**, **OpenAI Codex**, and **OpenCode**.
 
 ---
 
@@ -133,7 +133,7 @@ Replaces `grep`/`sed`/Python scripts with build-aware symbol analysis. The index
 |---|---|---|
 | Claude | `.claude/CLAUDE.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
 | Copilot | `.github/copilot-instructions.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
-| Codex / OpenCode / Crush | `AGENTS.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
+| Codex / OpenCode | `AGENTS.md` | Appended between `<!-- OPSX:BEGIN -->` markers |
 
 All agents use marker-based append mode — your existing instruction content is preserved. OPSX adds its section between markers and updates it on every sync.
 
@@ -213,7 +213,6 @@ zone.clanker.openspec.agents=claude
 | `claude` | Claude Code | `.claude/commands/` · `.claude/skills/` |
 | `codex` | OpenAI Codex | `.codex/skills/` |
 | `opencode` | OpenCode | `.opencode/commands/` · `.opencode/skills/` |
-| `crush` | Crush | `.crush/commands/` · `.crush/skills/` |
 
 Combine agents: `github,claude` · Per-project overrides global · Set `none` to disable.
 
@@ -264,6 +263,12 @@ Most AI context tools work outside the build system — scanning files, guessing
 - **Code is truth.** Architecture analysis reads code, not docs.
 - **Agent-agnostic.** Same structured context, formatted for each agent's conventions.
 - **Per-developer.** Different agents, different proposals, no conflicts.
+
+---
+
+## Resources
+
+- 📖 [Agentic Execution Lessons](https://github.com/ClankerGuru/openspec-gradle/wiki/Agentic-Execution-Lessons) — Real-world lessons from running AI agents via Gradle
 
 ---
 

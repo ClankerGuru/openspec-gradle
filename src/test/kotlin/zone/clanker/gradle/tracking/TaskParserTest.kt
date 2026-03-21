@@ -10,7 +10,7 @@ class TaskParserTest {
         val lines = listOf(
             "- [ ] `ttd-1` First task",
             "- [x] `ttd-2` Second task done",
-            "- [~] `ttd-3` Third in progress"
+            "- [/] `ttd-3` Third in progress"
         )
         val tasks = TaskParser.parse(lines)
 

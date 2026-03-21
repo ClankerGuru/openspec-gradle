@@ -26,11 +26,7 @@ object TaskCommandGenerator {
                 // Sanitize task codes to prevent path traversal
                 if (!SAFE_CODE_REGEX.matches(taskItem.code)) continue
 
-                val statusIcon = when (taskItem.status) {
-                    TaskStatus.DONE -> "✅"
-                    TaskStatus.IN_PROGRESS -> "🔄"
-                    TaskStatus.TODO -> "⬜"
-                }
+                val statusIcon = taskItem.status.icon
 
                 val changeDir = "opsx/changes/${proposal.name}"
 
@@ -90,6 +86,7 @@ object TaskCommandGenerator {
                                 TaskStatus.DONE -> "✅"
                                 TaskStatus.IN_PROGRESS -> "🔄"
                                 TaskStatus.TODO -> "⬜"
+                                TaskStatus.BLOCKED -> "🚫"
                             }
                             appendLine("- $childIcon `${child.code}`: ${child.description}")
                         }

@@ -98,13 +98,13 @@ class ToolAdapterTest {
 
     @Test
     fun `ToolAdapterRegistry supportedTools lists all tools`() {
-        assertEquals(setOf("claude", "github-copilot", "codex", "opencode", "crush"), ToolAdapterRegistry.supportedTools())
+        assertEquals(setOf("claude", "github-copilot", "codex", "opencode"), ToolAdapterRegistry.supportedTools())
     }
 
     @Test
     fun `ToolAdapterRegistry all includes expected adapters`() {
         val ids = ToolAdapterRegistry.all().map { it.toolId }.toSet()
-        assertTrue(ids.containsAll(setOf("claude", "github-copilot", "codex", "opencode", "crush")))
+        assertTrue(ids.containsAll(setOf("claude", "github-copilot", "codex", "opencode")))
     }
 
     // ── Agent parsing ────────────────────────────────────
@@ -210,37 +210,9 @@ class ToolAdapterTest {
         assertEquals(OpenCodeAdapter, ToolAdapterRegistry.get("opencode"))
     }
 
-    // ── Crush adapter ────────────────────────────────────
-
     @Test
-    fun `CrushAdapter command path uses crush commands dir`() {
-        assertEquals(".crush/commands/opsx/propose.md", CrushAdapter.getCommandFilePath("propose"))
-    }
-
-    @Test
-    fun `CrushAdapter skill path uses crush skills dir`() {
-        assertEquals(".crush/skills/test-skill/SKILL.md", CrushAdapter.getSkillFilePath("test-skill"))
-    }
-
-    @Test
-    fun `CrushAdapter command format has YAML frontmatter with all fields`() {
-        val output = CrushAdapter.formatCommandFile(sampleCommand)
-        assertTrue(output.startsWith("---\n"))
-        assertTrue(output.contains("name: \"Test Command\""))
-        assertTrue(output.contains("description: \"A test command\""))
-        assertTrue(output.contains("category: Testing"))
-        assertTrue(output.contains("tags: [test, unit]"))
-        assertTrue(output.contains("Do the thing."))
-    }
-
-    @Test
-    fun `ToolAdapterRegistry returns CrushAdapter for crush`() {
-        assertEquals(CrushAdapter, ToolAdapterRegistry.get("crush"))
-    }
-
-    @Test
-    fun `parseAgents maps crush to crush`() {
-        assertEquals(listOf("crush"), OpenSpecSettingsPlugin.parseAgents("crush"))
+    fun `parseAgents ignores unsupported agents like crush`() {
+        assertEquals(emptyList<String>(), OpenSpecSettingsPlugin.parseAgents("crush"))
     }
 
     // ── YAML escaping ───────────────────────────────────
