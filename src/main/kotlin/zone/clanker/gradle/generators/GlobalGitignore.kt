@@ -33,7 +33,7 @@ object GlobalGitignore {
     /**
      * Resolves the global gitignore file path.
      * Checks `git config --global core.excludesFile` first,
-     * falls back to `~/.config/git/ignore`.
+     * falls back to `~/.config/git/ignore` and sets core.excludesFile to point there.
      */
     fun resolveGlobalGitignoreFile(): File {
         try {
@@ -53,7 +53,26 @@ object GlobalGitignore {
         } catch (_: Exception) {
             // git not available or config not set
         }
-        return File(System.getProperty("user.home"), ".config/git/ignore")
+
+        // Fallback: use XDG default and register it with git so it's always picked up
+        val fallback = File(System.getProperty("user.home"), ".config/git/ignore")
+        ensureExcludesFileSet(fallback)
+        return fallback
+    }
+
+    /**
+     * Sets `core.excludesFile` in global git config if not already configured.
+     * Without this, git won't read `~/.config/git/ignore` on all systems.
+     */
+    private fun ensureExcludesFileSet(file: File) {
+        try {
+            ProcessBuilder("git", "config", "--global", "core.excludesFile", file.absolutePath)
+                .redirectErrorStream(true)
+                .start()
+                .waitFor()
+        } catch (_: Exception) {
+            // git not available — best effort
+        }
     }
 
     /**
