@@ -117,7 +117,7 @@ class StatusTaskTest {
 
         // Verify file was updated
         val content = File(projectDir, "opsx/changes/my-feature/tasks.md").readText()
-        assertTrue(content.contains("[x] ✅ `mf-1`"), "Expected [x] + ✅, got: $content")
+        assertTrue(content.contains("[x] `mf-1`"), "Expected [x] checkbox, got: $content")
         assertTrue(content.contains("[ ] `mf-2`")) // unchanged — no emoji on original TODO
     }
 
@@ -129,7 +129,7 @@ class StatusTaskTest {
         assertTrue(result.output.contains("IN_PROGRESS"))
 
         val content = File(projectDir, "opsx/changes/my-feature/tasks.md").readText()
-        assertTrue(content.contains("[/] 🔄 `mf-1`"), "Expected [/] + 🔄, got: $content")
+        assertTrue(content.contains("[ ] 🔄 `mf-1`"), "Expected [ ] + 🔄, got: $content")
     }
 
     @Test

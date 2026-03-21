@@ -378,6 +378,8 @@ abstract class OpenSpecExecTask : DefaultTask() {
         appendLine(taskDescription)
         appendLine()
         appendLine("IMPORTANT: Only implement this specific task. Do not make changes beyond what is described above.")
+        appendLine("ONLY modify files mentioned in the task description. Do NOT touch build files, configs, or unrelated code.")
+        appendLine("Use OPSX slash commands and Gradle tasks instead of grep, cat, find, or sed. Run ./gradlew opsx for available tasks.")
         appendLine("When done, ensure the build passes with ./gradlew build")
         if (previousLogs.isNotBlank()) {
             appendLine()

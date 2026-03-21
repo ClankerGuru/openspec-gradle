@@ -72,11 +72,26 @@ All refactoring tasks default to `-PdryRun=true`. Add `-PdryRun=false` to execut
 | `opsx-sync` | Regenerate all agent files |
 | `opsx-clean` | Remove all generated files |
 
+## Task Design Principle
+
+> **Split into as many tasks as needed, but each task must be small enough to complete in one go.**
+
+When writing `tasks.md` for a proposal:
+- Each task should touch **1–3 files** at most
+- Include **exact file paths**, **line ranges**, and **specific changes** (not vague descriptions)
+- List **every import** the new/modified file needs
+- Specify **visibility changes** (private → internal, etc.)
+- Add a **verification step** (compile check, `opsx-verify`, or test run)
+- Set **dependencies** between tasks (`depends:nm-1`) when order matters
+- Tasks that don't depend on each other **can run in parallel**
+
+A good task reads like a checklist — an agent should be able to execute it without guessing.
+
 ## Workflow
 
 1. **Orient** — Read `.opsx/context.md`, `.opsx/tree.md`, `.opsx/modules.md` (already generated)
 2. **Understand** — Run `opsx-arch`, `opsx-symbols`, `opsx-find` as needed
-3. **Plan** — Create a proposal with `opsx-propose`
+3. **Plan** — Create a proposal with `opsx-propose`, then fill in detailed tasks following the Task Design Principle above
 4. **Implement** — Use refactoring tasks + `opsx-apply`
 5. **Verify** — Run `opsx-verify` to check architecture rules
 
