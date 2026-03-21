@@ -36,16 +36,6 @@ enum class TaskStatus {
 }
 
 /**
- * A single task item parsed from a tasks.md file.
- *
- * @param code Short identifier like "ttd-1.2"
- * @param description Human-readable description
- * @param status Current completion status
- * @param children Nested subtasks
- * @param explicitDeps Cross-cutting dependency codes declared via → depends: syntax
- * @param depth Nesting level (0 = top-level)
- */
-/**
  * Inline metadata parsed from task lines (e.g., agent:copilot retries:3 cooldown:60).
  */
 data class TaskMetadata(
@@ -54,6 +44,17 @@ data class TaskMetadata(
     val cooldown: Int? = null, // seconds
 )
 
+/**
+ * A single task item parsed from a tasks.md file.
+ *
+ * @param code Short identifier like "ttd-1.2"
+ * @param description Human-readable description
+ * @param status Current completion status
+ * @param children Nested subtasks
+ * @param explicitDeps Cross-cutting dependency codes declared via → depends: syntax
+ * @param depth Nesting level (0 = top-level)
+ * @param metadata Inline metadata (agent, retries, cooldown)
+ */
 data class TaskItem(
     val code: String,
     val description: String,
