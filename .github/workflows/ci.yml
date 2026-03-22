@@ -34,6 +34,8 @@ jobs:
 
       - name: Build and test
         run: ./gradlew build
+        env:
+          ORG_GRADLE_PROJECT_RELEASE_SIGNING_ENABLED: false
 
       - name: Publish test results
         uses: dorny/test-reporter@v1
