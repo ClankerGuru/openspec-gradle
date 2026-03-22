@@ -55,6 +55,12 @@ jobs:
                   gradlePluginPortal()
               }
           }
+          dependencyResolutionManagement {
+              repositories {
+                  mavenLocal()
+                  mavenCentral()
+              }
+          }
           plugins {
               id("zone.clanker.gradle") version "$PLUGIN_VERSION"
           }

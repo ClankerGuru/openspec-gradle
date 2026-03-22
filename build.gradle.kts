@@ -20,6 +20,7 @@ subprojects {
 
     apply(plugin = "java-library")
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "maven-publish")
 
     repositories {
         mavenCentral()
@@ -39,6 +40,14 @@ subprojects {
         "testImplementation"("org.junit.jupiter:junit-jupiter:5.10.2")
         "testImplementation"("org.jetbrains.kotlin:kotlin-test-junit5")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+    }
+
+    configure<PublishingExtension> {
+        publications {
+            create<MavenPublication>("maven") {
+                from(components["java"])
+            }
+        }
     }
 }
 
