@@ -1,0 +1,1 @@
+Remove a symbol or line range from the codebase, cleaning up imports. Usage: `./gradlew opsx-remove -Psymbol=ClassName` to remove a class, `-Psymbol=ClassName.methodName` to remove a method, or `-Pfile=path -PstartLine=N -PendLine=M` for line ranges. Add `-PdryRun=false` to apply (dry-run is default). Always preview first.
