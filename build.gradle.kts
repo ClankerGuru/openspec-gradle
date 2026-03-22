@@ -8,6 +8,10 @@ plugins {
     id("com.gradleup.nmcp.aggregation") version "1.4.4"
 }
 
+repositories {
+    mavenCentral()
+}
+
 group = "zone.clanker"
 version = providers.exec {
     commandLine("git", "describe", "--tags", "--abbrev=0")
