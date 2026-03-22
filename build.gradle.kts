@@ -1,10 +1,10 @@
 plugins {
-    `kotlin-dsl`
-    `java-gradle-plugin`
+    `java-library`
     `maven-publish`
     signing
-    id("com.gradle.plugin-publish") version "2.1.0"
-    id("com.gradleup.nmcp") version "1.4.4"
+    kotlin("jvm") version embeddedKotlinVersion apply false
+    id("com.gradle.plugin-publish") version "2.1.0" apply false
+    id("com.gradleup.nmcp") version "1.4.4" apply false
     id("com.gradleup.nmcp.aggregation") version "1.4.4"
 }
 
@@ -14,37 +14,40 @@ version = providers.exec {
 }.standardOutput.asText.map { it.trim().removePrefix("v") }
     .getOrElse("0.0.0-LOCAL")
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+subprojects {
+    group = rootProject.group
+    version = rootProject.version
+
+    apply(plugin = "java-library")
+    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "maven-publish")
+
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
     }
-    withSourcesJar()
-    withJavadocJar()
-}
 
-repositories {
-    mavenCentral()
-}
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
 
-dependencies {
-    compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.3.0")
-    implementation("com.github.javaparser:javaparser-core:3.26.4")
-    testImplementation(gradleTestKit())
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
+    tasks.withType<Test> {
+        useJUnitPlatform()
+    }
 
-gradlePlugin {
-    website = "https://github.com/ClankerGuru/openspec-gradle"
-    vcsUrl = "https://github.com/ClankerGuru/openspec-gradle"
-    plugins {
-        register("openspec") {
-            id = "zone.clanker.gradle"
-            implementationClass = "zone.clanker.gradle.OpenSpecSettingsPlugin"
-            displayName = "OpenSpec Gradle Plugin"
-            description = "Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the Gradle build model (dependencies, module graph, frameworks) and generates command/skill files for AI coding assistants. Supports GitHub Copilot, Claude Code, Codex, and OpenCode. Zero-config via init script — no plugins block or DSL required."
-            tags = listOf("ai", "copilot", "claude", "codex", "opencode", "openspec", "kotlin", "android", "skills", "prompts", "coding-assistant", "context")
+    dependencies {
+        "testImplementation"("org.junit.jupiter:junit-jupiter:5.10.2")
+        "testImplementation"("org.jetbrains.kotlin:kotlin-test-junit5")
+        "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+    }
+
+    configure<PublishingExtension> {
+        publications {
+            create<MavenPublication>("maven") {
+                from(components["java"])
+            }
         }
     }
 }
@@ -54,7 +57,6 @@ signing {
     sign(publishing.publications)
 }
 
-// Don't fail build if signing isn't available
 tasks.withType<Sign>().configureEach {
     onlyIf { !project.hasProperty("skipSigning") }
 }
@@ -68,101 +70,5 @@ nmcpAggregation {
 }
 
 dependencies {
-    nmcpAggregation(project(":"))
-}
-
-publishing {
-    publications.withType<MavenPublication> {
-        pom {
-            name.set("OpenSpec Gradle Plugin")
-            description.set("Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the build model and generates AI assistant command/skill files.")
-            url.set("https://github.com/ClankerGuru/openspec-gradle")
-            licenses {
-                license {
-                    name.set("MIT License")
-                    url.set("https://opensource.org/licenses/MIT")
-                }
-            }
-            developers {
-                developer {
-                    id.set("ClankerGuru")
-                    name.set("ClankerGuru")
-                    url.set("https://github.com/ClankerGuru")
-                }
-            }
-            scm {
-                url.set("https://github.com/ClankerGuru/openspec-gradle")
-                connection.set("scm:git:https://github.com/ClankerGuru/openspec-gradle.git")
-                developerConnection.set("scm:git:git@github.com:ClankerGuru/openspec-gradle.git")
-            }
-        }
-    }
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
-
-// Inject version into plugin at build time
-tasks.named<Copy>("processResources") {
-    val props = mapOf("version" to project.version.toString())
-    inputs.properties(props)
-    filesMatching("openspec-gradle.properties") {
-        expand(props)
-    }
-}
-
-// Install init script globally (from the plugin repo itself)
-val installInitScript by tasks.registering {
-    dependsOn("publishToMavenLocal")
-    doLast {
-        val gradleHome = gradle.gradleUserHomeDir
-        val initDir = File(gradleHome, "init.d")
-        initDir.mkdirs()
-        val initScript = File(initDir, "openspec.init.gradle.kts")
-        initScript.writeText("""
-            |// OpenSpec Gradle Init Script
-            |// Installed by: ./gradlew installOpenSpecGlobally
-            |// To uninstall, delete this file.
-            |//
-            |// Configure in ~/.gradle/gradle.properties:
-            |//   zone.clanker.openspec.agents=github          (default)
-            |//   zone.clanker.openspec.agents=github,claude
-            |//   zone.clanker.openspec.agents=none
-            |
-            |initscript {
-            |    repositories {
-            |        mavenLocal()
-            |        mavenCentral()
-            |    }
-            |    dependencies {
-            |        classpath("zone.clanker:openspec-gradle:${project.version}")
-            |    }
-            |}
-            |
-            |apply<zone.clanker.gradle.OpenSpecSettingsPlugin>()
-        """.trimMargin() + "\n")
-
-        // Ensure default property exists
-        val gradleProps = File(gradleHome, "gradle.properties")
-        if (!gradleProps.exists() || !gradleProps.readText().contains("zone.clanker.openspec.agents")) {
-            gradleProps.appendText("\n# OpenSpec agents: github, claude, none (comma-separated)\nzone.clanker.openspec.agents=github\n")
-        }
-
-        logger.lifecycle("OpenSpec: Installed init script to ${initScript.absolutePath}")
-        logger.lifecycle("OpenSpec: Configure agents in ~/.gradle/gradle.properties")
-        logger.lifecycle("OpenSpec: To uninstall: rm ${initScript.absolutePath}")
-    }
-}
-
-tasks.register("installGlobal") {
-    group = "openspec"
-    description = "Publishes to mavenLocal and installs the init script to Gradle user home"
-    dependsOn(installInitScript)
-}
-
-tasks.register("installOpenSpecGlobally") {
-    group = "clanker"
-    description = "Publishes to mavenLocal and installs the OpenSpec init script globally"
-    dependsOn(installInitScript)
+    nmcpAggregation(project(":plugin"))
 }
