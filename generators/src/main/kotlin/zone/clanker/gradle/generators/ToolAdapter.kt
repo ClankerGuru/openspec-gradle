@@ -46,21 +46,21 @@ interface ToolAdapter {
  * Generates skill file content with YAML frontmatter, matching OpenSpec's format.
  * All tools use the same skill format.
  */
-fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "openspec-gradle:${VersionInfo.PLUGIN_VERSION}"): String = buildString {
-    appendLine("---")
-    appendLine("name: ${content.dirName}")
-    appendLine("description: ${escapeYaml(content.description)}")
-    appendLine("license: ${content.license}")
-    appendLine("compatibility: ${content.compatibility}")
-    appendLine("metadata:")
-    for ((key, value) in content.metadata) {
-        appendLine("  $key: \"$value\"")
-    }
-    appendLine("  generatedBy: \"$generatedBy\"")
-    appendLine("---")
-    appendLine()
-    append(content.instructions)
-    appendLine()
+fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "openspec-gradle:${VersionInfo.PLUGIN_VERSION}"): String {
+    val metadataLines = content.metadata.entries.joinToString("\n|  ") { (k, v) -> "$k: \"$v\"" }
+    return """
+        |---
+        |name: ${content.dirName}
+        |description: ${escapeYaml(content.description)}
+        |license: ${content.license}
+        |compatibility: ${content.compatibility}
+        |metadata:
+        |  $metadataLines
+        |  generatedBy: "$generatedBy"
+        |---
+        |
+        |${content.instructions}
+    """.trimMargin() + "\n"
 }
 
 fun escapeYaml(value: String): String {
@@ -74,17 +74,16 @@ fun escapeYaml(value: String): String {
 fun formatTagsArray(tags: List<String>): String =
     "[${tags.joinToString(", ") { escapeYaml(it) }}]"
 
-fun formatYamlCommandWithFrontmatter(content: CommandContent): String = buildString {
-    appendLine("---")
-    appendLine("name: ${escapeYaml(content.name)}")
-    appendLine("description: ${escapeYaml(content.description)}")
-    appendLine("category: ${escapeYaml(content.category)}")
-    appendLine("tags: ${formatTagsArray(content.tags)}")
-    appendLine("---")
-    appendLine()
-    append(content.body)
-    appendLine()
-}
+fun formatYamlCommandWithFrontmatter(content: CommandContent): String = """
+    |---
+    |name: ${escapeYaml(content.name)}
+    |description: ${escapeYaml(content.description)}
+    |category: ${escapeYaml(content.category)}
+    |tags: ${formatTagsArray(content.tags)}
+    |---
+    |
+    |${content.body}
+""".trimMargin() + "\n"
 
 object ToolAdapterRegistry {
     private val adapters = mutableMapOf<String, ToolAdapter>()
