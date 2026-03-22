@@ -50,6 +50,15 @@ class InitScriptTest {
     }
 
     @Test
+    fun `generated init script configures repositories in beforeSettings`() {
+        val script = generateInitScript("0.1.0")
+        assertTrue(script.contains("pluginManagement {"))
+        assertTrue(script.contains("dependencyResolutionManagement {"))
+        assertTrue(script.contains("google()"))
+        assertTrue(script.contains("gradlePluginPortal()"))
+    }
+
+    @Test
     fun `generated init script documents property config`() {
         val script = generateInitScript("0.1.0")
         assertTrue(script.contains("zone.clanker.openspec.agents"))

@@ -40,8 +40,8 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
         // Ensure default property exists in gradle.properties
         val gradleProps = File(gradleHome, "gradle.properties")
         if (!gradleProps.exists() || !gradleProps.readText().contains("zone.clanker.openspec.agents")) {
-            gradleProps.appendText("\n# OpenSpec: comma-separated agents (github, claude, none)\nzone.clanker.openspec.agents=github\n")
-            logger.lifecycle("OpenSpec: Added zone.clanker.openspec.agents=github to ${gradleProps.absolutePath}")
+            gradleProps.appendText("\n# OpenSpec: comma-separated agents (github, claude, none)\nsystemProp.zone.clanker.openspec.agents=github\n")
+            logger.lifecycle("OpenSpec: Added systemProp.zone.clanker.openspec.agents=github to ${gradleProps.absolutePath}")
         }
 
         logger.lifecycle("")
@@ -62,9 +62,9 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
             |// To uninstall, delete this file.
             |//
             |// Configure agents in ~/.gradle/gradle.properties:
-            |//   zone.clanker.openspec.agents=github          (default)
-            |//   zone.clanker.openspec.agents=github,claude
-            |//   zone.clanker.openspec.agents=none            (disables, cleans files)
+            |//   systemProp.zone.clanker.openspec.agents=github          (default)
+            |//   systemProp.zone.clanker.openspec.agents=github,claude
+            |//   systemProp.zone.clanker.openspec.agents=none            (disables, cleans files)
             |
             |initscript {
             |    repositories {
@@ -77,6 +77,24 @@ abstract class OpenSpecInstallGlobalTask : DefaultTask() {
             |}
             |
             |beforeSettings {
+            |
+            |    pluginManagement {
+            |        repositories {
+            |            google()
+            |            mavenCentral()
+            |            gradlePluginPortal()
+            |            mavenLocal()
+            |        }
+            |    }
+            |
+            |    dependencyResolutionManagement {
+            |        repositories {
+            |            google()
+            |            mavenCentral()
+            |            mavenLocal()
+            |        }
+            |    }
+            |
             |    apply<zone.clanker.gradle.OpenSpecSettingsPlugin>()
             |}
             |""".trimMargin() + "\n"

@@ -112,57 +112,5 @@ tasks.named<Copy>("processResources") {
     }
 }
 
-// Install init script globally (from the plugin repo itself)
-val installInitScript by tasks.registering {
-    dependsOn("publishToMavenLocal")
-    doLast {
-        val gradleHome = gradle.gradleUserHomeDir
-        val initDir = File(gradleHome, "init.d")
-        initDir.mkdirs()
-        val initScript = File(initDir, "openspec.init.gradle.kts")
-        initScript.writeText("""
-            |// OpenSpec Gradle Init Script
-            |// Installed by: ./gradlew installOpenSpecGlobally
-            |// To uninstall, delete this file.
-            |//
-            |// Configure in ~/.gradle/gradle.properties:
-            |//   zone.clanker.openspec.agents=github          (default)
-            |//   zone.clanker.openspec.agents=github,claude
-            |//   zone.clanker.openspec.agents=none
-            |
-            |initscript {
-            |    repositories {
-            |        mavenLocal()
-            |        mavenCentral()
-            |    }
-            |    dependencies {
-            |        classpath("zone.clanker:openspec-gradle:${project.version}")
-            |    }
-            |}
-            |
-            |apply<zone.clanker.gradle.OpenSpecSettingsPlugin>()
-        """.trimMargin() + "\n")
-
-        // Ensure default property exists
-        val gradleProps = File(gradleHome, "gradle.properties")
-        if (!gradleProps.exists() || !gradleProps.readText().contains("zone.clanker.openspec.agents")) {
-            gradleProps.appendText("\n# OpenSpec agents: github, claude, none (comma-separated)\nzone.clanker.openspec.agents=github\n")
-        }
-
-        logger.lifecycle("OpenSpec: Installed init script to ${initScript.absolutePath}")
-        logger.lifecycle("OpenSpec: Configure agents in ~/.gradle/gradle.properties")
-        logger.lifecycle("OpenSpec: To uninstall: rm ${initScript.absolutePath}")
-    }
-}
-
-tasks.register("installGlobal") {
-    group = "openspec"
-    description = "Publishes to mavenLocal and installs the init script to Gradle user home"
-    dependsOn(installInitScript)
-}
-
-tasks.register("installOpenSpecGlobally") {
-    group = "clanker"
-    description = "Publishes to mavenLocal and installs the OpenSpec init script globally"
-    dependsOn(installInitScript)
-}
+// Note: Use ./gradlew opsx-install (from any project with the plugin applied)
+// to install the init script globally. No install task needed here.
