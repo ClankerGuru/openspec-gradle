@@ -42,6 +42,7 @@ gradlePlugin {
 
 publishing {
     publications.withType<MavenPublication> {
+        artifactId = "openspec-gradle"
         pom {
             name.set("OpenSpec Gradle Plugin")
             description.set("Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the build model and generates AI assistant command/skill files.")
