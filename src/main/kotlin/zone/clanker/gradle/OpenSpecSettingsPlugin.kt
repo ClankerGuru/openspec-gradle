@@ -378,6 +378,9 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                 }
             })
 
+            // Link tool configs from ~/.config/opsx
+            project.tasks.register("opsx-link", OpsxLinkTask::class.java)
+
             // Hook opsx-clean into clean
             project.tasks.matching { it.name == "clean" }.configureEach {
                 dependsOn("opsx-clean")

@@ -113,9 +113,9 @@ object GitHubCopilotAdapter : ToolAdapter {
 
 object CodexAdapter : ToolAdapter {
     override val toolId = "codex"
-    // Codex uses .codex/skills/<name>/SKILL.md — skills are invoked via $skill-name
+    // Codex uses .agents/skills/<name>/SKILL.md — skills are invoked via $skill-name
     // Codex doesn't have a separate commands directory — skills ARE the commands
-    override fun getCommandFilePath(commandId: String) = ".codex/skills/opsx-$commandId/SKILL.md"
+    override fun getCommandFilePath(commandId: String) = ".agents/skills/opsx-$commandId/SKILL.md"
     override fun formatCommandFile(content: CommandContent) = buildString {
         // Format commands as skills since Codex unifies them
         val asSkill = SkillContent(
@@ -125,7 +125,7 @@ object CodexAdapter : ToolAdapter {
         )
         append(formatSkillWithFrontmatter(asSkill))
     }
-    override fun getSkillFilePath(skillDirName: String) = ".codex/skills/$skillDirName/SKILL.md"
+    override fun getSkillFilePath(skillDirName: String) = ".agents/skills/$skillDirName/SKILL.md"
     override fun formatSkillFile(content: SkillContent) = formatSkillWithFrontmatter(content)
     override fun getInstructionsFilePath() = "AGENTS.md"
     override val appendInstructions: Boolean get() = true

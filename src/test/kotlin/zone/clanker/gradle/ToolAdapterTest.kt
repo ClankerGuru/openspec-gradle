@@ -160,12 +160,12 @@ class ToolAdapterTest {
     @Test
     fun `CodexAdapter command path uses codex skills dir`() {
         // Codex unifies commands as skills
-        assertEquals(".codex/skills/opsx-propose/SKILL.md", CodexAdapter.getCommandFilePath("propose"))
+        assertEquals(".agents/skills/opsx-propose/SKILL.md", CodexAdapter.getCommandFilePath("propose"))
     }
 
     @Test
     fun `CodexAdapter skill path uses codex skills dir`() {
-        assertEquals(".codex/skills/test-skill/SKILL.md", CodexAdapter.getSkillFilePath("test-skill"))
+        assertEquals(".agents/skills/test-skill/SKILL.md", CodexAdapter.getSkillFilePath("test-skill"))
     }
 
     @Test
