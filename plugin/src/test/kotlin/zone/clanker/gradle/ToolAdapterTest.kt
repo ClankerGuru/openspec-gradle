@@ -69,7 +69,7 @@ class ToolAdapterTest {
         assertTrue(output.contains("name: test-skill"))
         assertTrue(output.contains("description:"))
         assertTrue(output.contains("license: MIT"))
-        assertTrue(output.contains("compatibility: Requires Gradle build system."))
+        assertTrue(output.contains("compatibility:") && output.contains("Requires Gradle build system."))
         assertTrue(output.contains("metadata:"))
         assertTrue(output.contains("author:"))
         assertTrue(output.contains("generatedBy:"))

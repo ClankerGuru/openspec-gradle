@@ -8,7 +8,7 @@ import org.gradle.api.tasks.*
 import zone.clanker.gradle.psi.SourceDiscovery
 import java.io.File
 
-@CacheableTask
+@UntrackedTask(because = "Reads dynamic project model state (subprojects, source dirs) not captured as inputs")
 abstract class TreeTask : DefaultTask() {
 
     @get:InputFiles

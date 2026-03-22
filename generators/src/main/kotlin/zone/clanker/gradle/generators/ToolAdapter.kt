@@ -47,24 +47,28 @@ interface ToolAdapter {
  * All tools use the same skill format.
  */
 fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "openspec-gradle:${VersionInfo.PLUGIN_VERSION}"): String {
-    val metadataLines = content.metadata.entries.joinToString("\n|  ") { (k, v) -> "$k: \"$v\"" }
+    val filteredMetadata = content.metadata.toSortedMap().filterKeys { it != "generatedBy" }
+    val metadataLines = filteredMetadata.entries.joinToString("\n|  ") { (k, v) -> "$k: ${escapeYaml(v)}" }
     return """
         |---
-        |name: ${content.dirName}
+        |name: ${escapeYaml(content.dirName)}
         |description: ${escapeYaml(content.description)}
-        |license: ${content.license}
-        |compatibility: ${content.compatibility}
+        |license: ${escapeYaml(content.license)}
+        |compatibility: ${escapeYaml(content.compatibility)}
         |metadata:
         |  $metadataLines
-        |  generatedBy: "$generatedBy"
+        |  generatedBy: ${escapeYaml(generatedBy)}
         |---
         |
         |${content.instructions}
     """.trimMargin() + "\n"
 }
 
+private val YAML_NEEDS_QUOTING = Regex("[:\\n\\r#{}\\[\\],&*!|>'\"% @`]|^\\s|\\s$")
+
 fun escapeYaml(value: String): String {
-    val needsQuoting = Regex("[:\\n\\r#{}\\[\\],&*!|>'\"% @`]|^\\s|\\s$").containsMatchIn(value)
+    if (value.isEmpty()) return "\"\""
+    val needsQuoting = YAML_NEEDS_QUOTING.containsMatchIn(value)
     return if (needsQuoting) {
         val escaped = value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
         "\"$escaped\""
