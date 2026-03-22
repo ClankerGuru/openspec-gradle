@@ -1,6 +1,14 @@
-# OpenSpec Linting Plugins
+# OpenSpec Linting
 
-Gradle plugins that auto-apply detekt and ktlint to Kotlin projects.
+Gradle plugins + init script for automatic detekt/ktlint enforcement.
+
+## Quick Install (Machine-Wide)
+
+```bash
+cp init.d/openspec-linting.init.gradle.kts ~/.gradle/init.d/
+```
+
+Now every Kotlin project on your machine gets linting automatically.
 
 ## Plugins
 
