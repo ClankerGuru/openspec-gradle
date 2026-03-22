@@ -86,8 +86,11 @@ class OpenSpecDetektPlugin : Plugin<Project> {
             }
         }
         
-        // Hook into check task
+        // Hook into check and build tasks
         project.tasks.matching { it.name == "check" }.configureEach {
+            dependsOn("detekt")
+        }
+        project.tasks.matching { it.name == "build" }.configureEach {
             dependsOn("detekt")
         }
         

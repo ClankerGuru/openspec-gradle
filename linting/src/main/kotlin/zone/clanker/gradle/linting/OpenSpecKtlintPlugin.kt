@@ -83,8 +83,11 @@ class OpenSpecKtlintPlugin : Plugin<Project> {
             consoleProperty.javaClass.getMethod("set", Any::class.java).invoke(consoleProperty, true)
         }
         
-        // Hook into check task
+        // Hook into check and build tasks
         project.tasks.matching { it.name == "check" }.configureEach {
+            dependsOn("ktlintCheck")
+        }
+        project.tasks.matching { it.name == "build" }.configureEach {
             dependsOn("ktlintCheck")
         }
         
