@@ -36,34 +36,7 @@ gradlePlugin {
 }
 
 mavenPublishing {
-    publishToMavenCentral()
-    coordinates("zone.clanker", "openspec-gradle", project.version.toString())
-
-    pom {
-        name.set("OpenSpec Gradle Plugin")
-        description.set("Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the build model and generates AI assistant command/skill files.")
-        inceptionYear.set("2025")
-        url.set("https://github.com/ClankerGuru/openspec-gradle")
-        licenses {
-            license {
-                name.set("MIT License")
-                url.set("https://opensource.org/licenses/MIT")
-                distribution.set("https://opensource.org/licenses/MIT")
-            }
-        }
-        developers {
-            developer {
-                id.set("ClankerGuru")
-                name.set("ClankerGuru")
-                url.set("https://github.com/ClankerGuru")
-            }
-        }
-        scm {
-            url.set("https://github.com/ClankerGuru/openspec-gradle")
-            connection.set("scm:git:https://github.com/ClankerGuru/openspec-gradle.git")
-            developerConnection.set("scm:git:git@github.com:ClankerGuru/openspec-gradle.git")
-        }
-    }
+    // POM metadata configured in plugin/gradle.properties
 }
 
 // Inject version into plugin at build time
