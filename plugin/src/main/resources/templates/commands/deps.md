@@ -1,1 +1,0 @@
-Query resolved dependencies for a specific module or configuration. Usage: `./gradlew opsx-deps` for full dependency report, or check `.opsx/deps.md` for the auto-generated dependency tree. Shows all configurations with resolved versions. Use to answer "what version of X are we using?" or "what depends on Y?".
