@@ -1,0 +1,38 @@
+# EditorConfig + ktlint rules for ClankerGuru projects
+# https://pinterest.github.io/ktlint/
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+max_line_length = 120
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+ktlint_code_style = ktlint_official
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# Disable some rules if too noisy
+ktlint_standard_no-wildcard-imports = disabled
+ktlint_standard_package-name = enabled
+
+# Allow SAM constructor style: class Foo : Bar by Foo({ })
+ktlint_standard_function-signature = disabled
+ktlint_standard_argument-list-wrapping = disabled
+
+# Always trailing commas (cleaner diffs)
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
