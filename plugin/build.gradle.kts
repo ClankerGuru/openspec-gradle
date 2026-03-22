@@ -37,7 +37,6 @@ gradlePlugin {
 
 mavenPublishing {
     publishToMavenCentral()
-    signAllPublications()
     coordinates("zone.clanker", "openspec-gradle", project.version.toString())
 
     pom {
