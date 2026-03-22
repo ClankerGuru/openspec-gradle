@@ -2,8 +2,18 @@ plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
     `maven-publish`
+    signing
     id("com.gradle.plugin-publish")
     id("com.gradleup.nmcp")
+}
+
+signing {
+    useGpgCmd()
+    sign(publishing.publications)
+}
+
+tasks.withType<Sign>().configureEach {
+    onlyIf { !project.hasProperty("skipSigning") }
 }
 
 dependencies {
