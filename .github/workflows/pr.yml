@@ -45,8 +45,10 @@ jobs:
           reporter: java-junit
 
       - name: Verify plugin applies cleanly
+        env:
+          ORG_GRADLE_PROJECT_RELEASE_SIGNING_ENABLED: false
         run: |
-          ORG_GRADLE_PROJECT_RELEASE_SIGNING_ENABLED=false ./gradlew publishToMavenLocal
+          ./gradlew publishToMavenLocal
           PLUGIN_VERSION=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')
           mkdir -p /tmp/verify-project
           cd /tmp/verify-project
