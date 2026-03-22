@@ -151,7 +151,7 @@ abstract class SyncTask : DefaultTask() {
             val commandDir = probeFile.parentFile
             if (commandDir != null && commandDir.exists() && commandDir.isDirectory) {
                 // If the command dir is opsx-specific (e.g. .claude/commands/opsx/), clean it entirely
-                // Otherwise clean opsx-prefixed files and directories (e.g. .codex/skills/opsx-find/)
+                // Otherwise clean opsx-prefixed files and directories (e.g. .agents/skills/opsx-find/)
                 if (commandDir.name == "opsx") {
                     commandDir.deleteRecursively()
                     count++

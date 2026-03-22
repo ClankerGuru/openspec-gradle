@@ -24,7 +24,7 @@ object GlobalGitignore {
         ".github/prompts/opsx-*",
         ".github/skills/opsx-*",
         "# Codex",
-        ".codex/skills/opsx-*",
+        ".agents/skills/opsx-*",
         "# OpenCode",
         ".opencode/commands/opsx-*",
         ".opencode/skills/opsx-*",
