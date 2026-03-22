@@ -59,6 +59,14 @@ src/test/kotlin/                 # 236 tests (unit + Gradle TestKit integration)
 
 ## Building & Testing
 
+**First time after cloning — install git hooks:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ClankerGuru/git-hooks/main/install.sh | bash
+```
+
+This is **mandatory**. Pre-commit runs `./gradlew build`, pre-push blocks direct pushes to `main`.
+
 ```bash
 ./gradlew build                     # compile + test + validatePlugins
 ./gradlew test --no-daemon          # reliable test runs

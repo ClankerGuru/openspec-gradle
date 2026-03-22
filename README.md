@@ -272,6 +272,16 @@ Most AI context tools work outside the build system — scanning files, guessing
 
 ---
 
+## Development Setup
+
+After cloning the repo, install the shared git hooks:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ClankerGuru/git-hooks/main/install.sh | bash
+```
+
+This installs a **pre-commit hook** that runs `./gradlew build` before every commit (build fails → commit blocked) and a **pre-push hook** that prevents direct pushes to `main`.
+
 ## License
 
 [MIT](LICENSE)
