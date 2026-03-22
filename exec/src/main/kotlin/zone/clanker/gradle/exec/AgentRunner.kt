@@ -21,7 +21,7 @@ object AgentRunner {
      * Build the CLI command for the given agent.
      */
     fun buildCommand(agent: String, prompt: String): List<String> = when (agent) {
-        "github", "github-copilot" -> listOf("copilot", "-p", prompt, "--allow-all", "-s")
+        "github", "github-copilot" -> listOf("copilot", "-p", prompt, "--yolo", "-s")
         "claude" -> listOf("claude", "-p", prompt, "--dangerously-skip-permissions")
         "codex" -> listOf("codex", "exec", prompt, "--full-auto")
         "opencode" -> listOf("opencode", "run", prompt)

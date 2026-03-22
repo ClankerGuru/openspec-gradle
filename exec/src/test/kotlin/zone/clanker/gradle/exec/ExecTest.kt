@@ -17,13 +17,13 @@ class ExecTest {
     @Test
     fun `buildCommand copilot`() {
         val cmd = AgentRunner.buildCommand("github-copilot", "hello")
-        assertEquals(listOf("copilot", "-p", "hello", "--allow-all", "-s"), cmd)
+        assertEquals(listOf("copilot", "-p", "hello", "--yolo", "-s"), cmd)
     }
 
     @Test
     fun `buildCommand github alias`() {
         val cmd = AgentRunner.buildCommand("github", "hello")
-        assertEquals(listOf("copilot", "-p", "hello", "--allow-all", "-s"), cmd)
+        assertEquals(listOf("copilot", "-p", "hello", "--yolo", "-s"), cmd)
     }
 
     @Test
