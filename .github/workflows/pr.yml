@@ -39,7 +39,7 @@ jobs:
         if: always()
         with:
           name: PR Test Results
-          path: build/test-results/test/*.xml
+          path: '**/build/test-results/test/*.xml'
           reporter: java-junit
 
       - name: Verify plugin applies cleanly
