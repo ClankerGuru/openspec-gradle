@@ -9,3 +9,4 @@ out/
 config/hooks/
 config/detekt.yml
 .editorconfig
+.claude/CLAUDE.md
