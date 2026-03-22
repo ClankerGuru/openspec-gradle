@@ -57,7 +57,7 @@ jobs:
         if: always()
         with:
           name: Test Results
-          path: build/test-results/test/*.xml
+          path: '**/build/test-results/test/*.xml'
           reporter: java-junit
 
       - name: Publish to Gradle Plugin Portal
@@ -77,6 +77,6 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Attach JARs to release
-        run: gh release upload "${{ github.event.release.tag_name }}" build/libs/*.jar --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" plugin/build/libs/*.jar --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
