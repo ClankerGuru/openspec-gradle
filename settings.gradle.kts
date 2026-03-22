@@ -11,5 +11,6 @@ include(
     ":adapters:codex",
     ":adapters:opencode",
     ":tasks",
+    ":linting",
     ":plugin",
 )
