@@ -16,6 +16,7 @@ dependencies {
     api(project(":adapters:codex"))
     api(project(":adapters:opencode"))
     api(project(":tasks"))
+    api(project(":linting"))
 
     testImplementation(gradleTestKit())
 }

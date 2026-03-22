@@ -65,19 +65,43 @@ abstract class InstallGlobalTask : DefaultTask() {
             |//   zone.clanker.openspec.agents=github          (default)
             |//   zone.clanker.openspec.agents=github,claude
             |//   zone.clanker.openspec.agents=none            (disables, cleans files)
+            |//
+            |// Linting (detekt + ktlint) - enabled by default for Kotlin projects
+            |// Disable via system property:
+            |//   -Dopenspec.linting.enabled=false   (disable both)
+            |//   -Dopenspec.detekt.enabled=false    (disable detekt only)
+            |//   -Dopenspec.ktlint.enabled=false    (disable ktlint only)
             |
             |initscript {
             |    repositories {
             |        mavenLocal()
             |        mavenCentral()
+            |        gradlePluginPortal()
             |    }
             |    dependencies {
             |        classpath("zone.clanker:openspec-gradle:$version")
+            |        classpath("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7")
+            |        classpath("org.jlleitschuh.gradle:ktlint-gradle:12.1.2")
             |    }
             |}
             |
             |beforeSettings {
             |    apply<zone.clanker.gradle.OpenSpecSettingsPlugin>()
+            |}
+            |
+            |allprojects {
+            |    afterEvaluate {
+            |        val lintingEnabled = System.getProperty("openspec.linting.enabled") != "false"
+            |        if (!lintingEnabled) return@afterEvaluate
+            |        
+            |        val isKotlinProject = plugins.hasPlugin("org.jetbrains.kotlin.jvm") ||
+            |            plugins.hasPlugin("org.jetbrains.kotlin.android") ||
+            |            plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
+            |        
+            |        if (isKotlinProject) {
+            |            apply<zone.clanker.gradle.linting.OpenSpecLintingPlugin>()
+            |        }
+            |    }
             |}
             |""".trimMargin() + "\n"
     }

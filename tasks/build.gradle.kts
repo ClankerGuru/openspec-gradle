@@ -5,5 +5,6 @@ dependencies {
     api(project(":arch"))
     api(project(":exec"))
     api(project(":generators"))
+    api(project(":linting"))
     compileOnly(gradleApi())
 }
