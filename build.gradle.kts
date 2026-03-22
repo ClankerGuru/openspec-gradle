@@ -17,6 +17,15 @@ subprojects {
 
     apply(plugin = "java-library")
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "maven-publish")
+
+    configure<PublishingExtension> {
+        publications {
+            create<MavenPublication>("maven") {
+                from(components["java"])
+            }
+        }
+    }
 
     repositories {
         mavenCentral()
