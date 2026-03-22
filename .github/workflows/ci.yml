@@ -33,9 +33,7 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Build and test
-        run: ./gradlew build
-        env:
-          ORG_GRADLE_PROJECT_RELEASE_SIGNING_ENABLED: false
+        run: ./gradlew build -PRELEASE_SIGNING_ENABLED=false
 
       - name: Publish test results
         uses: dorny/test-reporter@v1
