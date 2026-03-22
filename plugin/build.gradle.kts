@@ -1,9 +1,8 @@
 plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
-    `maven-publish`
     id("com.gradle.plugin-publish")
-    id("com.gradleup.nmcp")
+    id("com.vanniktech.maven.publish")
 }
 
 dependencies {
@@ -22,11 +21,6 @@ dependencies {
     testImplementation(gradleTestKit())
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
 gradlePlugin {
     website = "https://github.com/ClankerGuru/openspec-gradle"
     vcsUrl = "https://github.com/ClankerGuru/openspec-gradle"
@@ -41,33 +35,8 @@ gradlePlugin {
     }
 }
 
-publishing {
-    publications.withType<MavenPublication> {
-        artifactId = "openspec-gradle"
-        pom {
-            name.set("OpenSpec Gradle Plugin")
-            description.set("Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the build model and generates AI assistant command/skill files.")
-            url.set("https://github.com/ClankerGuru/openspec-gradle")
-            licenses {
-                license {
-                    name.set("MIT License")
-                    url.set("https://opensource.org/licenses/MIT")
-                }
-            }
-            developers {
-                developer {
-                    id.set("ClankerGuru")
-                    name.set("ClankerGuru")
-                    url.set("https://github.com/ClankerGuru")
-                }
-            }
-            scm {
-                url.set("https://github.com/ClankerGuru/openspec-gradle")
-                connection.set("scm:git:https://github.com/ClankerGuru/openspec-gradle.git")
-                developerConnection.set("scm:git:git@github.com:ClankerGuru/openspec-gradle.git")
-            }
-        }
-    }
+mavenPublishing {
+    // POM metadata configured in plugin/gradle.properties
 }
 
 // Inject version into plugin at build time

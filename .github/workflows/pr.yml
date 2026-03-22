@@ -32,7 +32,7 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Build and test
-        run: ./gradlew build -PskipSigning
+        run: ./gradlew build
 
       - name: Publish test results
         uses: dorny/test-reporter@v1
@@ -44,7 +44,7 @@ jobs:
 
       - name: Verify plugin applies cleanly
         run: |
-          ./gradlew publishToMavenLocal -PskipSigning
+          ./gradlew publishToMavenLocal
           PLUGIN_VERSION=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')
           mkdir -p /tmp/verify-project
           cd /tmp/verify-project

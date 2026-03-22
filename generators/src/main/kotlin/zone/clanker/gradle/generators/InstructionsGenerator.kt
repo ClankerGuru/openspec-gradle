@@ -82,9 +82,11 @@ object InstructionsGenerator {
 
         if (startIdx >= 0 && endLineEnd >= 0 && startIdx < endIdx) {
             // Replace existing OPSX section
-            val before = existing.substring(0, startIdx)
+            val before = existing.substring(0, startIdx).trimEnd()
             val after = existing.substring(endLineEnd).trimStart('\n', '\r')
-            target.writeText(before.trimEnd() + "\n\n" + newContent + if (after.isNotBlank()) "\n" + after else "\n")
+            val prefix = if (before.isNotEmpty()) before + "\n\n" else ""
+            val suffix = if (after.isNotBlank()) "\n" + after else ""
+            target.writeText(prefix + newContent.trimEnd() + "\n" + suffix)
         } else {
             // No existing markers — append
             target.writeText(existing.trimEnd() + "\n\n" + newContent)
