@@ -37,6 +37,7 @@ gradlePlugin {
 
 mavenPublishing {
     // POM metadata configured in plugin/gradle.properties
+    publishToMavenCentral()
 }
 
 // Inject version into plugin at build time
