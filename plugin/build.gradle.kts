@@ -1,3 +1,5 @@
+import com.vanniktech.maven.publish.GradlePublishPlugin
+
 plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
@@ -38,6 +40,12 @@ gradlePlugin {
 mavenPublishing {
     // POM metadata configured in plugin/gradle.properties
     publishToMavenCentral()
+    configure(GradlePublishPlugin())
+}
+
+// Gradle 9.x strict task dependency: signing tasks must run before publish tasks
+tasks.withType<PublishToMavenRepository>().configureEach {
+    dependsOn(tasks.withType<Sign>())
 }
 
 // Inject version into plugin at build time
