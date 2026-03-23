@@ -1,4 +1,10 @@
-// exec: Agent execution engine
+plugins {
+    id("openspec-module")
+}
+
 dependencies {
     api(project(":core"))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlin.test.junit5)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

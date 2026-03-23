@@ -1,10 +1,11 @@
 import com.vanniktech.maven.publish.GradlePublishPlugin
 
 plugins {
+    id("openspec-module")
     `kotlin-dsl`
     `java-gradle-plugin`
-    id("com.gradle.plugin-publish")
-    id("com.vanniktech.maven.publish")
+    alias(libs.plugins.plugin.publish)
+    alias(libs.plugins.vanniktech)
 }
 
 dependencies {
@@ -21,6 +22,9 @@ dependencies {
     api(project(":linting"))
 
     testImplementation(gradleTestKit())
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlin.test.junit5)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 gradlePlugin {
@@ -38,7 +42,6 @@ gradlePlugin {
 }
 
 mavenPublishing {
-    // POM metadata configured in plugin/gradle.properties
     publishToMavenCentral()
     configure(GradlePublishPlugin())
 }
