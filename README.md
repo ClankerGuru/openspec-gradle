@@ -285,4 +285,3 @@ This installs a **pre-commit hook** that runs `./gradlew build` before every com
 ## License
 
 [MIT](LICENSE)
-# test

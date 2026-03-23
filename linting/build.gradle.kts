@@ -1,11 +1,15 @@
 plugins {
+    id("openspec-module")
     `kotlin-dsl`
     `java-gradle-plugin`
 }
 
 dependencies {
-    compileOnly("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7")
-    compileOnly("org.jlleitschuh.gradle:ktlint-gradle:12.1.2")
+    compileOnly(libs.detekt.gradle)
+    compileOnly(libs.ktlint.gradle)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlin.test.junit5)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 gradlePlugin {

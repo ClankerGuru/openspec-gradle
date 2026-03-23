@@ -24,36 +24,49 @@ Every `opsx-*` task is self-documenting — run it with `--help` or read the `de
 ## Project Structure
 
 ```
-src/main/kotlin/zone/clanker/gradle/
-├── OpenSpecSettingsPlugin.kt    # Settings plugin entry point (beforeSettings {})
-├── OpenSpecExtension.kt         # DSL extension
-├── tasks/                       # 18 Gradle tasks (all opsx-* prefixed)
-├── generators/                  # File generators (commands, skills, instructions, gitignore)
-├── templates/                   # TemplateRegistry — command/skill template definitions
-├── psi/                         # Code intelligence (Kotlin regex parser, Java parser, symbol index)
-├── arch/                        # Architecture analysis (classifier, dependency analyzer, diagrams)
-└── tracking/                    # Proposal tracking (parser, scanner, dependency graph, reconciler)
+build-logic/                        # Convention plugins (included build)
+├── src/main/kotlin/
+│   └── openspec-module.gradle.kts  # Shared config for all submodules
 
-src/main/resources/templates/    # Markdown templates for agent files
-├── commands/                    # Slash command templates
-├── skills/                      # Skill templates
-└── instructions.md              # Root instructions template
+core/                               # Data models, tracking logic, version info
+psi/                                # Symbol parsing (Kotlin regex, Java AST), source analysis
+arch/                               # Architecture analysis (classifier, dependency analyzer, diagrams)
+exec/                               # Agent execution engine (runner, cycle detection, spec parser)
+generators/                         # File generators (commands, skills, instructions, gitignore)
+adapters/
+├── copilot/                        # GitHub Copilot adapter
+├── claude/                         # Claude Code adapter
+├── codex/                          # Codex adapter
+└── opencode/                       # OpenCode adapter
+tasks/                              # 22+ Gradle task classes (all opsx-* prefixed)
+├── discovery/                      # Context, Deps, Devloop, Modules, Symbols, Tree
+├── workflow/                       # Apply, Archive, Propose, Status, TaskItem
+├── intelligence/                   # Arch, Calls, Find, Usages, Verify
+├── refactoring/                    # Extract, Move, Remove, Rename
+└── execution/                      # Clean, Exec, InstallGlobal, Sync
+linting/                            # Auto-applied detekt + ktlint plugins
+plugin/                             # Settings plugin entry point — the published artifact
 
-src/test/kotlin/                 # 236 tests (unit + Gradle TestKit integration)
+gradle/libs.versions.toml           # Version catalog (all dependency versions)
+config/detekt.yml                   # Detekt configuration
 ```
+
+Only `:plugin` is published to Maven Central. All other modules are internal implementation.
 
 ## Key Architecture
 
 - **Settings plugin** — applies in `beforeSettings {}` block, not a project plugin
 - **Init script** — lives at `~/.gradle/init.d/`, auto-applies to all projects
-- **Agent property** — `zone.clanker.openspec.agents` (lazy provider, project overrides global)
+- **Agent property** — `systemProp.zone.clanker.openspec.agents` in `gradle.properties` (closest scope wins)
 - **4 adapters** — Claude, Copilot, Codex, OpenCode (each formats files differently)
 - **Instructions delivery**:
-  - Claude → `.claude/CLAUDE.md` (standalone)
-  - Copilot → `.github/instructions/opsx.instructions.md` (additive)
-  - Codex/OpenCode → root `AGENTS.md` with `<!-- OPSX:BEGIN -->` markers
+  - Claude → `.claude/CLAUDE.md` (standalone, `<!-- OPSX:BEGIN/END -->` markers)
+  - Copilot → `.github/copilot-instructions.md` (additive, same markers)
+  - Codex/OpenCode → root `AGENTS.md` with markers (append mode)
 - **Lifecycle hooks** — `assemble` → `opsx-sync`, `clean` → `opsx-clean`
 - **Version from git tag** — `git describe --tags --abbrev=0`, no hardcoded version
+- **Convention plugins** — `build-logic/` included build, no `subprojects {}` block
+- **Version catalog** — `gradle/libs.versions.toml` for all dependency versions
 - **All generated files** go in global gitignore (per-developer, not committed)
 - **Proposals** (`opsx/changes/`) ARE committed — they're team-shared artifacts
 
@@ -62,7 +75,7 @@ src/test/kotlin/                 # 236 tests (unit + Gradle TestKit integration)
 **First time after cloning — install git hooks:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ClankerGuru/git-hooks/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ClankerGuru/git-hooks/0.1.0/install.sh | bash
 ```
 
 This is **mandatory**. Pre-commit runs `./gradlew build`, pre-push blocks direct pushes to `main`.
@@ -78,6 +91,7 @@ This is **mandatory**. Pre-commit runs `./gradlew build`, pre-push blocks direct
 - Pre-commit hook runs full build — never bypass with `--no-verify`
 - Never publish from local — CI only via GitHub Actions
 - Never use `[skip ci]` in commit messages
+- Always branch + PR — never push to main
 
 ## Code Style
 
@@ -85,3 +99,4 @@ This is **mandatory**. Pre-commit runs `./gradlew build`, pre-push blocks direct
 - No unnecessary interfaces (single impl = just use the class)
 - `@UntrackedTask` for tasks reading dynamic project state
 - `@CacheableTask` with proper `@InputFiles`/`@OutputFile` for deterministic tasks
+- Prefer `trimMargin()` over `buildString` for static templates

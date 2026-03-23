@@ -1,4 +1,7 @@
-// tasks: All Gradle task classes
+plugins {
+    id("openspec-module")
+}
+
 dependencies {
     api(project(":core"))
     api(project(":psi"))
@@ -7,4 +10,7 @@ dependencies {
     api(project(":generators"))
     api(project(":linting"))
     compileOnly(gradleApi())
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlin.test.junit5)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

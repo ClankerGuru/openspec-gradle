@@ -1,3 +1,7 @@
+pluginManagement {
+    includeBuild("build-logic")
+}
+
 rootProject.name = "openspec-gradle"
 
 include(
