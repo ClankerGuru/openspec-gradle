@@ -1,9 +1,7 @@
-// Convention plugin for all openspec-gradle library submodules.
-// Replaces the legacy subprojects {} block in root build.gradle.kts.
+// Convention plugin for all openspec-gradle submodules — shared build config only.
 plugins {
     `java-library`
     kotlin("jvm")
-    `maven-publish`
 }
 
 group = "zone.clanker"
@@ -23,11 +21,7 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-// Publish submodule JARs to mavenLocal so the plugin's transitive deps resolve in CI.
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-        }
-    }
+// Gradle 9.x strict task dependency: signing tasks must run before publish tasks
+tasks.withType<PublishToMavenRepository>().configureEach {
+    dependsOn(tasks.withType<Sign>())
 }

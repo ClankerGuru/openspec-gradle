@@ -46,11 +46,6 @@ mavenPublishing {
     configure(GradlePublishPlugin())
 }
 
-// Gradle 9.x strict task dependency: signing tasks must run before publish tasks
-tasks.withType<PublishToMavenRepository>().configureEach {
-    dependsOn(tasks.withType<Sign>())
-}
-
 // Inject version into plugin at build time
 tasks.named<Copy>("processResources") {
     val props = mapOf("version" to project.version.toString())

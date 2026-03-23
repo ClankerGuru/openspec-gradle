@@ -1,5 +1,6 @@
 plugins {
     id("openspec-module")
+    id("openspec-publish")
 }
 
 dependencies {
