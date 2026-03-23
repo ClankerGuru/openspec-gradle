@@ -42,7 +42,6 @@ gradlePlugin {
 }
 
 mavenPublishing {
-    publishToMavenCentral()
     configure(GradlePublishPlugin())
 }
 
