@@ -1,5 +1,6 @@
 plugins {
     id("openspec-module")
+    id("openspec-publish")
     `kotlin-dsl`
     `java-gradle-plugin`
 }
@@ -18,19 +19,19 @@ gradlePlugin {
             id = "zone.clanker.gradle.detekt"
             implementationClass = "zone.clanker.gradle.linting.OpenSpecDetektPlugin"
             displayName = "OpenSpec Detekt Plugin"
-            description = "Auto-applies detekt if not already configured. Disable with -Dopenspec.detekt.enabled=false"
+            description = "Auto-applies detekt if not already configured."
         }
         register("openspec-ktlint") {
             id = "zone.clanker.gradle.ktlint"
             implementationClass = "zone.clanker.gradle.linting.OpenSpecKtlintPlugin"
             displayName = "OpenSpec Ktlint Plugin"
-            description = "Auto-applies ktlint if not already configured. Disable with -Dopenspec.ktlint.enabled=false"
+            description = "Auto-applies ktlint if not already configured."
         }
         register("openspec-linting") {
             id = "zone.clanker.gradle.linting"
             implementationClass = "zone.clanker.gradle.linting.OpenSpecLintingPlugin"
             displayName = "OpenSpec Linting Plugin"
-            description = "Applies both detekt and ktlint. Disable individually with system properties."
+            description = "Applies both detekt and ktlint."
         }
     }
 }

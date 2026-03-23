@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
-    // Make the Kotlin Gradle plugin available to convention plugins
+    // Make plugins available to convention plugins
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:${embeddedKotlinVersion}")
+    implementation("com.vanniktech:gradle-maven-publish-plugin:0.36.0")
 }
