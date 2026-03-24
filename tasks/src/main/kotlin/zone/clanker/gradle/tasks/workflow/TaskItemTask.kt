@@ -68,8 +68,11 @@ abstract class TaskItemTask : DefaultTask() {
             ?: throw GradleException("Task '$code' not found in $name/tasks.md")
 
         // --run flag: delegate to exec engine.
-        // ExecTask manages its own lifecycle (progress → verify → done/blocked)
-        // so it intentionally bypasses TaskItemTask's validation — it has equivalent checks.
+        // ExecTask manages its own lifecycle: sets IN_PROGRESS before spawning the agent,
+        // runs opsx-verify after completion, marks DONE only on success or BLOCKED on failure.
+        // It uses TaskWriter directly (not TaskItemTask), so it bypasses the state machine
+        // validation here. This is intentional — ExecTask enforces ordering through its
+        // sequential chain execution and dependency validation at chain start.
         if (runTask.isPresent) {
             val execTask = project.tasks.findByName("opsx-exec") as? ExecTask
                 ?: throw GradleException("opsx-exec task not found")
@@ -160,12 +163,20 @@ abstract class TaskItemTask : DefaultTask() {
             .directory(project.rootDir)
             .inheritIO()
             .start()
-        val exitCode = proc.waitFor()
+        val completed = proc.waitFor(10, java.util.concurrent.TimeUnit.MINUTES)
+        if (!completed) {
+            proc.destroyForcibly()
+            throw GradleException(
+                "Build gate timed out for '$code' after 10 minutes. " +
+                    "The build process was terminated. Use --force=true to skip verification."
+            )
+        }
+        val exitCode = proc.exitValue()
         if (exitCode != 0) {
             throw GradleException(
                 "Build gate failed for '$code' (exit code $exitCode). " +
                     "Task stays at IN_PROGRESS. Fix the build and try again, " +
-                    "or use --force to skip verification."
+                    "or use --force=true to skip verification."
             )
         }
         logger.lifecycle("Build gate passed for '$code'.")

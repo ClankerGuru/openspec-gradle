@@ -26,7 +26,7 @@ plugins {
 ./gradlew opsx-sync
 ```
 
-That's it. Your agent now has project context, skills, and commands.
+That's it. Your agent now has project context and skills.
 
 > **Go global** — `./gradlew opsx-install` installs an init script at `~/.gradle/init.d/`.
 > Every Gradle project on your machine gets OPSX automatically. No `plugins {}` block needed.
@@ -81,7 +81,7 @@ That's it. Your agent now has project context, skills, and commands.
 
 | Task | What it does |
 |---|---|
-| `opsx-sync` | Generate all agent files (context + skills + commands + instructions) |
+| `opsx-sync` | Generate all agent files (context + skills + instructions) |
 | `opsx-clean` | Remove all generated files |
 | `opsx-install` | Install globally via init script |
 
@@ -137,20 +137,20 @@ Replaces `grep`/`sed`/Python scripts with build-aware symbol analysis. The index
 
 All agents use marker-based append mode — your existing instruction content is preserved. OPSX adds its section between markers and updates it on every sync.
 
-### Agent Skills & Commands
+### Agent Skills
 
-Skills encode workflows (propose, apply, archive, explore, verify) so the agent knows *how* to work with your project — not just what's in it. Commands give agents slash-command-style actions (`/opsx:find`, `/opsx:rename`, `/opsx:status`).
+Skills encode workflows (propose, apply, archive, explore, verify) so the agent knows *how* to work with your project — not just what's in it. Each skill provides slash-command-style actions (`/opsx:find`, `/opsx:rename`, `/opsx:status`).
 
-### Dynamic Task Commands
+### Dynamic Task Skills
 
-Every task code in your proposals becomes a slash command automatically:
+Every task code in your proposals becomes a skill automatically:
 
 ```markdown
 - [ ] `aua-1` Create User model
 - [ ] `aua-2` JWT service → depends: aua-1
 ```
 
-On next build: `/opsx:aua-1` and `/opsx:aua-2` appear as agent commands, each with full context — the proposal, design, dependencies, and implementation instructions.
+On next build: `/opsx:aua-1` and `/opsx:aua-2` appear as agent skills, each with full context — the proposal, design, dependencies, and implementation instructions.
 
 ### Task Reconciler
 
