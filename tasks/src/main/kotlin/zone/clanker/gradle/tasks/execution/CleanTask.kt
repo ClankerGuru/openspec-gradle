@@ -1,8 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
-import zone.clanker.gradle.generators.InstructionsGenerator
+import zone.clanker.gradle.generators.AgentCleaner
 import zone.clanker.gradle.generators.ToolAdapterRegistry
-import zone.clanker.gradle.generators.TemplateRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.Input
@@ -23,38 +22,28 @@ abstract class CleanTask : DefaultTask() {
 
     @TaskAction
     fun clean() {
-        val toolList = tools.get()
         var count = 0
 
-        val seenInstructionPaths = mutableSetOf<String>()
-        for (toolId in toolList) {
+        val seenInstrPaths = mutableSetOf<String>()
+        // Clean ALL supported tools, not just configured ones
+        for (toolId in ToolAdapterRegistry.supportedTools()) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
 
-            // Clean instructions file (handles append-mode files with markers)
+            // Deduplicate shared instructions paths (e.g., AGENTS.md used by codex + opencode)
             val instrPath = adapter.getInstructionsFilePath()
-            if (instrPath !in seenInstructionPaths) {
-                seenInstructionPaths.add(instrPath)
-                if (InstructionsGenerator.clean(project.projectDir, adapter)) count++
-            }
-
-            for (cmd in TemplateRegistry.getCommandTemplates()) {
-                val file = File(project.projectDir, adapter.getCommandFilePath(cmd.id))
-                if (file.exists()) {
-                    file.delete()
-                    count++
-                }
-            }
-
-            for (skill in TemplateRegistry.getSkillTemplates()) {
-                val file = File(project.projectDir, adapter.getSkillFilePath(skill.dirName))
-                if (file.exists()) {
-                    file.delete()
-                    val parent = file.parentFile
-                    if (parent.exists() && parent.list()?.isEmpty() == true) {
-                        parent.delete()
+            if (instrPath in seenInstrPaths) {
+                // Only clean skills for this adapter, not the shared instructions file
+                val skillsDir = AgentCleaner.resolveSkillsDir(project.projectDir, adapter)
+                if (skillsDir != null && skillsDir.exists() && skillsDir.isDirectory) {
+                    skillsDir.listFiles()?.filter { it.isDirectory && it.name.startsWith("opsx-") }?.forEach {
+                        it.deleteRecursively()
+                        count++
                     }
-                    count++
+                    AgentCleaner.pruneEmptyParents(skillsDir, project.projectDir)
                 }
+            } else {
+                seenInstrPaths.add(instrPath)
+                count += AgentCleaner.cleanAgent(project.projectDir, adapter)
             }
         }
 

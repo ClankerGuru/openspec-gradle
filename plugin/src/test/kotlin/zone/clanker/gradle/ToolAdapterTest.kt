@@ -24,15 +24,6 @@ class ToolAdapterTest {
         }
     }
 
-    private val sampleCommand = CommandContent(
-        id = "test-cmd",
-        name = "Test Command",
-        description = "A test command",
-        category = "Testing",
-        tags = listOf("test", "unit"),
-        body = "Do the thing."
-    )
-
     private val sampleSkill = SkillContent(
         dirName = "test-skill",
         description = "A test skill",
@@ -42,24 +33,8 @@ class ToolAdapterTest {
     // ── Claude Adapter ──────────────────────────────────
 
     @Test
-    fun `Claude command file path is correct`() {
-        assertEquals(".claude/commands/opsx/test-cmd.md", ClaudeAdapter.getCommandFilePath("test-cmd"))
-    }
-
-    @Test
     fun `Claude skill file path is correct`() {
         assertEquals(".claude/skills/my-skill/SKILL.md", ClaudeAdapter.getSkillFilePath("my-skill"))
-    }
-
-    @Test
-    fun `Claude command frontmatter has name, description, category, tags`() {
-        val output = ClaudeAdapter.formatCommandFile(sampleCommand)
-        assertTrue(output.startsWith("---\n"))
-        assertTrue(output.contains("name: \"Test Command\""))
-        assertTrue(output.contains("description: \"A test command\""))
-        assertTrue(output.contains("category: Testing"))
-        assertTrue(output.contains("tags: [test, unit]"))
-        assertTrue(output.contains("Do the thing."))
     }
 
     @Test
@@ -79,23 +54,8 @@ class ToolAdapterTest {
     // ── GitHub Copilot Adapter ──────────────────────────
 
     @Test
-    fun `Copilot command file path is correct`() {
-        assertEquals(".github/prompts/opsx-test-cmd.prompt.md", CopilotAdapter.getCommandFilePath("test-cmd"))
-    }
-
-    @Test
     fun `Copilot skill file path is correct`() {
         assertEquals(".github/skills/my-skill/SKILL.md", CopilotAdapter.getSkillFilePath("my-skill"))
-    }
-
-    @Test
-    fun `Copilot command frontmatter only has description`() {
-        val output = CopilotAdapter.formatCommandFile(sampleCommand)
-        assertTrue(output.startsWith("---\n"))
-        assertTrue(output.contains("description:"), "Should have description in frontmatter")
-        assertTrue(output.contains("test command"), "Description should contain the text")
-        assertTrue(!output.contains("category:"))
-        assertTrue(!output.contains("tags:"))
     }
 
     // ── Registry ────────────────────────────────────────
@@ -174,22 +134,8 @@ class ToolAdapterTest {
     // ── Codex adapter ────────────────────────────────────
 
     @Test
-    fun `CodexAdapter command path uses codex skills dir`() {
-        // Codex unifies commands as skills
-        assertEquals(".agents/skills/opsx-propose/SKILL.md", CodexAdapter.getCommandFilePath("propose"))
-    }
-
-    @Test
     fun `CodexAdapter skill path uses codex skills dir`() {
         assertEquals(".agents/skills/test-skill/SKILL.md", CodexAdapter.getSkillFilePath("test-skill"))
-    }
-
-    @Test
-    fun `CodexAdapter command format has YAML frontmatter`() {
-        val output = CodexAdapter.formatCommandFile(sampleCommand)
-        assertTrue(output.startsWith("---\n"))
-        assertTrue(output.contains("name: opsx-test-cmd"))
-        assertTrue(output.contains("description:"))
     }
 
     @Test
@@ -205,20 +151,8 @@ class ToolAdapterTest {
     // ── OpenCode adapter ─────────────────────────────────
 
     @Test
-    fun `OpenCodeAdapter command path uses opencode commands dir`() {
-        assertEquals(".opencode/commands/opsx-propose.md", OpenCodeAdapter.getCommandFilePath("propose"))
-    }
-
-    @Test
     fun `OpenCodeAdapter skill path uses opencode skills dir`() {
         assertEquals(".opencode/skills/test-skill/SKILL.md", OpenCodeAdapter.getSkillFilePath("test-skill"))
-    }
-
-    @Test
-    fun `OpenCodeAdapter command format has description comment`() {
-        val output = OpenCodeAdapter.formatCommandFile(sampleCommand)
-        assertTrue(output.contains("<!-- A test command -->"))
-        assertTrue(output.contains("Do the thing."))
     }
 
     @Test
@@ -234,9 +168,9 @@ class ToolAdapterTest {
     // ── YAML escaping ───────────────────────────────────
 
     @Test
-    fun `command with special characters in description escapes yaml`() {
-        val cmd = sampleCommand.copy(description = "Uses: colons & stuff")
-        val output = ClaudeAdapter.formatCommandFile(cmd)
+    fun `skill with special characters in description escapes yaml`() {
+        val skill = sampleSkill.copy(description = "Uses: colons & stuff")
+        val output = ClaudeAdapter.formatSkillFile(skill)
         assertTrue(output.contains("description: \"Uses: colons & stuff\""))
     }
 

@@ -5,7 +5,6 @@ import zone.clanker.gradle.adapters.claude.ClaudeAdapter
 import zone.clanker.gradle.adapters.copilot.CopilotAdapter
 import zone.clanker.gradle.adapters.codex.CodexAdapter
 import zone.clanker.gradle.adapters.opencode.OpenCodeAdapter
-import zone.clanker.gradle.generators.CommandGenerator
 import zone.clanker.gradle.generators.SkillGenerator
 import zone.clanker.gradle.generators.ToolAdapterRegistry
 import org.junit.jupiter.api.Test
@@ -65,46 +64,9 @@ class GeneratorTest {
         }
     }
 
-    // ── CommandGenerator ────────────────────────────────
-
     @Test
-    fun `CommandGenerator generates 17 commands per tool`() {
-        val files = CommandGenerator.generate(buildDir, listOf("claude"))
-        assertEquals(17, files.size)
-    }
-
-    @Test
-    fun `CommandGenerator generates for both tools`() {
-        val files = CommandGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(34, files.size) // 17 commands * 2 tools
-    }
-
-    @Test
-    fun `CommandGenerator with no tools generates nothing`() {
-        val files = CommandGenerator.generate(buildDir, emptyList())
-        assertEquals(0, files.size)
-    }
-
-    @Test
-    fun `CommandGenerator with invalid tool generates nothing`() {
-        val files = CommandGenerator.generate(buildDir, listOf("emacs"))
-        assertEquals(0, files.size)
-    }
-
-    @Test
-    fun `CommandGenerator files have non-empty content`() {
-        val files = CommandGenerator.generate(buildDir, listOf("github-copilot"))
-        files.forEach {
-            assertTrue(it.file.readText().length > 50, "File ${it.relativePath} is too short")
-        }
-    }
-
-    @Test
-    fun `both generators combined produce correct total for 2-tool setup`() {
+    fun `SkillGenerator produces correct total for 2-tool setup`() {
         val skills = SkillGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        val commands = CommandGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(34, skills.size)   // 17 * 2
-        assertEquals(34, commands.size) // 17 * 2
-        assertEquals(68, skills.size + commands.size)
+        assertEquals(34, skills.size) // 17 * 2
     }
 }

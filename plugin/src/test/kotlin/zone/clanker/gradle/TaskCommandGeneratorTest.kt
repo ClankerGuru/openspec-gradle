@@ -23,7 +23,7 @@ class TaskCommandGeneratorTest {
     }
 
     @Test
-    fun `generates commands for each task in proposal`() {
+    fun `generates skills for each task in proposal`() {
         createProposal("my-feature", """
             # Tasks: my-feature
             - [ ] `mf-1` Create the thing
@@ -32,12 +32,12 @@ class TaskCommandGeneratorTest {
 
         val files = TaskCommandGenerator.generate(projectDir, buildDir, listOf("claude"))
         assertEquals(2, files.size)
-        assertTrue(files.any { it.relativePath.contains("mf-1") })
-        assertTrue(files.any { it.relativePath.contains("mf-2") })
+        assertTrue(files.any { it.relativePath.contains("opsx-mf-1") })
+        assertTrue(files.any { it.relativePath.contains("opsx-mf-2") })
     }
 
     @Test
-    fun `command content includes proposal context`() {
+    fun `skill content includes proposal context`() {
         createProposal("auth", """
             # Tasks: auth
             - [ ] `auth-1` Build login page
@@ -51,7 +51,7 @@ class TaskCommandGeneratorTest {
     }
 
     @Test
-    fun `command includes completion instruction`() {
+    fun `skill includes completion instruction`() {
         createProposal("fix", """
             # Tasks: fix
             - [ ] `fix-1` Fix the bug
@@ -63,7 +63,7 @@ class TaskCommandGeneratorTest {
     }
 
     @Test
-    fun `command includes dependencies`() {
+    fun `skill includes dependencies`() {
         createProposal("deps", """
             # Tasks: deps
             - [x] `d-1` First thing
@@ -71,7 +71,7 @@ class TaskCommandGeneratorTest {
         """.trimIndent())
 
         val files = TaskCommandGenerator.generate(projectDir, buildDir, listOf("claude"))
-        val d2 = files.first { it.relativePath.contains("d-2") }
+        val d2 = files.first { it.relativePath.contains("opsx-d-2") }
         val content = d2.file.readText()
         assertTrue(content.contains("d-1"))
         assertTrue(content.contains("Dependencies"))
@@ -116,5 +116,17 @@ class TaskCommandGeneratorTest {
         assertTrue(content.contains("Reconciliation Warning"))
         assertTrue(content.contains("UserController"))
         assertTrue(content.contains("BookController"))
+    }
+
+    @Test
+    fun `generates skill files at skill paths`() {
+        createProposal("test", """
+            # Tasks: test
+            - [ ] `t-1` Do something
+        """.trimIndent())
+
+        val files = TaskCommandGenerator.generate(projectDir, buildDir, listOf("claude"))
+        // Should use skill path format: .claude/skills/opsx-t-1/SKILL.md
+        assertTrue(files[0].relativePath.contains("skills/opsx-t-1/SKILL.md"))
     }
 }

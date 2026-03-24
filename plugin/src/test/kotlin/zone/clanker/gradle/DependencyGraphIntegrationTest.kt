@@ -44,8 +44,9 @@ class DependencyGraphIntegrationTest {
             - [ ] `dt-2` Second task → depends: dt-1
         """.trimIndent())
 
-        val result = gradle("opsx-dt-2", "--set=done").buildAndFail()
-        assertTrue(result.output.contains("blocked"))
+        // Setting to progress with unmet deps should fail
+        val result = gradle("opsx-dt-2", "--set=progress").buildAndFail()
+        assertTrue(result.output.contains("blocked") || result.output.contains("dependencies"))
         assertTrue(result.output.contains("dt-1"))
     }
 
@@ -56,12 +57,14 @@ class DependencyGraphIntegrationTest {
             - [ ] `dt-2` Second task → depends: dt-1
         """.trimIndent())
 
-        // Mark dependency done first
-        val r1 = gradle("opsx-dt-1", "--set=done").build()
+        // Mark dependency done (progress → done with --force)
+        gradle("opsx-dt-1", "--set=progress").build()
+        val r1 = gradle("opsx-dt-1", "--set=done", "--force=true").build()
         assertEquals(TaskOutcome.SUCCESS, r1.task(":opsx-dt-1")?.outcome)
 
         // Now the dependent task should succeed
-        val r2 = gradle("opsx-dt-2", "--set=done").build()
+        gradle("opsx-dt-2", "--set=progress").build()
+        val r2 = gradle("opsx-dt-2", "--set=done", "--force=true").build()
         assertEquals(TaskOutcome.SUCCESS, r2.task(":opsx-dt-2")?.outcome)
     }
 
@@ -72,7 +75,8 @@ class DependencyGraphIntegrationTest {
             - [ ] `ct-2` Task two → depends: ct-1
         """.trimIndent())
 
-        val result = gradle("opsx-ct-1", "--set=done").buildAndFail()
+        // Try to set progress — should fail on cycle detection
+        val result = gradle("opsx-ct-1", "--set=progress").buildAndFail()
         assertTrue(result.output.contains("cycle"), "Should mention cycle in output: ${result.output}")
     }
 

@@ -8,28 +8,9 @@ import kotlin.test.assertTrue
 class TemplateRegistryTest {
 
     @Test
-    fun `has 17 command templates`() {
-        val commands = TemplateRegistry.getCommandTemplates()
-        assertEquals(17, commands.size)
-        val ids = commands.map { it.id }.toSet()
-        assertTrue(ids.containsAll(setOf("propose", "apply", "archive", "explore", "new", "sync", "verify", "find", "calls", "rename", "status", "move", "usages", "extract", "inline", "deps", "remove")))
-    }
-
-    @Test
     fun `has 17 skill templates`() {
         val skills = TemplateRegistry.getSkillTemplates()
         assertEquals(17, skills.size)
-    }
-
-    @Test
-    fun `all command templates have non-empty body`() {
-        for (cmd in TemplateRegistry.getCommandTemplates()) {
-            assertTrue(cmd.body.length > 50, "Command '${cmd.id}' body is too short")
-            assertTrue(cmd.name.isNotBlank(), "Command '${cmd.id}' name is blank")
-            assertTrue(cmd.description.isNotBlank(), "Command '${cmd.id}' description is blank")
-            assertTrue(cmd.category.isNotBlank(), "Command '${cmd.id}' category is blank")
-            assertTrue(cmd.tags.isNotEmpty(), "Command '${cmd.id}' has no tags")
-        }
     }
 
     @Test
@@ -42,31 +23,31 @@ class TemplateRegistryTest {
     }
 
     @Test
-    fun `propose command contains key instructions`() {
-        val propose = TemplateRegistry.getCommandTemplates().first { it.id == "propose" }
-        assertTrue(propose.body.contains("proposal.md"))
-        assertTrue(propose.body.contains("design.md"))
-        assertTrue(propose.body.contains("tasks.md"))
+    fun `propose skill contains key instructions`() {
+        val propose = TemplateRegistry.getSkillTemplates().first { it.dirName == "opsx-propose" }
+        assertTrue(propose.instructions.contains("proposal.md"))
+        assertTrue(propose.instructions.contains("design.md"))
+        assertTrue(propose.instructions.contains("tasks.md"))
     }
 
     @Test
-    fun `apply command contains task tracking instructions`() {
-        val apply = TemplateRegistry.getCommandTemplates().first { it.id == "apply" }
-        assertTrue(apply.body.contains("opsx-status"))
-        assertTrue(apply.body.contains("--set=done"))
+    fun `apply skill contains task tracking instructions`() {
+        val apply = TemplateRegistry.getSkillTemplates().first { it.dirName == "opsx-apply" }
+        assertTrue(apply.instructions.contains("opsx-status"))
+        assertTrue(apply.instructions.contains("--set=done"))
     }
 
     @Test
-    fun `archive command references archive directory`() {
-        val archive = TemplateRegistry.getCommandTemplates().first { it.id == "archive" }
-        assertTrue(archive.body.contains("archive"))
-        assertTrue(archive.body.contains("YYYY-MM-DD"))
+    fun `archive skill references archive directory`() {
+        val archive = TemplateRegistry.getSkillTemplates().first { it.dirName == "opsx-archive" }
+        assertTrue(archive.instructions.contains("archive"))
+        assertTrue(archive.instructions.contains("YYYY-MM-DD"))
     }
 
     @Test
-    fun `explore command warns against implementation`() {
-        val explore = TemplateRegistry.getCommandTemplates().first { it.id == "explore" }
-        assertTrue(explore.body.contains("NEVER write code"))
+    fun `explore skill warns against implementation`() {
+        val explore = TemplateRegistry.getSkillTemplates().first { it.dirName == "opsx-explore" }
+        assertTrue(explore.instructions.contains("NEVER write code"))
     }
 
     @Test

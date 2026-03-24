@@ -90,7 +90,7 @@ class WorkflowTest {
     @Test
     fun `full lifecycle - sync, propose, apply, archive, clean`() {
         gradle("opsx-sync").build()
-        assertTrue(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
+        assertTrue(File(testProjectDir, ".github/skills/opsx-propose/SKILL.md").exists())
 
         gradle("opsx-propose", "--name=lifecycle-test").build()
         val changeDir = File(testProjectDir, "opsx/changes/lifecycle-test")
@@ -104,6 +104,6 @@ class WorkflowTest {
         assertFalse(changeDir.exists())
 
         gradle("opsx-clean").build()
-        assertFalse(File(testProjectDir, ".github/prompts/opsx-propose.prompt.md").exists())
+        assertFalse(File(testProjectDir, ".github/skills/opsx-propose/SKILL.md").exists())
     }
 }

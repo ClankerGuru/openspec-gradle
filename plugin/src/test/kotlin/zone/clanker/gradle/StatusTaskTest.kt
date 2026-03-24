@@ -111,7 +111,9 @@ class StatusTaskTest {
             - [ ] `mf-2` Second task
         """.trimIndent())
 
-        val result = gradle("opsx-mf-1", "--set=done").build()
+        // Must go through IN_PROGRESS first
+        gradle("opsx-mf-1", "--set=progress").build()
+        val result = gradle("opsx-mf-1", "--set=done", "--force=true").build()
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-mf-1")?.outcome)
         assertTrue(result.output.contains("DONE"))
 
@@ -139,9 +141,55 @@ class StatusTaskTest {
             - [ ] `mf-2` Second task → depends: mf-1
         """.trimIndent())
 
-        val result = gradle("opsx-mf-2", "--set=done").buildAndFail()
-        assertTrue(result.output.contains("blocked"))
+        // Setting to progress with unmet deps should fail
+        val result = gradle("opsx-mf-2", "--set=progress").buildAndFail()
+        assertTrue(result.output.contains("blocked") || result.output.contains("dependencies"))
         assertTrue(result.output.contains("mf-1"))
+    }
+
+    @Test
+    fun `dynamic task --set=done from TODO fails with transition error`() {
+        createProposal("my-feature", """
+            - [ ] `mf-1` First task
+        """.trimIndent())
+
+        val result = gradle("opsx-mf-1", "--set=done").buildAndFail()
+        assertTrue(result.output.contains("IN_PROGRESS"), "Should mention IN_PROGRESS requirement: ${result.output}")
+    }
+
+    @Test
+    fun `dynamic task --set=blocked from TODO fails`() {
+        createProposal("my-feature", """
+            - [ ] `mf-1` First task
+        """.trimIndent())
+
+        val result = gradle("opsx-mf-1", "--set=blocked").buildAndFail()
+        assertTrue(result.output.contains("hasn't started"), "Should mention task hasn't started: ${result.output}")
+    }
+
+    @Test
+    fun `dynamic task --set=progress is idempotent`() {
+        createProposal("my-feature", """
+            - [ ] `mf-1` First task
+        """.trimIndent())
+
+        // First time
+        gradle("opsx-mf-1", "--set=progress").build()
+        // Second time — should succeed (idempotent)
+        val result = gradle("opsx-mf-1", "--set=progress").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-mf-1")?.outcome)
+    }
+
+    @Test
+    fun `dynamic task --set=done with force skips build gate`() {
+        createProposal("my-feature", """
+            - [ ] `mf-1` First task
+        """.trimIndent())
+
+        gradle("opsx-mf-1", "--set=progress").build()
+        val result = gradle("opsx-mf-1", "--set=done", "--force=true").build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-mf-1")?.outcome)
+        assertTrue(result.output.contains("DONE"))
     }
 
     @Test
@@ -151,7 +199,9 @@ class StatusTaskTest {
             - [ ] `mf-2` Second task → depends: mf-1
         """.trimIndent())
 
-        val result = gradle("opsx-mf-2", "--set=done").build()
+        // Must go through IN_PROGRESS first
+        gradle("opsx-mf-2", "--set=progress").build()
+        val result = gradle("opsx-mf-2", "--set=done", "--force=true").build()
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-mf-2")?.outcome)
     }
 
@@ -163,7 +213,8 @@ class StatusTaskTest {
               - [ ] `mf-1.2` Last child
         """.trimIndent())
 
-        gradle("opsx-mf-1.2", "--set=done").build()
+        gradle("opsx-mf-1.2", "--set=progress").build()
+        gradle("opsx-mf-1.2", "--set=done", "--force=true").build()
 
         val content = File(projectDir, "opsx/changes/my-feature/tasks.md").readText()
         // Parent should be auto-completed since all children are done
