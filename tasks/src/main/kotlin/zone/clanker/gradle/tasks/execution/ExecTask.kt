@@ -545,7 +545,7 @@ abstract class ExecTask : DefaultTask() {
     private fun runGradleTask(taskName: String) {
         val proc = ProcessBuilder(
             resolveGradlew(), taskName,
-            "--no-daemon", "-p", project.projectDir.absolutePath,
+            "-p", project.projectDir.absolutePath,
         )
             .directory(project.rootDir)
             .inheritIO()
@@ -558,7 +558,7 @@ abstract class ExecTask : DefaultTask() {
         return try {
             val proc = ProcessBuilder(
                 resolveGradlew(), taskName,
-                "--no-daemon", "-p", project.projectDir.absolutePath,
+                "-p", project.projectDir.absolutePath,
             )
                 .directory(project.rootDir)
                 .inheritIO()
