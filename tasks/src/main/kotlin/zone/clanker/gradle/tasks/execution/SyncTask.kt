@@ -1,6 +1,6 @@
 package zone.clanker.gradle.tasks.execution
 
-import zone.clanker.gradle.generators.CommandGenerator
+import zone.clanker.gradle.generators.AgentCleaner
 import zone.clanker.gradle.generators.GeneratedFile
 import zone.clanker.gradle.generators.GlobalGitignore
 import zone.clanker.gradle.generators.InstructionsGenerator
@@ -28,7 +28,7 @@ abstract class SyncTask : DefaultTask() {
 
     init {
         group = "opsx"
-        description = "[tool] Agent file generator. Generates skill/command files for configured AI agents. " +
+        description = "[tool] Agent file generator. Generates skill files for configured AI agents. " +
             "Use when: After config change or plugin upgrade. " +
             "Chain: opsx-context for project metadata."
     }
@@ -53,16 +53,16 @@ abstract class SyncTask : DefaultTask() {
         logger.lifecycle("OpenSpec: Generating files for tools: ${toolList.joinToString(", ")}")
 
         val skills = SkillGenerator.generate(buildDir, toolList)
-        val commands = CommandGenerator.generate(buildDir, toolList)
         val instructionFiles = InstructionsGenerator.generate(buildDir, toolList)
-        // Reconcile tasks against symbol index
-        val warnings = try {
-            TaskReconciler.reconcile(project.projectDir)
+        // Reconcile tasks against symbol index and file paths
+        val report = try {
+            TaskReconciler.reconcileFull(project.projectDir)
         } catch (e: Exception) {
             logger.debug("OpenSpec: Task reconciliation skipped: ${e.message}")
-            emptyList()
+            null
         }
-        if (warnings.isNotEmpty()) {
+        val warnings = report?.staleSymbols ?: emptyList()
+        if (report != null && report.hasFindings()) {
             logger.lifecycle("")
             logger.lifecycle("OpenSpec: ⚠️ Task reconciliation warnings:")
             for (w in warnings) {
@@ -71,11 +71,18 @@ abstract class SyncTask : DefaultTask() {
                 } else ""
                 logger.lifecycle("  ${w.taskCode} (${w.proposalName}): references missing symbol(s): ${w.missingSymbols.joinToString(", ")}$suggest")
             }
+            for (fw in report.staleFiles) {
+                for (path in fw.missingPaths) {
+                    val suggest = fw.suggestions[path]?.takeIf { it.isNotEmpty() }
+                        ?.let { " → did you mean: ${it.joinToString(", ")}?" } ?: ""
+                    logger.lifecycle("  ${fw.taskCode} (${fw.proposalName}): missing file `$path`$suggest")
+                }
+            }
             logger.lifecycle("")
         }
 
-        val taskCommands = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList, warnings)
-        val allFiles = skills + commands + taskCommands
+        val taskSkills = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList, warnings)
+        val allFiles = skills + taskSkills
 
         // Install instructions files separately (some need append mode)
         for (file in instructionFiles) {
@@ -89,40 +96,59 @@ abstract class SyncTask : DefaultTask() {
         val totalCount = allFiles.size + instructionFiles.size
         logger.lifecycle("OpenSpec: Generated $totalCount files into ${buildDir.relativeTo(project.projectDir)}")
 
-        // Remove stale generated artifacts before installing the new set
+        // Remove stale generated skills before installing the new set
         removeStaleFiles(allFiles)
 
         // Install to project root
         installFiles(allFiles)
 
         logger.lifecycle("OpenSpec: Installed $totalCount files to project root")
+
+        // Clean deselected agents — agents that are supported but not in the current tool list
+        val deselected = ToolAdapterRegistry.supportedTools() - toolList.toSet()
+        // Don't clean an instructions path that is shared with a selected tool
+        val selectedInstrPaths = toolList.mapNotNull { ToolAdapterRegistry.get(it) }
+            .map { it.getInstructionsFilePath() }.toSet()
+        for (toolId in deselected) {
+            val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+            if (adapter.getInstructionsFilePath() in selectedInstrPaths) {
+                // Shared instructions file (e.g., AGENTS.md) — only clean skills, not instructions
+                val skillsDir = AgentCleaner.resolveSkillsDir(project.projectDir, adapter)
+                if (skillsDir != null && skillsDir.exists() && skillsDir.isDirectory) {
+                    skillsDir.listFiles()?.filter { it.isDirectory && it.name.startsWith("opsx-") }?.forEach {
+                        it.deleteRecursively()
+                    }
+                    AgentCleaner.pruneEmptyParents(skillsDir, project.projectDir)
+                }
+            } else {
+                val cleaned = AgentCleaner.cleanAgent(project.projectDir, adapter)
+                if (cleaned > 0) {
+                    logger.lifecycle("OpenSpec: Cleaned $cleaned files from deselected agent: $toolId")
+                }
+            }
+        }
     }
 
     /**
-     * Removes previously generated files that are no longer in the current output set.
-     * Prevents stale artifacts from lingering when agents are removed or templates change.
+     * Removes previously generated skill files that are no longer in the current output set.
+     * Prevents stale artifacts from lingering when templates change.
      */
     private fun removeStaleFiles(currentFiles: List<GeneratedFile>) {
         val currentPaths = currentFiles.map { it.relativePath }.toSet()
         val toolList = tools.get()
         for (toolId in toolList) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
-            // Check command directories for stale opsx-prefixed files
-            val probePath = adapter.getCommandFilePath("__probe__")
+            // Check skill directories for stale opsx-prefixed dirs
+            val probePath = adapter.getSkillFilePath("__probe__")
             val probeFile = File(project.projectDir, probePath)
-            val commandDir = probeFile.parentFile
-            if (commandDir != null && commandDir.exists() && commandDir.isDirectory) {
-                commandDir.listFiles()?.filter { it.name.startsWith("opsx-") }?.forEach { file ->
-                    val rel = file.relativeTo(project.projectDir).path
-                    if (file.isDirectory) {
-                        // For Codex-style skill dirs, check if the SKILL.md inside is in the current set
-                        val skillMd = File(file, "SKILL.md")
-                        val skillRel = skillMd.relativeTo(project.projectDir).path
-                        if (skillRel !in currentPaths) {
-                            file.deleteRecursively()
-                        }
-                    } else if (rel !in currentPaths) {
-                        file.delete()
+            // Skills are at <skillsDir>/<dirName>/SKILL.md — go up two levels to get the skills root
+            val skillsDir = probeFile.parentFile?.parentFile
+            if (skillsDir != null && skillsDir.exists() && skillsDir.isDirectory) {
+                skillsDir.listFiles()?.filter { it.isDirectory && it.name.startsWith("opsx-") }?.forEach { dir ->
+                    val skillMd = File(dir, "SKILL.md")
+                    val skillRel = skillMd.relativeTo(project.projectDir).path
+                    if (skillRel !in currentPaths) {
+                        dir.deleteRecursively()
                     }
                 }
             }
@@ -141,36 +167,24 @@ abstract class SyncTask : DefaultTask() {
 
     private fun cleanAll() {
         var count = 0
+        val seenInstrPaths = mutableSetOf<String>()
         for (toolId in ToolAdapterRegistry.supportedTools()) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
-            // Clean instructions file (handles append-mode files with markers)
-            if (InstructionsGenerator.clean(project.projectDir, adapter)) count++
-            // Clean all command files (static + dynamic task commands)
-            val probePath = adapter.getCommandFilePath("__probe__")
-            val probeFile = File(project.projectDir, probePath)
-            val commandDir = probeFile.parentFile
-            if (commandDir != null && commandDir.exists() && commandDir.isDirectory) {
-                // If the command dir is opsx-specific (e.g. .claude/commands/opsx/), clean it entirely
-                // Otherwise clean opsx-prefixed files and directories (e.g. .agents/skills/opsx-find/)
-                if (commandDir.name == "opsx") {
-                    commandDir.deleteRecursively()
-                    count++
-                } else {
-                    commandDir.listFiles()?.filter { it.name.startsWith("opsx-") }?.forEach {
-                        if (it.isDirectory) it.deleteRecursively() else it.delete()
+            // Deduplicate shared instructions paths
+            val instrPath = adapter.getInstructionsFilePath()
+            if (instrPath in seenInstrPaths) {
+                // Only clean skills for this adapter, not the shared instructions file
+                val skillsDir = AgentCleaner.resolveSkillsDir(project.projectDir, adapter)
+                if (skillsDir != null && skillsDir.exists() && skillsDir.isDirectory) {
+                    skillsDir.listFiles()?.filter { it.isDirectory && it.name.startsWith("opsx-") }?.forEach {
+                        it.deleteRecursively()
                         count++
                     }
+                    AgentCleaner.pruneEmptyParents(skillsDir, project.projectDir)
                 }
-            }
-            // Clean skills
-            for (skill in TemplateRegistry.getSkillTemplates()) {
-                val file = File(project.projectDir, adapter.getSkillFilePath(skill.dirName))
-                if (file.exists()) {
-                    file.delete()
-                    val parent = file.parentFile
-                    if (parent.exists() && parent.list()?.isEmpty() == true) parent.delete()
-                    count++
-                }
+            } else {
+                seenInstrPaths.add(instrPath)
+                count += AgentCleaner.cleanAgent(project.projectDir, adapter)
             }
         }
         // Also remove .opsx/ directory

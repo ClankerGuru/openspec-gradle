@@ -26,7 +26,7 @@ plugins {
 ./gradlew opsx-sync
 ```
 
-That's it. Your agent now has project context, skills, and commands.
+That's it. Your agent now has project context and skills.
 
 > **Go global** — `./gradlew opsx-install` installs an init script at `~/.gradle/init.d/`.
 > Every Gradle project on your machine gets OPSX automatically. No `plugins {}` block needed.
@@ -81,7 +81,7 @@ That's it. Your agent now has project context, skills, and commands.
 
 | Task | What it does |
 |---|---|
-| `opsx-sync` | Generate all agent files (context + skills + commands + instructions) |
+| `opsx-sync` | Generate all agent files (context + skills + instructions) |
 | `opsx-clean` | Remove all generated files |
 | `opsx-install` | Install globally via init script |
 
@@ -137,20 +137,20 @@ Replaces `grep`/`sed`/Python scripts with build-aware symbol analysis. The index
 
 All agents use marker-based append mode — your existing instruction content is preserved. OPSX adds its section between markers and updates it on every sync.
 
-### Agent Skills & Commands
+### Agent Skills
 
-Skills encode workflows (propose, apply, archive, explore, verify) so the agent knows *how* to work with your project — not just what's in it. Commands give agents slash-command-style actions (`/opsx:find`, `/opsx:rename`, `/opsx:status`).
+Skills encode workflows (propose, apply, archive, explore, verify) so the agent knows *how* to work with your project — not just what's in it. Each skill provides slash-command-style actions (`/opsx:find`, `/opsx:rename`, `/opsx:status`).
 
-### Dynamic Task Commands
+### Dynamic Task Skills
 
-Every task code in your proposals becomes a slash command automatically:
+Every task code in your proposals becomes a skill automatically:
 
 ```markdown
 - [ ] `aua-1` Create User model
 - [ ] `aua-2` JWT service → depends: aua-1
 ```
 
-On next build: `/opsx:aua-1` and `/opsx:aua-2` appear as agent commands, each with full context — the proposal, design, dependencies, and implementation instructions.
+On next build: `/opsx:aua-1` and `/opsx:aua-2` appear as agent skills, each with full context — the proposal, design, dependencies, and implementation instructions.
 
 ### Task Reconciler
 
@@ -174,19 +174,45 @@ Edit `opsx/changes/add-user-auth/tasks.md`:
 
 ```markdown
 - [ ] `aua-1` Create User model
+  > verify: symbol-exists User, file-exists src/main/kotlin/com/example/User.kt
 - [ ] `aua-2` JWT service → depends: aua-1
+  > verify: symbol-exists JwtService
   - [ ] `aua-2.1` Token generation
   - [ ] `aua-2.2` Token validation
 - [ ] `aua-3` Login endpoint → depends: aua-1, aua-2
+  > verify: symbol-exists LoginController, build-passes
 ```
+
+Tasks can declare verify assertions with `> verify:` lines. When `--set=done` is run, the build tool checks these assertions — the agent cannot self-certify completion.
 
 Track progress:
 
 ```bash
 ./gradlew opsx-status                  # dashboard with progress bars
 ./gradlew opsx-aua-1 --set=progress    # start a task
-./gradlew opsx-aua-1 --set=done        # finish it
+./gradlew opsx-aua-1 --set=done        # verify assertions + finish
 ```
+
+#### Verify Assertions
+
+| Assertion | What it checks |
+|---|---|
+| `symbol-exists Foo` | Symbol exists in the symbol index |
+| `symbol-not-in Foo.bar` | Symbol does NOT exist (removed/extracted) |
+| `file-exists path/to/File.kt` | File exists on disk |
+| `file-changed path/to/File.kt` | File was modified (git diff) |
+| `build-passes` | Configured Gradle task exits 0 |
+
+Tasks without `> verify:` default to `build-passes`. Configure the build gate:
+
+```properties
+# gradle.properties
+zone.clanker.openspec.verifyCommand=build          # default (full build)
+zone.clanker.openspec.verifyCommand=compileKotlin  # compile only (fast)
+zone.clanker.openspec.verifyCommand=opsx-verify    # architecture rules only
+```
+
+`--force` bypasses verification but can only be used interactively — automated pipelines cannot skip verification.
 
 ### Lifecycle Hooks
 
@@ -207,12 +233,12 @@ One property in `gradle.properties`:
 zone.clanker.openspec.agents=claude
 ```
 
-| Value | Agent | Skills & commands |
+| Value | Agent | Skills |
 |---|---|---|
-| `github` | GitHub Copilot | `.github/prompts/` · `.github/skills/` |
-| `claude` | Claude Code | `.claude/commands/` · `.claude/skills/` |
-| `codex` | OpenAI Codex | `.codex/skills/` |
-| `opencode` | OpenCode | `.opencode/commands/` · `.opencode/skills/` |
+| `github` | GitHub Copilot | `.github/skills/` |
+| `claude` | Claude Code | `.claude/skills/` |
+| `codex` | OpenAI Codex | `.agents/skills/` |
+| `opencode` | OpenCode | `.opencode/skills/` |
 
 Combine agents: `github,claude` · Per-project overrides global · Set `none` to disable.
 

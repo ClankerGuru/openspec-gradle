@@ -48,12 +48,17 @@ Implement tasks from an OPSX change.
 5. **Implement tasks (loop until done or blocked)**
 
    For each pending task:
-   - Show which task is being worked on (include task code, e.g., `aua-3`)
    - Check dependencies: if task has `→ depends:` on incomplete tasks, skip it
+   - **BEFORE starting work**: Run `./gradlew opsx-<code> --set=progress` to mark the task in-progress
+   - Show which task is being worked on (include task code, e.g., `aua-3`)
    - Make the code changes required
    - Keep changes minimal and focused
-   - Mark task complete: `./gradlew opsx-<code> --set=done` or update checkbox in tasks.md
+   - **AFTER completing work**: Run `./gradlew opsx-<code> --set=done` to mark the task complete
+   - `--set=done` runs verify assertions declared on the task (e.g., `> verify: symbol-exists Foo, file-exists path/to/file.kt`). If assertions fail, the task stays IN_PROGRESS — fix the issues and try again.
+   - **NEVER use `--force`** — only the human can bypass verification interactively.
    - Continue to next task
+
+   **IMPORTANT**: You MUST use the Gradle commands above to update task status. Never manually edit checkboxes in tasks.md.
 
    **Pause if:**
    - Task is unclear → ask for clarification
@@ -77,7 +82,7 @@ Implement tasks from an OPSX change.
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
-- Update task status immediately after completing each task (via Gradle or checkbox)
+- Update task status via Gradle commands only: `--set=progress` when starting, `--set=done` when complete. Never edit tasks.md directly.
 - Pause on errors, blockers, or unclear requirements — don't guess
 
 **Fluid Workflow Integration**

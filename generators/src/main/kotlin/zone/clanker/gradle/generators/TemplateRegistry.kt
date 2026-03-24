@@ -2,33 +2,13 @@ package zone.clanker.gradle.generators
 
 
 /**
- * Registry of all embedded prompt/skill templates.
+ * Registry of all embedded skill templates.
  * Templates reference filesystem operations instead of CLI commands.
  */
 object TemplateRegistry {
 
     private fun loadResource(path: String): String =
         this::class.java.classLoader.getResourceAsStream(path)!!.bufferedReader().readText()
-
-    fun getCommandTemplates(): List<CommandContent> = listOf(
-        proposeCommand(),
-        applyCommand(),
-        archiveCommand(),
-        exploreCommand(),
-        newCommand(),
-        syncCommand(),
-        verifyCommand(),
-        findCommand(),
-        callsCommand(),
-        renameCommand(),
-        statusCommand(),
-        moveCommand(),
-        usagesCommand(),
-        extractCommand(),
-        inlineCommand(),
-        depsCommand(),
-        removeCommand(),
-    )
 
     fun getSkillTemplates(): List<SkillContent> = listOf(
         proposeSkill(),
@@ -52,15 +32,6 @@ object TemplateRegistry {
 
     // ── Propose ──────────────────────────────────────────
 
-    private fun proposeCommand() = CommandContent(
-        id = "propose",
-        name = "OPSX: Propose",
-        description = "Propose a new change - create it and generate all artifacts in one step",
-        category = "Workflow",
-        tags = listOf("workflow", "artifacts", "experimental"),
-        body = loadResource("templates/commands/propose.md")
-    )
-
     private fun proposeSkill() = SkillContent(
         dirName = "opsx-propose",
         description = "Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.",
@@ -68,15 +39,6 @@ object TemplateRegistry {
     )
 
     // ── Apply ────────────────────────────────────────────
-
-    private fun applyCommand() = CommandContent(
-        id = "apply",
-        name = "OPSX: Apply",
-        description = "Implement tasks from an OpenSpec change (Experimental)",
-        category = "Workflow",
-        tags = listOf("workflow", "implementation"),
-        body = loadResource("templates/commands/apply.md")
-    )
 
     private fun applySkill() = SkillContent(
         dirName = "opsx-apply",
@@ -86,15 +48,6 @@ object TemplateRegistry {
 
     // ── Archive ──────────────────────────────────────────
 
-    private fun archiveCommand() = CommandContent(
-        id = "archive",
-        name = "OPSX: Archive",
-        description = "Archive a completed change in the experimental workflow",
-        category = "Workflow",
-        tags = listOf("workflow", "archive"),
-        body = loadResource("templates/commands/archive.md")
-    )
-
     private fun archiveSkill() = SkillContent(
         dirName = "opsx-archive",
         description = "Archive a completed change. Use when the user wants to finalize and archive a change after implementation is complete.",
@@ -102,15 +55,6 @@ object TemplateRegistry {
     )
 
     // ── Explore ──────────────────────────────────────────
-
-    private fun exploreCommand() = CommandContent(
-        id = "explore",
-        name = "OPSX: Explore",
-        description = "Enter explore mode - think through ideas, investigate problems, clarify requirements",
-        category = "Workflow",
-        tags = listOf("workflow", "explore", "thinking"),
-        body = loadResource("templates/commands/explore.md")
-    )
 
     private fun exploreSkill() = SkillContent(
         dirName = "opsx-explore",
@@ -120,15 +64,6 @@ object TemplateRegistry {
 
     // ── New (expanded profile) ───────────────────────────
 
-    private fun newCommand() = CommandContent(
-        id = "new",
-        name = "OPSX: New",
-        description = "Start a new change with scaffolded directory structure",
-        category = "Workflow",
-        tags = listOf("workflow", "artifacts"),
-        body = loadResource("templates/commands/new.md")
-    )
-
     private fun newSkill() = SkillContent(
         dirName = "opsx-new",
         description = "Start a new OpenSpec change with scaffolded directory structure.",
@@ -136,15 +71,6 @@ object TemplateRegistry {
     )
 
     // ── Sync (expanded profile) ──────────────────────────
-
-    private fun syncCommand() = CommandContent(
-        id = "sync",
-        name = "OPSX: Sync",
-        description = "Sync delta specs from a change to main specs",
-        category = "Workflow",
-        tags = listOf("workflow", "specs"),
-        body = loadResource("templates/commands/sync.md")
-    )
 
     private fun syncSkill() = SkillContent(
         dirName = "opsx-sync",
@@ -154,15 +80,6 @@ object TemplateRegistry {
 
     // ── Verify (expanded profile) ────────────────────────
 
-    private fun verifyCommand() = CommandContent(
-        id = "verify",
-        name = "OPSX: Verify",
-        description = "Verify implementation matches specs and tasks",
-        category = "Workflow",
-        tags = listOf("workflow", "verification"),
-        body = loadResource("templates/commands/verify.md")
-    )
-
     private fun verifySkill() = SkillContent(
         dirName = "opsx-verify",
         description = "Verify that implementation matches the specs and tasks for a change.",
@@ -170,15 +87,6 @@ object TemplateRegistry {
     )
 
     // ── Find ─────────────────────────────────────────────
-
-    private fun findCommand() = CommandContent(
-        id = "find",
-        name = "OPSX: Find",
-        description = "Find a symbol by name in the project",
-        category = "Code Intelligence",
-        tags = listOf("symbols", "search"),
-        body = loadResource("templates/commands/find.md")
-    )
 
     private fun findSkill() = SkillContent(
         dirName = "opsx-find",
@@ -188,15 +96,6 @@ object TemplateRegistry {
 
     // ── Calls ────────────────────────────────────────────
 
-    private fun callsCommand() = CommandContent(
-        id = "calls",
-        name = "OPSX: Calls",
-        description = "Show call graph for a symbol",
-        category = "Code Intelligence",
-        tags = listOf("symbols", "call-graph"),
-        body = loadResource("templates/commands/calls.md")
-    )
-
     private fun callsSkill() = SkillContent(
         dirName = "opsx-calls",
         description = "Show the call graph for a symbol. Use when the user wants to understand what calls a function or what a function calls.",
@@ -204,15 +103,6 @@ object TemplateRegistry {
     )
 
     // ── Rename ───────────────────────────────────────────
-
-    private fun renameCommand() = CommandContent(
-        id = "rename",
-        name = "OPSX: Rename",
-        description = "Preview or execute a rename refactoring",
-        category = "Code Intelligence",
-        tags = listOf("refactoring", "rename"),
-        body = loadResource("templates/commands/rename.md")
-    )
 
     private fun renameSkill() = SkillContent(
         dirName = "opsx-rename",
@@ -222,15 +112,6 @@ object TemplateRegistry {
 
     // ── Status ───────────────────────────────────────────
 
-    private fun statusCommand() = CommandContent(
-        id = "status",
-        name = "OPSX: Status",
-        description = "Show status of all open changes/proposals",
-        category = "Workflow",
-        tags = listOf("workflow", "status"),
-        body = loadResource("templates/commands/status.md")
-    )
-
     private fun statusSkill() = SkillContent(
         dirName = "opsx-status",
         description = "Show status of all open changes and proposals. Use when the user wants to see what changes are in progress.",
@@ -238,15 +119,6 @@ object TemplateRegistry {
     )
 
     // ── Move ─────────────────────────────────────────────
-
-    private fun moveCommand() = CommandContent(
-        id = "move",
-        name = "OPSX: Move",
-        description = "Move a class/file to a different package",
-        category = "Code Intelligence",
-        tags = listOf("refactoring", "move"),
-        body = loadResource("templates/commands/move.md")
-    )
 
     private fun moveSkill() = SkillContent(
         dirName = "opsx-move",
@@ -256,15 +128,6 @@ object TemplateRegistry {
 
     // ── Usages ───────────────────────────────────────────
 
-    private fun usagesCommand() = CommandContent(
-        id = "usages",
-        name = "OPSX: Usages",
-        description = "Show all usages of a symbol with file:line locations",
-        category = "Code Intelligence",
-        tags = listOf("symbols", "usages"),
-        body = loadResource("templates/commands/usages.md")
-    )
-
     private fun usagesSkill() = SkillContent(
         dirName = "opsx-usages",
         description = "Find all usages of a symbol with exact file:line locations. Use when the user wants to see where a symbol is referenced.",
@@ -272,15 +135,6 @@ object TemplateRegistry {
     )
 
     // ── Extract ──────────────────────────────────────────
-
-    private fun extractCommand() = CommandContent(
-        id = "extract",
-        name = "OPSX: Extract",
-        description = "Extract a block of code into a new function",
-        category = "Code Intelligence",
-        tags = listOf("refactoring", "extract"),
-        body = loadResource("templates/commands/extract.md")
-    )
 
     private fun extractSkill() = SkillContent(
         dirName = "opsx-extract",
@@ -290,15 +144,6 @@ object TemplateRegistry {
 
     // ── Inline ───────────────────────────────────────────
 
-    private fun inlineCommand() = CommandContent(
-        id = "inline",
-        name = "OPSX: Inline",
-        description = "Inline a function — replace call sites with the body",
-        category = "Code Intelligence",
-        tags = listOf("refactoring", "inline"),
-        body = loadResource("templates/commands/inline.md")
-    )
-
     private fun inlineSkill() = SkillContent(
         dirName = "opsx-inline",
         description = "Inline a function or class — replace call sites with the implementation body. The reverse of extract.",
@@ -307,29 +152,13 @@ object TemplateRegistry {
 
     // ── Deps (interactive) ───────────────────────────────
 
-    private fun depsCommand() = CommandContent(
-        id = "deps",
-        name = "OPSX: Deps",
-        description = "Query resolved project dependencies",
-        category = "Code Intelligence",
-        tags = listOf("dependencies", "query"),
-        body = loadResource("templates/commands/deps.md")
-    )
-
     private fun depsSkill() = SkillContent(
         dirName = "opsx-deps",
         description = "Query project dependencies — resolved versions, transitive deps, and module relationships.",
         instructions = loadResource("templates/skills/deps.md")
     )
 
-    private fun removeCommand() = CommandContent(
-        id = "remove",
-        name = "OPSX: Remove",
-        description = "Remove a symbol or code lines from the codebase",
-        category = "Code Intelligence",
-        tags = listOf("refactoring", "remove", "delete"),
-        body = loadResource("templates/commands/remove.md")
-    )
+    // ── Remove ───────────────────────────────────────────
 
     private fun removeSkill() = SkillContent(
         dirName = "opsx-remove",

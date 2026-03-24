@@ -36,3 +36,14 @@ data class MethodCall(
     val file: File,
     val line: Int,
 )
+
+/**
+ * A machine-checkable assertion declared on a task via `> verify:` syntax.
+ *
+ * @param type Assertion type: symbol-exists, symbol-not-in, file-exists, file-changed, build-passes
+ * @param argument The argument for the assertion (e.g., symbol name, file path). Empty for build-passes.
+ */
+data class VerifyAssertion(
+    val type: String,
+    val argument: String,
+)

@@ -41,6 +41,11 @@ abstract class TaskItemTask : DefaultTask() {
     @get:Option(option = "run", description = "Execute this task via the exec engine")
     abstract val runTask: Property<String>
 
+    @get:Input
+    @get:Optional
+    @get:Option(option = "force", description = "Skip build verification gate when marking done")
+    abstract val force: Property<String>
+
     init {
         group = "opsx"
         // Description is set dynamically during registration
@@ -62,7 +67,12 @@ abstract class TaskItemTask : DefaultTask() {
         val taskItem = allFlat.find { it.code == code }
             ?: throw GradleException("Task '$code' not found in $name/tasks.md")
 
-        // --run flag: delegate to exec engine
+        // --run flag: delegate to exec engine.
+        // ExecTask manages its own lifecycle: sets IN_PROGRESS before spawning the agent,
+        // runs opsx-verify after completion, marks DONE only on success or BLOCKED on failure.
+        // It uses TaskWriter directly (not TaskItemTask), so it bypasses the state machine
+        // validation here. This is intentional — ExecTask enforces ordering through its
+        // sequential chain execution and dependency validation at chain start.
         if (runTask.isPresent) {
             val execTask = project.tasks.findByName("opsx-exec") as? ExecTask
                 ?: throw GradleException("opsx-exec task not found")
@@ -95,25 +105,35 @@ abstract class TaskItemTask : DefaultTask() {
                 }
             }
 
+            // Validate state transition
+            validateTransition(code, taskItem.status, newStatus)
+
             if (newStatus == TaskStatus.DONE || newStatus == TaskStatus.IN_PROGRESS) {
                 validateDependencies(code, taskItem, allFlat)
             }
 
-            val updated = TaskWriter.updateStatus(tasksFile, code, newStatus)
-            if (!updated) {
-                throw GradleException("Failed to update task '$code' in tasks.md")
+            // Build gate: verify the build passes before marking DONE
+            val skipGate = force.orNull?.trim()?.lowercase() == "true"
+            if (skipGate && !isInteractive()) {
+                throw GradleException(
+                    "--force can only be used interactively. " +
+                        "Automated pipelines cannot bypass verification."
+                )
             }
 
-            // Propagate completion if marking done
             if (newStatus == TaskStatus.DONE) {
-                val propagated = TaskWriter.propagateCompletion(tasksFile, TaskParser.parse(tasksFile))
-                if (propagated.isNotEmpty()) {
-                    logger.lifecycle("Auto-completed parent tasks: ${propagated.joinToString(", ")}")
+                val verifyCommand = TaskLifecycle.resolveVerifyCommand(project)
+                TaskLifecycle.onTaskCompleted(
+                    project, tasksFile, code, taskItem, skipGate, verifyCommand, logger
+                )
+            } else {
+                val updated = TaskWriter.updateStatus(tasksFile, code, newStatus)
+                if (!updated) {
+                    throw GradleException("Failed to update task '$code' in tasks.md")
                 }
+                val icon = newStatus.icon
+                logger.lifecycle("$icon $code → ${newStatus.name}: ${taskItem.description}")
             }
-
-            val icon = newStatus.icon
-            logger.lifecycle("$icon $code → ${newStatus.name}: ${taskItem.description}")
         } else {
             // Print current status
             val icon = taskItem.status.icon
@@ -131,6 +151,46 @@ abstract class TaskItemTask : DefaultTask() {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Check if the current execution is interactive (human or build tool, not an automated agent).
+     * Returns false only when ExecTask explicitly sets the automated flag.
+     */
+    private fun isInteractive(): Boolean {
+        return System.getProperty("opsx.exec.automated") != "true"
+    }
+
+    private fun validateTransition(code: String, current: TaskStatus, target: TaskStatus) {
+        if (current == target) return // idempotent
+
+        val allowed = when (current) {
+            TaskStatus.TODO -> target == TaskStatus.IN_PROGRESS
+            TaskStatus.IN_PROGRESS -> target in listOf(TaskStatus.DONE, TaskStatus.BLOCKED, TaskStatus.TODO)
+            TaskStatus.DONE -> target == TaskStatus.TODO
+            TaskStatus.BLOCKED -> target == TaskStatus.TODO
+        }
+
+        if (!allowed) {
+            val hint = when {
+                current == TaskStatus.TODO && target == TaskStatus.DONE ->
+                    "Task must be IN_PROGRESS before marking DONE. Run: --set=progress first."
+                current == TaskStatus.TODO && target == TaskStatus.BLOCKED ->
+                    "Cannot block a task that hasn't started. Run: --set=progress first."
+                current == TaskStatus.DONE && target == TaskStatus.IN_PROGRESS ->
+                    "Reset to TODO first. Run: --set=todo then --set=progress."
+                current == TaskStatus.BLOCKED && target == TaskStatus.IN_PROGRESS ->
+                    "Reset to TODO first. Run: --set=todo then --set=progress."
+                current == TaskStatus.BLOCKED && target == TaskStatus.DONE ->
+                    "Reset to TODO first, then progress through IN_PROGRESS."
+                current == TaskStatus.DONE && target == TaskStatus.BLOCKED ->
+                    "Task is already DONE. Reset to TODO first if needed."
+                else -> "Invalid transition."
+            }
+            throw GradleException(
+                "Invalid status transition for '$code': ${current.name} → ${target.name}. $hint"
+            )
         }
     }
 

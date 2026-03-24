@@ -111,4 +111,50 @@ class TaskWriterTest {
         // t-2 should still be todo (t-2.2 is not done)
         assertTrue(content.lines()[3].contains("[ ]"))
     }
+
+    @Test
+    fun `updateStatus with verified=false adds unverified marker`() {
+        val file = File(tempDir, "tasks.md")
+        file.writeText("- [ ] `t-1` My task\n")
+
+        assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE, verified = false))
+
+        val content = file.readText()
+        assertTrue(content.contains("⚠️ unverified"), "Expected unverified marker, got: $content")
+        assertTrue(content.contains("[x]"))
+    }
+
+    @Test
+    fun `updateStatus with verified=true does not add unverified marker`() {
+        val file = File(tempDir, "tasks.md")
+        file.writeText("- [ ] `t-1` My task\n")
+
+        assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.DONE, verified = true))
+
+        val content = file.readText()
+        assertFalse(content.contains("⚠️ unverified"))
+    }
+
+    @Test
+    fun `updateStatus clears unverified marker when re-verified`() {
+        val file = File(tempDir, "tasks.md")
+        file.writeText("- [x] `t-1` My task ⚠️ unverified\n")
+
+        // Reset to TODO (verified by default)
+        assertTrue(TaskWriter.updateStatus(file, "t-1", TaskStatus.TODO))
+        val content = file.readText()
+        assertFalse(content.contains("⚠️ unverified"), "Marker should be cleared, got: $content")
+    }
+
+    @Test
+    fun `unverified marker roundtrips through parser`() {
+        val file = File(tempDir, "tasks.md")
+        file.writeText("- [x] `t-1` Force-completed task ⚠️ unverified\n")
+
+        val tasks = TaskParser.parse(file)
+        assertEquals(1, tasks.size)
+        assertEquals(false, tasks[0].verified)
+        assertEquals("Force-completed task", tasks[0].description)
+        assertEquals(TaskStatus.DONE, tasks[0].status)
+    }
 }

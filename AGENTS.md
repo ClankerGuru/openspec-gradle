@@ -2,6 +2,7 @@
 
 > This project builds the **openspec-gradle** plugin (`zone.clanker.gradle`).
 > It is a **Gradle Settings plugin** that auto-applies via init script.
+> It also publishes **3 standalone linting plugins** (`zone.clanker.gradle.linting`, `.detekt`, `.ktlint`).
 
 ## Golden Rule
 
@@ -26,77 +27,131 @@ Every `opsx-*` task is self-documenting — run it with `--help` or read the `de
 ```
 build-logic/                        # Convention plugins (included build)
 ├── src/main/kotlin/
-│   └── openspec-module.gradle.kts  # Shared config for all submodules
+│   ├── openspec-module.gradle.kts  # Shared config: Kotlin/JVM, Java 17, JUnit 5
+│   └── openspec-publish.gradle.kts # Maven Central publishing via Vanniktech
 
-core/                               # Data models, tracking logic, version info
-psi/                                # Symbol parsing (Kotlin regex, Java AST), source analysis
-arch/                               # Architecture analysis (classifier, dependency analyzer, diagrams)
-exec/                               # Agent execution engine (runner, cycle detection, spec parser)
-generators/                         # File generators (commands, skills, instructions, gitignore)
+core/                               # Data models, task parsing, proposal scanning
+├── Model.kt                        #   Symbol, Reference, MethodCall, TaskItem, Proposal
+├── TaskParser.kt                   #   Markdown → TaskItem tree (checkbox parsing)
+├── TaskCodeGenerator.kt            #   Hierarchical code assignment (e.g. ttd-1.2.1)
+├── TaskWriter.kt                   #   Status updates, parent propagation, attempt logs
+├── ProposalScanner.kt              #   Discovers proposals in opsx/changes/
+├── DependencyGraph.kt              #   Task dependency graph, cycle detection, topological sort
+├── OpenSpecExtension.kt            #   Gradle extension (tools list)
+└── VersionInfo.kt                  #   Plugin version from properties resource
+
+psi/                                # Symbol parsing — no compiler dependency at runtime
+├── KotlinPsiParser.kt              #   Regex-based Kotlin parser (declarations + references)
+├── JavaPsiParser.kt                #   JavaParser AST-based Java parser
+├── SymbolIndex.kt                  #   Cross-referenced index, usage resolution, call graph
+├── SourceDiscovery.kt              #   Source dir detection (JVM, KMP, fallback)
+└── Renamer.kt                      #   Compute + apply rename edits safely
+
+arch/                               # Architecture analysis
+├── SourceParser.kt                 #   Parse files into SourceFile metadata
+├── ComponentClassifier.kt          #   Role detection (Controller, Service, etc.) + entry points
+├── DependencyAnalyzer.kt           #   Import-based dependency graph, hub detection, cycles
+├── DiagramGenerator.kt             #   Mermaid flowcharts + sequence diagrams
+└── AntiPatternDetector.kt          #   God classes, deep inheritance, smell detection
+
+exec/                               # Agent execution engine
+├── AgentRunner.kt                  #   Spawns CLI processes (copilot, claude, codex, opencode)
+├── CycleDetector.kt                #   Detects oscillating error loops via SHA-256 hashing
+└── SpecParser.kt                   #   Parses task-*.md spec files into TaskSpec
+
+generators/                         # File generators
+├── SkillGenerator.kt               #   Generates 17 skill templates per tool
+├── TaskCommandGenerator.kt         #   Dynamic /opsx:<code> skills from proposals
+├── TaskReconciler.kt               #   Validates task symbols against codebase
+├── ToolAdapter.kt                  #   Interface + registry for tool-specific formatting
+├── InstructionsGenerator.kt        #   Root agent files (CLAUDE.md, copilot-instructions.md)
+├── AgentCleaner.kt                 #   Removes opsx files for deselected agents, prunes empty dirs
+├── GlobalGitignore.kt              #   Manages ~/.config/git/ignore patterns
+├── TemplateRegistry.kt             #   Loads 17 skill templates from resources
+└── src/main/resources/templates/   #   17 skill markdown templates
+
 adapters/
-├── copilot/                        # GitHub Copilot adapter
-├── claude/                         # Claude Code adapter
-├── codex/                          # Codex adapter
-└── opencode/                       # OpenCode adapter
-tasks/                              # 22+ Gradle task classes (all opsx-* prefixed)
-├── discovery/                      # Context, Deps, Devloop, Modules, Symbols, Tree
-├── workflow/                       # Apply, Archive, Propose, Status, TaskItem
-├── intelligence/                   # Arch, Calls, Find, Usages, Verify
-├── refactoring/                    # Extract, Move, Remove, Rename
-└── execution/                      # Clean, Exec, InstallGlobal, Sync
-linting/                            # Auto-applied detekt + ktlint plugins
-plugin/                             # Settings plugin entry point — the published artifact
+├── claude/    ClaudeAdapter        # .claude/skills/ (full YAML frontmatter)
+├── copilot/   CopilotAdapter       # .github/skills/ (desc-only YAML frontmatter)
+├── codex/     CodexAdapter         # .agents/skills/opsx-*/SKILL.md (unified skill model)
+└── opencode/  OpenCodeAdapter      # .opencode/skills/ (HTML comment format)
 
-gradle/libs.versions.toml           # Version catalog (all dependency versions)
+tasks/                              # 25 Gradle task classes (all opsx-* prefixed)
+├── discovery/                      # ContextTask, TreeTask, ModulesTask, DepsTask, DevloopTask, SymbolsTask
+├── intelligence/                   # ArchTask, FindTask, UsagesTask, CallsTask, VerifyTask
+├── refactoring/                    # RenameTask, MoveTask, ExtractTask, RemoveTask
+├── workflow/                       # ProposeTask, ApplyTask, StatusTask, ArchiveTask, TaskItemTask, TaskLifecycle, AssertionRunner
+└── execution/                      # SyncTask, CleanTask, ExecTask, OpsxLinkTask, InstallGlobalTask
+
+linting/                            # 3 standalone Gradle plugins (separate from opsx-* tasks)
+├── OpenSpecLintingPlugin.kt        #   zone.clanker.gradle.linting — applies both detekt + ktlint
+├── OpenSpecDetektPlugin.kt         #   zone.clanker.gradle.detekt — auto-applies detekt via reflection
+├── OpenSpecKtlintPlugin.kt         #   zone.clanker.gradle.ktlint — auto-applies ktlint via reflection
+└── README.md                       #   Plugin usage docs
+
+plugin/                             # Settings plugin entry point — the published artifact
+├── OpenSpecSettingsPlugin.kt       #   Plugin<Settings>, task registration, adapter init
+└── src/main/resources/             #   openspec-gradle.properties (version injected at build)
+
+gradle/libs.versions.toml           # Version catalog (junit, javaparser, kotlin, detekt, ktlint)
 config/detekt.yml                   # Detekt configuration
 ```
 
-Only `:plugin` is published to Maven Central. All other modules are internal implementation.
+## Published Artifacts
+
+| Module | Artifact | Type |
+|---|---|---|
+| `:plugin` | `zone.clanker:openspec-gradle` | **Gradle Settings Plugin** — the main entry point |
+| `:linting` | 3 plugins under `zone.clanker.gradle.*` | **Gradle Project Plugins** — detekt, ktlint, linting |
+| All others | `zone.clanker:openspec-*` | **Libraries** — bundled into `:plugin` at runtime |
+
+All published to Maven Central via Vanniktech plugin. Version derived from git tags.
 
 ## Key Architecture
 
-- **Settings plugin** — applies in `beforeSettings {}` block, not a project plugin
-- **Init script** — lives at `~/.gradle/init.d/`, auto-applies to all projects
-- **Agent property** — `systemProp.zone.clanker.openspec.agents` in `gradle.properties` (closest scope wins)
-- **4 adapters** — Claude, Copilot, Codex, OpenCode (each formats files differently)
-- **Instructions delivery**:
-  - Claude → `.claude/CLAUDE.md` (standalone, `<!-- OPSX:BEGIN/END -->` markers)
-  - Copilot → `.github/copilot-instructions.md` (additive, same markers)
-  - Codex/OpenCode → root `AGENTS.md` with markers (append mode)
-- **Lifecycle hooks** — `assemble` → `opsx-sync`, `clean` → `opsx-clean`
-- **Version from git tag** — `git describe --tags --abbrev=0`, no hardcoded version
-- **Convention plugins** — `build-logic/` included build, no `subprojects {}` block
-- **Version catalog** — `gradle/libs.versions.toml` for all dependency versions
-- **All generated files** go in global gitignore (per-developer, not committed)
-- **Proposals** (`opsx/changes/`) ARE committed — they're team-shared artifacts
+- **Settings plugin** — applies in `settings.gradle.rootProject {}` block, not a project plugin
+- **Init script** — installed to `~/.gradle/init.d/` by `opsx-install`, auto-applies to all projects
+- **Agent resolution** — priority: `-P` flag → project `gradle.properties` → global `~/.gradle/gradle.properties` → PATH scan
+- **4 adapters** — Claude, Copilot, Codex, OpenCode (each formats files differently via `ToolAdapter` interface)
+- **Instructions delivery** (all use marker-based append `<!-- OPSX:BEGIN -->` / `<!-- OPSX:END -->`):
+  - Claude → `.claude/CLAUDE.md`
+  - Copilot → `.github/copilot-instructions.md`
+  - Codex → `AGENTS.md`
+  - OpenCode → `AGENTS.md`
+- **Linting plugins** — applied via reflection with `compileOnly` deps on detekt/ktlint; skip if already configured; Kotlin-only detection; configurable via system/project properties
+- **Task lifecycle** — `--set=done` runs verify assertions → mark DONE → propagate parents → sync skills → reconcile remaining tasks. Assertions declared via `> verify:` lines in tasks.md. `--force` bypasses verification but only works interactively (rejected by automated pipelines). Configurable gate via `zone.clanker.openspec.verifyCommand` property (default: `build`)
+- **Lifecycle hooks** — `assemble` triggers `opsx-sync`, `clean` triggers `opsx-clean`
+- **Build infrastructure** — Kotlin 2.3, Java 17 toolchain, Gradle 9.4.0, KTS only (no Groovy)
+- **Convention plugins** — `openspec-module` (base config) and `openspec-publish` (Maven Central) in `build-logic/`
 
-## Building & Testing
+## Linting Plugins
 
-**First time after cloning — install git hooks:**
+The `:linting` module produces 3 independent Gradle plugins that can be applied to any Kotlin project:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/ClankerGuru/git-hooks/0.1.0/install.sh | bash
+| Plugin ID | Class | What it does |
+|---|---|---|
+| `zone.clanker.gradle.linting` | `OpenSpecLintingPlugin` | Applies both detekt + ktlint |
+| `zone.clanker.gradle.detekt` | `OpenSpecDetektPlugin` | Auto-configures detekt (static analysis) |
+| `zone.clanker.gradle.ktlint` | `OpenSpecKtlintPlugin` | Auto-configures ktlint (code formatting) |
+
+Key behaviors:
+- **Non-invasive** — skips if plugin already applied to project
+- **Kotlin-only** — only applies to projects with `kotlin("jvm")`, `.android`, or `.multiplatform`
+- **Reflection-based** — configures extensions via reflection, deps are `compileOnly`
+- **Configurable** — disable via `-Dopenspec.linting.enabled=false` or `gradle.properties`
+- **Custom config** — detekt.yml path via `-Dopenspec.detekt.config=...`, ktlint version via `-Dopenspec.ktlint.version=...`
+- **Hooks into `check`/`build`** — adds detekt and ktlintCheck as dependencies
+
+## Module Dependency Graph
+
 ```
-
-This is **mandatory**. Pre-commit runs `./gradlew build`, pre-push blocks direct pushes to `main`.
-
-```bash
-./gradlew build                     # compile + test + validatePlugins
-./gradlew test --no-daemon          # reliable test runs
-./gradlew publishToMavenLocal       # local install (uses -LOCAL suffix)
+plugin
+├── core
+├── psi → core
+├── arch → psi
+├── exec → core
+├── generators → core, psi
+├── adapters:{claude,copilot,codex,opencode} → generators
+├── tasks → core, psi, arch, exec, generators, linting
+└── linting (no internal deps)
 ```
-
-- Java 17 required
-- `--no-daemon` recommended for test reliability
-- Pre-commit hook runs full build — never bypass with `--no-verify`
-- Never publish from local — CI only via GitHub Actions
-- Never use `[skip ci]` in commit messages
-- Always branch + PR — never push to main
-
-## Code Style
-
-- Kotlin-idiomatic: top-level functions, DSLs, composition over inheritance
-- No unnecessary interfaces (single impl = just use the class)
-- `@UntrackedTask` for tasks reading dynamic project state
-- `@CacheableTask` with proper `@InputFiles`/`@OutputFile` for deterministic tasks
-- Prefer `trimMargin()` over `buildString` for static templates

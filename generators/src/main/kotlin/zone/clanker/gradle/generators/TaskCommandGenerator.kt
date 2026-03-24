@@ -5,8 +5,8 @@ import zone.clanker.gradle.core.TaskStatus
 import java.io.File
 
 /**
- * Generates dynamic slash commands for each task item in open proposals.
- * Every task code (e.g., T1, auth-2.1) becomes a slash command (e.g., /opsx:T1).
+ * Generates dynamic skill files for each task item in open proposals.
+ * Every task code (e.g., T1, auth-2.1) becomes a skill (e.g., /opsx-T1).
  */
 object TaskCommandGenerator {
 
@@ -45,8 +45,12 @@ object TaskCommandGenerator {
                     appendLine("## Implementation")
                     appendLine()
                     appendLine("1. Read the context files above")
-                    appendLine("2. Implement this task: **${taskItem.description}**")
-                    appendLine("3. When complete, mark done: `./gradlew opsx-${taskItem.code} --set=done`")
+                    appendLine("2. Check dependencies — if any are incomplete, stop and work on those first")
+                    appendLine("3. Mark in-progress: `./gradlew opsx-${taskItem.code} --set=progress`")
+                    appendLine("4. Implement this task: **${taskItem.description}**")
+                    appendLine("5. When complete, mark done: `./gradlew opsx-${taskItem.code} --set=done`")
+                    appendLine()
+                    appendLine("**Note:** `--set=done` runs verify assertions (declared via `> verify:` lines). If assertions fail, the task stays IN_PROGRESS. **Never use `--force`** — only the human can bypass verification interactively.")
 
                     if (taskItem.explicitDeps.isNotEmpty()) {
                         appendLine()
@@ -54,7 +58,7 @@ object TaskCommandGenerator {
                         appendLine()
                         appendLine("Complete these first:")
                         for (dep in taskItem.explicitDeps) {
-                            appendLine("- `$dep` → `/opsx:$dep`")
+                            appendLine("- `$dep`")
                         }
                     }
 
@@ -93,21 +97,18 @@ object TaskCommandGenerator {
                     }
                 }
 
-                val content = CommandContent(
-                    id = taskItem.code,
-                    name = "OPSX: ${taskItem.code}",
+                val content = SkillContent(
+                    dirName = "opsx-${taskItem.code}",
                     description = "${taskItem.description} (${proposal.name})",
-                    category = "Task",
-                    tags = listOf("task", proposal.name),
-                    body = body
+                    instructions = body
                 )
 
                 for (toolId in tools) {
                     val adapter = ToolAdapterRegistry.get(toolId) ?: continue
-                    val relativePath = adapter.getCommandFilePath(taskItem.code)
+                    val relativePath = adapter.getSkillFilePath("opsx-${taskItem.code}")
                     val file = File(buildDir, relativePath)
                     file.parentFile.mkdirs()
-                    file.writeText(adapter.formatCommandFile(content))
+                    file.writeText(adapter.formatSkillFile(content))
                     generated.add(GeneratedFile(relativePath, file))
                 }
             }

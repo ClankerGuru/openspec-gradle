@@ -10,6 +10,7 @@ import java.io.File
  * - Backtick-wrapped task codes: `ttd-1.2`
  * - Nested tasks via indentation (2 or 4 spaces per level)
  * - Explicit dependencies via `→ depends:` suffix
+ * - Verify assertions via `> verify:` blockquote lines after a task
  */
 object TaskParser {
 
@@ -24,6 +25,9 @@ object TaskParser {
         """→\s*depends:\s*(.+)$"""
     )
 
+    // Matches: optional whitespace, >, optional whitespace, "verify:", assertions
+    private val VERIFY_REGEX = Regex("""^\s*>\s*verify:\s*(.+)$""")
+
     /**
      * Parse a tasks.md file into a list of top-level [TaskItem]s.
      */
@@ -37,8 +41,15 @@ object TaskParser {
     fun parse(lines: List<String>): List<TaskItem> {
         val parsed = mutableListOf<ParsedLine>()
 
-        for (line in lines) {
-            val match = TASK_LINE_REGEX.matchEntire(line) ?: continue
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            val match = TASK_LINE_REGEX.matchEntire(line)
+            if (match == null) {
+                i++
+                continue
+            }
+
             val indent = match.groupValues[1].length
             val checkChar = match.groupValues[2]
             val emojiMarker = match.groupValues[3]
@@ -57,17 +68,21 @@ object TaskParser {
                 else -> TaskStatus.TODO
             }
 
+            // Check for ⚠️ unverified suffix
+            val verified = !rawDescription.contains("⚠️ unverified")
+            val cleanDescription = rawDescription.replace("⚠️ unverified", "").trim()
+
             // Extract explicit dependencies from description
-            val depsMatch = DEPENDS_REGEX.find(rawDescription)
+            val depsMatch = DEPENDS_REGEX.find(cleanDescription)
             val explicitDeps = depsMatch?.let { m ->
                 m.groupValues[1].split(",").map { it.trim() }.filter { it.isNotBlank() }
             } ?: emptyList()
 
             // Remove → depends: suffix before parsing metadata
             val withoutDeps = if (depsMatch != null) {
-                rawDescription.substring(0, depsMatch.range.first).trim()
+                cleanDescription.substring(0, depsMatch.range.first).trim()
             } else {
-                rawDescription.trim()
+                cleanDescription.trim()
             }
 
             // Split on em dash to separate metadata from description
@@ -95,10 +110,42 @@ object TaskParser {
             // Calculate depth from indentation (2 or 4 spaces per level)
             val depth = if (indent >= 4) indent / 4 else if (indent >= 2) indent / 2 else 0
 
-            parsed.add(ParsedLine(depth, code, description, status, explicitDeps, metadata))
+            // Look ahead for > verify: lines
+            val assertions = mutableListOf<VerifyAssertion>()
+            var j = i + 1
+            while (j < lines.size) {
+                val nextLine = lines[j]
+                val verifyMatch = VERIFY_REGEX.matchEntire(nextLine)
+                if (verifyMatch != null) {
+                    parseAssertions(verifyMatch.groupValues[1], assertions)
+                    j++
+                } else {
+                    break
+                }
+            }
+
+            parsed.add(ParsedLine(depth, code, description, status, explicitDeps, metadata, assertions, verified))
+            i = j
         }
 
         return buildTree(parsed, 0)
+    }
+
+    /**
+     * Parse comma-separated assertions from a verify line.
+     * Format: "symbol-exists Foo, file-exists path/to/file.kt, build-passes"
+     */
+    private fun parseAssertions(raw: String, out: MutableList<VerifyAssertion>) {
+        for (part in raw.split(",")) {
+            val trimmed = part.trim()
+            if (trimmed.isEmpty()) continue
+            val spaceIdx = trimmed.indexOf(' ')
+            if (spaceIdx > 0) {
+                out.add(VerifyAssertion(trimmed.substring(0, spaceIdx), trimmed.substring(spaceIdx + 1).trim()))
+            } else {
+                out.add(VerifyAssertion(trimmed, ""))
+            }
+        }
     }
 
     private data class ParsedLine(
@@ -107,7 +154,9 @@ object TaskParser {
         val description: String,
         val status: TaskStatus,
         val explicitDeps: List<String>,
-        val metadata: TaskMetadata = TaskMetadata()
+        val metadata: TaskMetadata = TaskMetadata(),
+        val verifyAssertions: List<VerifyAssertion> = emptyList(),
+        val verified: Boolean = true,
     )
 
     /**
@@ -152,7 +201,9 @@ object TaskParser {
                     children = childItems,
                     explicitDeps = line.explicitDeps,
                     depth = line.depth,
-                    metadata = line.metadata
+                    metadata = line.metadata,
+                    verifyAssertions = line.verifyAssertions,
+                    verified = line.verified,
                 )
             )
 
