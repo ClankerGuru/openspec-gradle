@@ -48,9 +48,9 @@ Implement tasks from an OPSX change.
 5. **Implement tasks (loop until done or blocked)**
 
    For each pending task:
+   - Check dependencies: if task has `→ depends:` on incomplete tasks, skip it
    - **BEFORE starting work**: Run `./gradlew opsx-<code> --set=progress` to mark the task in-progress
    - Show which task is being worked on (include task code, e.g., `aua-3`)
-   - Check dependencies: if task has `→ depends:` on incomplete tasks, skip it
    - Make the code changes required
    - Keep changes minimal and focused
    - **AFTER completing work**: Run `./gradlew opsx-<code> --set=done` to mark the task complete

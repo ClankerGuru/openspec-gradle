@@ -207,12 +207,12 @@ One property in `gradle.properties`:
 zone.clanker.openspec.agents=claude
 ```
 
-| Value | Agent | Skills & commands |
+| Value | Agent | Skills |
 |---|---|---|
-| `github` | GitHub Copilot | `.github/prompts/` · `.github/skills/` |
-| `claude` | Claude Code | `.claude/commands/` · `.claude/skills/` |
+| `github` | GitHub Copilot | `.github/skills/` |
+| `claude` | Claude Code | `.claude/skills/` |
 | `codex` | OpenAI Codex | `.agents/skills/` |
-| `opencode` | OpenCode | `.opencode/commands/` · `.opencode/skills/` |
+| `opencode` | OpenCode | `.opencode/skills/` |
 
 Combine agents: `github,claude` · Per-project overrides global · Set `none` to disable.
 
