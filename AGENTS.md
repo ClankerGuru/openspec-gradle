@@ -60,21 +60,21 @@ exec/                               # Agent execution engine
 └── SpecParser.kt                   #   Parses task-*.md spec files into TaskSpec
 
 generators/                         # File generators
-├── CommandGenerator.kt             #   Generates 17 command templates per tool
 ├── SkillGenerator.kt               #   Generates 17 skill templates per tool
-├── TaskCommandGenerator.kt         #   Dynamic /opsx:<code> commands from proposals
+├── TaskCommandGenerator.kt         #   Dynamic /opsx:<code> skills from proposals
 ├── TaskReconciler.kt               #   Validates task symbols against codebase
 ├── ToolAdapter.kt                  #   Interface + registry for tool-specific formatting
 ├── InstructionsGenerator.kt        #   Root agent files (CLAUDE.md, copilot-instructions.md)
+├── AgentCleaner.kt                 #   Removes opsx files for deselected agents, prunes empty dirs
 ├── GlobalGitignore.kt              #   Manages ~/.config/git/ignore patterns
-├── TemplateRegistry.kt             #   Loads 34 templates from resources
-└── src/main/resources/templates/   #   17 command + 17 skill markdown templates
+├── TemplateRegistry.kt             #   Loads 17 skill templates from resources
+└── src/main/resources/templates/   #   17 skill markdown templates
 
 adapters/
-├── claude/    ClaudeAdapter        # .claude/commands/opsx/ + .claude/skills/ (full YAML)
-├── copilot/   CopilotAdapter       # .github/prompts/opsx-*.prompt.md + .github/skills/ (desc-only YAML)
+├── claude/    ClaudeAdapter        # .claude/skills/ (full YAML frontmatter)
+├── copilot/   CopilotAdapter       # .github/skills/ (desc-only YAML frontmatter)
 ├── codex/     CodexAdapter         # .agents/skills/opsx-*/SKILL.md (unified skill model)
-└── opencode/  OpenCodeAdapter      # .opencode/commands/ + .opencode/skills/ (HTML comment)
+└── opencode/  OpenCodeAdapter      # .opencode/skills/ (HTML comment format)
 
 tasks/                              # 25 Gradle task classes (all opsx-* prefixed)
 ├── discovery/                      # ContextTask, TreeTask, ModulesTask, DepsTask, DevloopTask, SymbolsTask

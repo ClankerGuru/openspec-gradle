@@ -67,7 +67,9 @@ abstract class TaskItemTask : DefaultTask() {
         val taskItem = allFlat.find { it.code == code }
             ?: throw GradleException("Task '$code' not found in $name/tasks.md")
 
-        // --run flag: delegate to exec engine
+        // --run flag: delegate to exec engine.
+        // ExecTask manages its own lifecycle (progress → verify → done/blocked)
+        // so it intentionally bypasses TaskItemTask's validation — it has equivalent checks.
         if (runTask.isPresent) {
             val execTask = project.tasks.findByName("opsx-exec") as? ExecTask
                 ?: throw GradleException("opsx-exec task not found")
@@ -108,7 +110,7 @@ abstract class TaskItemTask : DefaultTask() {
             }
 
             // Build gate: verify the build passes before marking DONE
-            val skipGate = force.isPresent
+            val skipGate = force.orNull?.trim()?.lowercase() == "true"
             if (newStatus == TaskStatus.DONE && !skipGate) {
                 runBuildGate(code)
             }

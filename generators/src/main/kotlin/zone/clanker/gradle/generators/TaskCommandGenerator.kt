@@ -45,8 +45,12 @@ object TaskCommandGenerator {
                     appendLine("## Implementation")
                     appendLine()
                     appendLine("1. Read the context files above")
-                    appendLine("2. Implement this task: **${taskItem.description}**")
-                    appendLine("3. When complete, mark done: `./gradlew opsx-${taskItem.code} --set=done`")
+                    appendLine("2. Check dependencies — if any are incomplete, stop and work on those first")
+                    appendLine("3. Mark in-progress: `./gradlew opsx-${taskItem.code} --set=progress`")
+                    appendLine("4. Implement this task: **${taskItem.description}**")
+                    appendLine("5. When complete, mark done: `./gradlew opsx-${taskItem.code} --set=done`")
+                    appendLine()
+                    appendLine("**Note:** `--set=done` runs a build gate (`./gradlew build`). If the build fails, the task stays IN_PROGRESS.")
 
                     if (taskItem.explicitDeps.isNotEmpty()) {
                         appendLine()
