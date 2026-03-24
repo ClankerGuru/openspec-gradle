@@ -211,7 +211,7 @@ zone.clanker.openspec.agents=claude
 |---|---|---|
 | `github` | GitHub Copilot | `.github/prompts/` · `.github/skills/` |
 | `claude` | Claude Code | `.claude/commands/` · `.claude/skills/` |
-| `codex` | OpenAI Codex | `.codex/skills/` |
+| `codex` | OpenAI Codex | `.agents/skills/` |
 | `opencode` | OpenCode | `.opencode/commands/` · `.opencode/skills/` |
 
 Combine agents: `github,claude` · Per-project overrides global · Set `none` to disable.

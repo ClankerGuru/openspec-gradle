@@ -41,6 +41,11 @@ abstract class TaskItemTask : DefaultTask() {
     @get:Option(option = "run", description = "Execute this task via the exec engine")
     abstract val runTask: Property<String>
 
+    @get:Input
+    @get:Optional
+    @get:Option(option = "force", description = "Skip build verification gate when marking done")
+    abstract val force: Property<String>
+
     init {
         group = "opsx"
         // Description is set dynamically during registration
@@ -95,8 +100,17 @@ abstract class TaskItemTask : DefaultTask() {
                 }
             }
 
+            // Validate state transition
+            validateTransition(code, taskItem.status, newStatus)
+
             if (newStatus == TaskStatus.DONE || newStatus == TaskStatus.IN_PROGRESS) {
                 validateDependencies(code, taskItem, allFlat)
+            }
+
+            // Build gate: verify the build passes before marking DONE
+            val skipGate = force.isPresent
+            if (newStatus == TaskStatus.DONE && !skipGate) {
+                runBuildGate(code)
             }
 
             val updated = TaskWriter.updateStatus(tasksFile, code, newStatus)
@@ -131,6 +145,65 @@ abstract class TaskItemTask : DefaultTask() {
                     }
                 }
             }
+        }
+    }
+
+    private fun runBuildGate(code: String) {
+        logger.lifecycle("Running build gate for '$code'...")
+        val gradlew = resolveGradlew()
+        val proc = ProcessBuilder(
+            gradlew, "build",
+            "--no-daemon", "-p", project.projectDir.absolutePath,
+        )
+            .directory(project.rootDir)
+            .inheritIO()
+            .start()
+        val exitCode = proc.waitFor()
+        if (exitCode != 0) {
+            throw GradleException(
+                "Build gate failed for '$code' (exit code $exitCode). " +
+                    "Task stays at IN_PROGRESS. Fix the build and try again, " +
+                    "or use --force to skip verification."
+            )
+        }
+        logger.lifecycle("Build gate passed for '$code'.")
+    }
+
+    private fun resolveGradlew(): String {
+        val isWindows = System.getProperty("os.name").lowercase().contains("win")
+        val wrapperName = if (isWindows) "gradlew.bat" else "gradlew"
+        return File(project.rootDir, wrapperName).absolutePath
+    }
+
+    private fun validateTransition(code: String, current: TaskStatus, target: TaskStatus) {
+        if (current == target) return // idempotent
+
+        val allowed = when (current) {
+            TaskStatus.TODO -> target == TaskStatus.IN_PROGRESS
+            TaskStatus.IN_PROGRESS -> target in listOf(TaskStatus.DONE, TaskStatus.BLOCKED, TaskStatus.TODO)
+            TaskStatus.DONE -> target == TaskStatus.TODO
+            TaskStatus.BLOCKED -> target == TaskStatus.TODO
+        }
+
+        if (!allowed) {
+            val hint = when {
+                current == TaskStatus.TODO && target == TaskStatus.DONE ->
+                    "Task must be IN_PROGRESS before marking DONE. Run: --set=progress first."
+                current == TaskStatus.TODO && target == TaskStatus.BLOCKED ->
+                    "Cannot block a task that hasn't started. Run: --set=progress first."
+                current == TaskStatus.DONE && target == TaskStatus.IN_PROGRESS ->
+                    "Reset to TODO first. Run: --set=todo then --set=progress."
+                current == TaskStatus.BLOCKED && target == TaskStatus.IN_PROGRESS ->
+                    "Reset to TODO first. Run: --set=todo then --set=progress."
+                current == TaskStatus.BLOCKED && target == TaskStatus.DONE ->
+                    "Reset to TODO first, then progress through IN_PROGRESS."
+                current == TaskStatus.DONE && target == TaskStatus.BLOCKED ->
+                    "Task is already DONE. Reset to TODO first if needed."
+                else -> "Invalid transition."
+            }
+            throw GradleException(
+                "Invalid status transition for '$code': ${current.name} → ${target.name}. $hint"
+            )
         }
     }
 
