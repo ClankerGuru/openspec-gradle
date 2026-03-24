@@ -54,14 +54,15 @@ abstract class SyncTask : DefaultTask() {
 
         val skills = SkillGenerator.generate(buildDir, toolList)
         val instructionFiles = InstructionsGenerator.generate(buildDir, toolList)
-        // Reconcile tasks against symbol index
-        val warnings = try {
-            TaskReconciler.reconcile(project.projectDir)
+        // Reconcile tasks against symbol index and file paths
+        val report = try {
+            TaskReconciler.reconcileFull(project.projectDir)
         } catch (e: Exception) {
             logger.debug("OpenSpec: Task reconciliation skipped: ${e.message}")
-            emptyList()
+            null
         }
-        if (warnings.isNotEmpty()) {
+        val warnings = report?.staleSymbols ?: emptyList()
+        if (report != null && report.hasFindings()) {
             logger.lifecycle("")
             logger.lifecycle("OpenSpec: ⚠️ Task reconciliation warnings:")
             for (w in warnings) {
@@ -69,6 +70,13 @@ abstract class SyncTask : DefaultTask() {
                     " → did you mean: ${w.suggestions.values.flatten().joinToString(", ")}?"
                 } else ""
                 logger.lifecycle("  ${w.taskCode} (${w.proposalName}): references missing symbol(s): ${w.missingSymbols.joinToString(", ")}$suggest")
+            }
+            for (fw in report.staleFiles) {
+                for (path in fw.missingPaths) {
+                    val suggest = fw.suggestions[path]?.takeIf { it.isNotEmpty() }
+                        ?.let { " → did you mean: ${it.joinToString(", ")}?" } ?: ""
+                    logger.lifecycle("  ${fw.taskCode} (${fw.proposalName}): missing file `$path`$suggest")
+                }
             }
             logger.lifecycle("")
         }

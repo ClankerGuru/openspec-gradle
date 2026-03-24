@@ -174,19 +174,45 @@ Edit `opsx/changes/add-user-auth/tasks.md`:
 
 ```markdown
 - [ ] `aua-1` Create User model
+  > verify: symbol-exists User, file-exists src/main/kotlin/com/example/User.kt
 - [ ] `aua-2` JWT service → depends: aua-1
+  > verify: symbol-exists JwtService
   - [ ] `aua-2.1` Token generation
   - [ ] `aua-2.2` Token validation
 - [ ] `aua-3` Login endpoint → depends: aua-1, aua-2
+  > verify: symbol-exists LoginController, build-passes
 ```
+
+Tasks can declare verify assertions with `> verify:` lines. When `--set=done` is run, the build tool checks these assertions — the agent cannot self-certify completion.
 
 Track progress:
 
 ```bash
 ./gradlew opsx-status                  # dashboard with progress bars
 ./gradlew opsx-aua-1 --set=progress    # start a task
-./gradlew opsx-aua-1 --set=done        # finish it
+./gradlew opsx-aua-1 --set=done        # verify assertions + finish
 ```
+
+#### Verify Assertions
+
+| Assertion | What it checks |
+|---|---|
+| `symbol-exists Foo` | Symbol exists in the symbol index |
+| `symbol-not-in Foo.bar` | Symbol does NOT exist (removed/extracted) |
+| `file-exists path/to/File.kt` | File exists on disk |
+| `file-changed path/to/File.kt` | File was modified (git diff) |
+| `build-passes` | Configured Gradle task exits 0 |
+
+Tasks without `> verify:` default to `build-passes`. Configure the build gate:
+
+```properties
+# gradle.properties
+zone.clanker.openspec.verifyCommand=build          # default (full build)
+zone.clanker.openspec.verifyCommand=compileKotlin  # compile only (fast)
+zone.clanker.openspec.verifyCommand=opsx-verify    # architecture rules only
+```
+
+`--force` bypasses verification but can only be used interactively — automated pipelines cannot skip verification.
 
 ### Lifecycle Hooks
 

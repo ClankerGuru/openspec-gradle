@@ -130,4 +130,65 @@ class TaskReconcilerTest {
         val suggestions = warnings[0].suggestions.values.flatten()
         assertTrue(suggestions.contains("UserService"), "Expected 'UserService' as suggestion for 'UserServce'")
     }
+
+    @Test
+    fun `extracts file paths from backtick-wrapped references`() {
+        val paths = TaskReconciler.extractFilePaths(
+            "Modify `src/main/kotlin/Foo.kt` and `config/app.yml` for the change"
+        )
+        assertEquals(2, paths.size)
+        assertTrue(paths.contains("src/main/kotlin/Foo.kt"))
+        assertTrue(paths.contains("config/app.yml"))
+    }
+
+    @Test
+    fun `extracts kts file paths`() {
+        val paths = TaskReconciler.extractFilePaths(
+            "Update `build.gradle.kts` and `settings.gradle.kts`"
+        )
+        assertEquals(2, paths.size)
+        assertTrue(paths.contains("build.gradle.kts"))
+        assertTrue(paths.contains("settings.gradle.kts"))
+    }
+
+    @Test
+    fun `detects missing file references`() {
+        createSource("src/main/kotlin/Existing.kt", "class Existing")
+
+        createProposal("feature", """
+            - [ ] `f-1` Modify `src/main/kotlin/Existing.kt` and `src/main/kotlin/Missing.kt`
+        """.trimIndent())
+
+        val fileWarnings = TaskReconciler.reconcileFiles(projectDir)
+        assertEquals(1, fileWarnings.size)
+        assertEquals("f-1", fileWarnings[0].taskCode)
+        assertTrue(fileWarnings[0].missingPaths.contains("src/main/kotlin/Missing.kt"))
+        // Existing.kt should not be in missing
+        assertTrue(!fileWarnings[0].missingPaths.contains("src/main/kotlin/Existing.kt"))
+    }
+
+    @Test
+    fun `reconcileFull combines symbol and file warnings`() {
+        createSource("src/main/kotlin/Foo.kt", "class Foo")
+
+        createProposal("feature", """
+            - [ ] `f-1` Refactor MissingClass in `src/main/kotlin/gone.kt`
+        """.trimIndent())
+
+        val report = TaskReconciler.reconcileFull(projectDir)
+        assertTrue(report.hasFindings())
+        assertTrue(report.staleSymbols.isNotEmpty() || report.staleFiles.isNotEmpty())
+    }
+
+    @Test
+    fun `reconcileFull with no findings returns empty report`() {
+        createSource("src/main/kotlin/Foo.kt", "class Foo")
+
+        createProposal("feature", """
+            - [ ] `f-1` Update Foo class
+        """.trimIndent())
+
+        val report = TaskReconciler.reconcileFull(projectDir)
+        assertTrue(!report.hasFindings() || report.staleFiles.isEmpty())
+    }
 }

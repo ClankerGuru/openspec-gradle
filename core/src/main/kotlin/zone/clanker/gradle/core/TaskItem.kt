@@ -54,6 +54,8 @@ data class TaskMetadata(
  * @param explicitDeps Cross-cutting dependency codes declared via → depends: syntax
  * @param depth Nesting level (0 = top-level)
  * @param metadata Inline metadata (agent, retries, cooldown)
+ * @param verifyAssertions Machine-checkable assertions from `> verify:` lines
+ * @param verified Whether this task was verified when marked DONE (false = force-completed)
  */
 data class TaskItem(
     val code: String,
@@ -62,7 +64,9 @@ data class TaskItem(
     val children: List<TaskItem> = emptyList(),
     val explicitDeps: List<String> = emptyList(),
     val depth: Int = 0,
-    val metadata: TaskMetadata = TaskMetadata()
+    val metadata: TaskMetadata = TaskMetadata(),
+    val verifyAssertions: List<VerifyAssertion> = emptyList(),
+    val verified: Boolean = true,
 ) {
     /** Total count of this task + all descendants */
     val totalCount: Int

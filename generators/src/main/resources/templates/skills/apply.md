@@ -54,6 +54,8 @@ Implement tasks from an OPSX change.
    - Make the code changes required
    - Keep changes minimal and focused
    - **AFTER completing work**: Run `./gradlew opsx-<code> --set=done` to mark the task complete
+   - `--set=done` runs verify assertions declared on the task (e.g., `> verify: symbol-exists Foo, file-exists path/to/file.kt`). If assertions fail, the task stays IN_PROGRESS — fix the issues and try again.
+   - **NEVER use `--force`** — only the human can bypass verification interactively.
    - Continue to next task
 
    **IMPORTANT**: You MUST use the Gradle commands above to update task status. Never manually edit checkboxes in tasks.md.

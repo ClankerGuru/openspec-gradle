@@ -80,7 +80,7 @@ tasks/                              # 25 Gradle task classes (all opsx-* prefixe
 ├── discovery/                      # ContextTask, TreeTask, ModulesTask, DepsTask, DevloopTask, SymbolsTask
 ├── intelligence/                   # ArchTask, FindTask, UsagesTask, CallsTask, VerifyTask
 ├── refactoring/                    # RenameTask, MoveTask, ExtractTask, RemoveTask
-├── workflow/                       # ProposeTask, ApplyTask, StatusTask, ArchiveTask, TaskItemTask
+├── workflow/                       # ProposeTask, ApplyTask, StatusTask, ArchiveTask, TaskItemTask, TaskLifecycle, AssertionRunner
 └── execution/                      # SyncTask, CleanTask, ExecTask, OpsxLinkTask, InstallGlobalTask
 
 linting/                            # 3 standalone Gradle plugins (separate from opsx-* tasks)
@@ -119,6 +119,7 @@ All published to Maven Central via Vanniktech plugin. Version derived from git t
   - Codex → `AGENTS.md`
   - OpenCode → `AGENTS.md`
 - **Linting plugins** — applied via reflection with `compileOnly` deps on detekt/ktlint; skip if already configured; Kotlin-only detection; configurable via system/project properties
+- **Task lifecycle** — `--set=done` runs verify assertions → mark DONE → propagate parents → sync skills → reconcile remaining tasks. Assertions declared via `> verify:` lines in tasks.md. `--force` bypasses verification but only works interactively (rejected by automated pipelines). Configurable gate via `zone.clanker.openspec.verifyCommand` property (default: `build`)
 - **Lifecycle hooks** — `assemble` triggers `opsx-sync`, `clean` triggers `opsx-clean`
 - **Build infrastructure** — Kotlin 2.3, Java 17 toolchain, Gradle 9.4.0, KTS only (no Groovy)
 - **Convention plugins** — `openspec-module` (base config) and `openspec-publish` (Maven Central) in `build-logic/`

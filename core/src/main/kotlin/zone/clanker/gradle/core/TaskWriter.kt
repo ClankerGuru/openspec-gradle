@@ -19,11 +19,12 @@ object TaskWriter {
      * @param file The tasks.md file to update
      * @param code The task code to find (e.g., "ttd-3.1")
      * @param newStatus The new status to set
+     * @param verified Whether the task was verified (false = force-completed, adds ⚠️ unverified marker)
      * @return true if the task was found and updated
      */
-    fun updateStatus(file: File, code: String, newStatus: TaskStatus): Boolean {
+    fun updateStatus(file: File, code: String, newStatus: TaskStatus, verified: Boolean = true): Boolean {
         val lines = file.readLines().toMutableList()
-        val updated = updateStatusInLines(lines, code, newStatus)
+        val updated = updateStatusInLines(lines, code, newStatus, verified)
         if (updated) {
             file.writeText(lines.joinToString("\n") + "\n")
         }
@@ -34,7 +35,12 @@ object TaskWriter {
      * Update status in a list of lines (modifies in place).
      * @return true if found and updated
      */
-    internal fun updateStatusInLines(lines: MutableList<String>, code: String, newStatus: TaskStatus): Boolean {
+    internal fun updateStatusInLines(
+        lines: MutableList<String>,
+        code: String,
+        newStatus: TaskStatus,
+        verified: Boolean = true,
+    ): Boolean {
         val codePattern = "`$code`"
         for (i in lines.indices) {
             val line = lines[i]
@@ -44,7 +50,10 @@ object TaskWriter {
             val prefix = match.groupValues[1]    // indent + "- "
             val rest = match.groupValues[3]      // "`code` description..."
 
-            lines[i] = "${prefix}${newStatus.checkbox} ${newStatus.emoji}$rest"
+            // Strip any existing unverified marker before rebuilding
+            val cleanRest = rest.replace(" ⚠️ unverified", "")
+            val marker = if (newStatus == TaskStatus.DONE && !verified) " ⚠️ unverified" else ""
+            lines[i] = "${prefix}${newStatus.checkbox} ${newStatus.emoji}$cleanRest$marker"
             return true
         }
         return false
