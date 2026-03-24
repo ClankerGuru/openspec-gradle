@@ -193,4 +193,78 @@ class TaskParserTest {
         assertEquals("ttd-3", tasks[2].code)
         assertEquals(2, tasks[2].children.size)
     }
+
+    @Test
+    fun `parse verify assertions from blockquote`() {
+        val lines = listOf(
+            "- [ ] `t-1` Create Foo class",
+            "  > verify: symbol-exists Foo, file-exists src/main/kotlin/Foo.kt",
+            "- [ ] `t-2` Another task"
+        )
+        val tasks = TaskParser.parse(lines)
+
+        assertEquals(2, tasks.size)
+        assertEquals(2, tasks[0].verifyAssertions.size)
+        assertEquals("symbol-exists", tasks[0].verifyAssertions[0].type)
+        assertEquals("Foo", tasks[0].verifyAssertions[0].argument)
+        assertEquals("file-exists", tasks[0].verifyAssertions[1].type)
+        assertEquals("src/main/kotlin/Foo.kt", tasks[0].verifyAssertions[1].argument)
+        // Second task has no assertions
+        assertEquals(0, tasks[1].verifyAssertions.size)
+    }
+
+    @Test
+    fun `task without verify line gets empty assertions`() {
+        val lines = listOf(
+            "- [ ] `t-1` Simple task"
+        )
+        val tasks = TaskParser.parse(lines)
+
+        assertEquals(1, tasks.size)
+        assertEquals(0, tasks[0].verifyAssertions.size)
+    }
+
+    @Test
+    fun `parse build-passes assertion without argument`() {
+        val lines = listOf(
+            "- [ ] `t-1` Refactor module",
+            "  > verify: build-passes"
+        )
+        val tasks = TaskParser.parse(lines)
+
+        assertEquals(1, tasks.size)
+        assertEquals(1, tasks[0].verifyAssertions.size)
+        assertEquals("build-passes", tasks[0].verifyAssertions[0].type)
+        assertEquals("", tasks[0].verifyAssertions[0].argument)
+    }
+
+    @Test
+    fun `verify line does not break task description`() {
+        val lines = listOf(
+            "- [ ] `t-1` Create TaskLifecycle object → depends: t-0",
+            "  > verify: symbol-exists TaskLifecycle",
+            "- [ ] `t-2` Next task"
+        )
+        val tasks = TaskParser.parse(lines)
+
+        assertEquals(2, tasks.size)
+        assertEquals("Create TaskLifecycle object", tasks[0].description)
+        assertEquals(listOf("t-0"), tasks[0].explicitDeps)
+        assertEquals(1, tasks[0].verifyAssertions.size)
+        assertEquals("TaskLifecycle", tasks[0].verifyAssertions[0].argument)
+    }
+
+    @Test
+    fun `parse unverified marker`() {
+        val lines = listOf(
+            "- [x] `t-1` Force-completed task ⚠️ unverified",
+            "- [x] `t-2` Properly completed task"
+        )
+        val tasks = TaskParser.parse(lines)
+
+        assertEquals(2, tasks.size)
+        assertEquals(false, tasks[0].verified)
+        assertEquals("Force-completed task", tasks[0].description)
+        assertEquals(true, tasks[1].verified)
+    }
 }

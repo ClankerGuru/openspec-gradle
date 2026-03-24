@@ -50,7 +50,7 @@ object TaskCommandGenerator {
                     appendLine("4. Implement this task: **${taskItem.description}**")
                     appendLine("5. When complete, mark done: `./gradlew opsx-${taskItem.code} --set=done`")
                     appendLine()
-                    appendLine("**Note:** `--set=done` runs a build gate (`./gradlew build`). If the build fails, the task stays IN_PROGRESS.")
+                    appendLine("**Note:** `--set=done` runs verify assertions (declared via `> verify:` lines). If assertions fail, the task stays IN_PROGRESS. **Never use `--force`** — only the human can bypass verification interactively.")
 
                     if (taskItem.explicitDeps.isNotEmpty()) {
                         appendLine()

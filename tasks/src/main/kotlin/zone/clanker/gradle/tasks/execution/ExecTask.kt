@@ -8,6 +8,7 @@ import zone.clanker.gradle.exec.AgentRunner
 import zone.clanker.gradle.exec.CycleDetector
 import zone.clanker.gradle.exec.SpecParser
 import zone.clanker.gradle.core.*
+import zone.clanker.gradle.tasks.workflow.TaskLifecycle
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -350,8 +351,24 @@ abstract class ExecTask : DefaultTask() {
             }
 
             if (success) {
-                TaskWriter.updateStatus(tasksFile, code, TaskStatus.DONE)
-                logger.lifecycle("✓ $code — DONE")
+                // Use shared lifecycle pipeline: assertions → mark DONE → propagate
+                try {
+                    System.setProperty("opsx.exec.automated", "true")
+                    val verifyCommand = TaskLifecycle.resolveVerifyCommand(project)
+                    val freshItem = TaskParser.parse(tasksFile).flatMap { it.flatten() }
+                        .find { it.code == code } ?: taskItem
+                    TaskLifecycle.onTaskCompleted(
+                        project, tasksFile, code, freshItem,
+                        skipGate = false, verifyCommand, logger
+                    )
+                    logger.lifecycle("✓ $code — DONE")
+                } catch (e: GradleException) {
+                    TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
+                    logger.lifecycle("✗ $code — BLOCKED (verification failed: ${e.message})")
+                    throw GradleException("Task '$code' failed verification — chain stopped")
+                } finally {
+                    System.clearProperty("opsx.exec.automated")
+                }
             } else {
                 TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
                 logger.lifecycle("✗ $code — BLOCKED after all retries")

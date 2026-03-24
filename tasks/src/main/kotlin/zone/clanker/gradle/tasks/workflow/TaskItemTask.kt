@@ -114,25 +114,26 @@ abstract class TaskItemTask : DefaultTask() {
 
             // Build gate: verify the build passes before marking DONE
             val skipGate = force.orNull?.trim()?.lowercase() == "true"
-            if (newStatus == TaskStatus.DONE && !skipGate) {
-                runBuildGate(code)
+            if (skipGate && !isInteractive()) {
+                throw GradleException(
+                    "--force can only be used interactively. " +
+                        "Automated pipelines cannot bypass verification."
+                )
             }
 
-            val updated = TaskWriter.updateStatus(tasksFile, code, newStatus)
-            if (!updated) {
-                throw GradleException("Failed to update task '$code' in tasks.md")
-            }
-
-            // Propagate completion if marking done
             if (newStatus == TaskStatus.DONE) {
-                val propagated = TaskWriter.propagateCompletion(tasksFile, TaskParser.parse(tasksFile))
-                if (propagated.isNotEmpty()) {
-                    logger.lifecycle("Auto-completed parent tasks: ${propagated.joinToString(", ")}")
+                val verifyCommand = TaskLifecycle.resolveVerifyCommand(project)
+                TaskLifecycle.onTaskCompleted(
+                    project, tasksFile, code, taskItem, skipGate, verifyCommand, logger
+                )
+            } else {
+                val updated = TaskWriter.updateStatus(tasksFile, code, newStatus)
+                if (!updated) {
+                    throw GradleException("Failed to update task '$code' in tasks.md")
                 }
+                val icon = newStatus.icon
+                logger.lifecycle("$icon $code → ${newStatus.name}: ${taskItem.description}")
             }
-
-            val icon = newStatus.icon
-            logger.lifecycle("$icon $code → ${newStatus.name}: ${taskItem.description}")
         } else {
             // Print current status
             val icon = taskItem.status.icon
@@ -153,39 +154,12 @@ abstract class TaskItemTask : DefaultTask() {
         }
     }
 
-    private fun runBuildGate(code: String) {
-        logger.lifecycle("Running build gate for '$code'...")
-        val gradlew = resolveGradlew()
-        val proc = ProcessBuilder(
-            gradlew, "build",
-            "--no-daemon", "-p", project.projectDir.absolutePath,
-        )
-            .directory(project.rootDir)
-            .inheritIO()
-            .start()
-        val completed = proc.waitFor(10, java.util.concurrent.TimeUnit.MINUTES)
-        if (!completed) {
-            proc.destroyForcibly()
-            throw GradleException(
-                "Build gate timed out for '$code' after 10 minutes. " +
-                    "The build process was terminated. Use --force=true to skip verification."
-            )
-        }
-        val exitCode = proc.exitValue()
-        if (exitCode != 0) {
-            throw GradleException(
-                "Build gate failed for '$code' (exit code $exitCode). " +
-                    "Task stays at IN_PROGRESS. Fix the build and try again, " +
-                    "or use --force=true to skip verification."
-            )
-        }
-        logger.lifecycle("Build gate passed for '$code'.")
-    }
-
-    private fun resolveGradlew(): String {
-        val isWindows = System.getProperty("os.name").lowercase().contains("win")
-        val wrapperName = if (isWindows) "gradlew.bat" else "gradlew"
-        return File(project.rootDir, wrapperName).absolutePath
+    /**
+     * Check if the current execution is interactive (human or build tool, not an automated agent).
+     * Returns false only when ExecTask explicitly sets the automated flag.
+     */
+    private fun isInteractive(): Boolean {
+        return System.getProperty("opsx.exec.automated") != "true"
     }
 
     private fun validateTransition(code: String, current: TaskStatus, target: TaskStatus) {
