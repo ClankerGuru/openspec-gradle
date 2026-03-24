@@ -1,163 +1,90 @@
 package zone.clanker.gradle.exec
 
 import java.io.File
-import java.util.concurrent.TimeUnit
 
 /**
- * Tiered build verification for opsx-exec.
+ * Build verification for opsx-exec.
  *
- * Three tiers:
- * - **compile** (Tier 1): Compile-only. Fast per-task check (<30s target).
- * - **test** (Tier 2): Unit tests only. Per-batch check (1-5min).
- * - **full** (Tier 3): Full `build`. Pre-commit safety net.
- * - **auto**: Times the first verify; if >threshold, downgrades to compile per-task + test per-batch.
+ * Leverages Gradle's own incremental build and UP-TO-DATE mechanism.
+ * After a small change, `./gradlew build` is fast because Gradle skips
+ * unchanged tasks automatically. No special tiering needed.
+ *
+ * Modes:
+ * - **build** (default): Full incremental `./gradlew build`. Fast thanks to caching.
+ * - **compile**: Compile only, skip tests. For when even unit tests are too slow.
+ * - **off**: Skip verification entirely. Rely on pre-commit hook.
  */
-class TieredVerifier(
+class BuildVerifier(
     private val projectDir: File,
     private val gradlewPath: String,
-    private val mode: VerifyMode = VerifyMode.AUTO,
-    private val batchSize: Int = 5,
-    private val thresholdSeconds: Long = 60,
+    private val mode: VerifyMode = VerifyMode.BUILD,
 ) {
 
-    private var taskCount: Int = 0
-    private var autoResolved: VerifyMode? = null
-    private var calibrationDoneMs: Long? = null
-
     /**
-     * The verify mode to use for per-task verification.
-     * In AUTO mode, this is resolved after the first calibration run.
+     * Run verification. Returns result with success/failure and timing.
+     * Uses the Gradle daemon (no --no-daemon) for warm JVM between tasks.
      */
-    val effectivePerTaskMode: VerifyMode
-        get() = when (mode) {
-            VerifyMode.AUTO -> autoResolved ?: VerifyMode.AUTO
-            else -> mode
-        }
-
-    /**
-     * Called after each task completes. Returns the verification result.
-     * In AUTO/batch modes, runs tier 1 per-task and tier 2 at batch boundaries.
-     */
-    fun verifyAfterTask(): VerifyResult {
-        taskCount++
-
-        return when (mode) {
-            VerifyMode.COMPILE -> runTier1()
-            VerifyMode.TEST -> runTier2()
-            VerifyMode.FULL -> runTier3()
-            VerifyMode.AUTO -> verifyAuto()
-        }
-    }
-
-    /**
-     * Run the appropriate verification without incrementing the task counter.
-     * Used for explicit verify calls.
-     */
-    fun verify(tier: VerifyMode): VerifyResult {
-        return when (tier) {
-            VerifyMode.COMPILE -> runTier1()
-            VerifyMode.TEST -> runTier2()
-            VerifyMode.FULL -> runTier3()
-            VerifyMode.AUTO -> verifyAuto()
-        }
-    }
-
-    /**
-     * Whether a batch boundary has been reached (for external callers to know
-     * when a commit should happen).
-     */
-    fun isBatchBoundary(): Boolean = taskCount > 0 && taskCount % batchSize == 0
-
-    /**
-     * Reset the task counter (e.g., after a commit).
-     */
-    fun resetBatchCounter() {
-        taskCount = 0
-    }
-
-    // Current task count for testing
-    val currentTaskCount: Int get() = taskCount
-
-    private fun verifyAuto(): VerifyResult {
-        // First run: calibrate by timing a full build
-        if (autoResolved == null) {
-            val startMs = System.currentTimeMillis()
-            val result = runGradleTask("build")
-            val durationMs = System.currentTimeMillis() - startMs
-            calibrationDoneMs = durationMs
-            val durationSec = durationMs / 1000
-
-            autoResolved = if (durationSec > thresholdSeconds) {
-                VerifyMode.COMPILE // downgrade: per-task compile, batch test
-            } else {
-                VerifyMode.FULL // fast enough: keep full build per-task
-            }
-
+    fun verify(): VerifyResult {
+        if (mode == VerifyMode.OFF) {
             return VerifyResult(
-                success = result,
-                tier = VerifyMode.FULL,
-                durationMs = durationMs,
-                message = "Calibration: ${durationSec}s → per-task mode: ${autoResolved}",
+                success = true,
+                mode = VerifyMode.OFF,
+                durationMs = 0,
+                message = "Verification skipped (mode=off)",
             )
         }
 
-        // After calibration
-        return when (autoResolved!!) {
-            VerifyMode.FULL -> runTier3()
-            VerifyMode.COMPILE -> {
-                if (isBatchBoundary()) {
-                    // Batch boundary: run tier 2
-                    runTier2()
-                } else {
-                    runTier1()
-                }
-            }
-            else -> runTier1()
+        val tasks = when (mode) {
+            VerifyMode.BUILD -> listOf("build")
+            VerifyMode.COMPILE -> listOf("classes", "testClasses")
+            VerifyMode.OFF -> return VerifyResult(true, VerifyMode.OFF, 0, "off")
         }
-    }
 
-    private fun runTier1(): VerifyResult {
-        val tasks = resolveCompileTasks()
         val startMs = System.currentTimeMillis()
         val success = runGradleTasks(tasks)
+        val durationMs = System.currentTimeMillis() - startMs
+
         return VerifyResult(
             success = success,
-            tier = VerifyMode.COMPILE,
-            durationMs = System.currentTimeMillis() - startMs,
-            message = "Tier 1 (compile): ${tasks.joinToString(" ")}",
+            mode = mode,
+            durationMs = durationMs,
+            message = "Verify (${mode.value}): ${tasks.joinToString(" ")} — ${durationMs / 1000}s",
         )
     }
 
-    private fun runTier2(): VerifyResult {
-        val tasks = resolveTestTasks()
+    /**
+     * Run verification scoped to specific modules affected by file changes.
+     * Example: `:core:build` instead of top-level `build`.
+     */
+    fun verifyModules(modulePaths: List<String>): VerifyResult {
+        if (mode == VerifyMode.OFF) {
+            return VerifyResult(true, VerifyMode.OFF, 0, "Verification skipped (mode=off)")
+        }
+
+        val taskSuffix = when (mode) {
+            VerifyMode.BUILD -> "build"
+            VerifyMode.COMPILE -> "classes"
+            VerifyMode.OFF -> return VerifyResult(true, VerifyMode.OFF, 0, "off")
+        }
+        val tasks = modulePaths.map { "$it:$taskSuffix" }
+
         val startMs = System.currentTimeMillis()
         val success = runGradleTasks(tasks)
+        val durationMs = System.currentTimeMillis() - startMs
+
         return VerifyResult(
             success = success,
-            tier = VerifyMode.TEST,
-            durationMs = System.currentTimeMillis() - startMs,
-            message = "Tier 2 (test): ${tasks.joinToString(" ")}",
+            mode = mode,
+            durationMs = durationMs,
+            message = "Verify (${mode.value}): ${tasks.joinToString(" ")} — ${durationMs / 1000}s",
         )
     }
-
-    private fun runTier3(): VerifyResult {
-        val startMs = System.currentTimeMillis()
-        val success = runGradleTask("build")
-        return VerifyResult(
-            success = success,
-            tier = VerifyMode.FULL,
-            durationMs = System.currentTimeMillis() - startMs,
-            message = "Tier 3 (full build)",
-        )
-    }
-
-    private fun runGradleTask(task: String): Boolean = runGradleTasks(listOf(task))
 
     private fun runGradleTasks(tasks: List<String>): Boolean {
         return try {
             val command = mutableListOf(gradlewPath).apply {
                 addAll(tasks)
-                add("--no-daemon")
+                // No --no-daemon: keep JVM warm between exec tasks
                 add("-p")
                 add(projectDir.absolutePath)
             }
@@ -165,81 +92,32 @@ class TieredVerifier(
                 .directory(projectDir)
                 .redirectErrorStream(true)
                 .start()
-            // Drain output to prevent blocking
             proc.inputStream.bufferedReader().readText()
             proc.waitFor() == 0
         } catch (_: Exception) {
             false
         }
     }
-
-    companion object {
-        /**
-         * Detect whether the project uses Android plugin by checking for
-         * common Android build markers.
-         */
-        fun isAndroidProject(projectDir: File): Boolean {
-            val buildFile = File(projectDir, "build.gradle.kts")
-            val buildFileGroovy = File(projectDir, "build.gradle")
-            val content = when {
-                buildFile.exists() -> buildFile.readText()
-                buildFileGroovy.exists() -> buildFileGroovy.readText()
-                else -> return false
-            }
-            return content.contains("com.android.application") ||
-                content.contains("com.android.library") ||
-                content.contains("android {")
-        }
-
-        /**
-         * Resolve compile tasks based on project type.
-         */
-        fun resolveCompileTasks(projectDir: File): List<String> {
-            return if (isAndroidProject(projectDir)) {
-                listOf("compileDebugKotlin")
-            } else {
-                listOf("compileKotlin")
-            }
-        }
-
-        /**
-         * Resolve test tasks based on project type.
-         * For Android: only unit tests, skip instrumented tests.
-         */
-        fun resolveTestTasks(projectDir: File): List<String> {
-            return if (isAndroidProject(projectDir)) {
-                listOf("testDebugUnitTest")
-            } else {
-                listOf("test")
-            }
-        }
-    }
-
-    private fun resolveCompileTasks(): List<String> = Companion.resolveCompileTasks(projectDir)
-    private fun resolveTestTasks(): List<String> = Companion.resolveTestTasks(projectDir)
 }
 
 /**
- * Verification mode / tier.
+ * Verification mode.
  */
-enum class VerifyMode {
-    /** Tier 1: compile-only check */
-    COMPILE,
-    /** Tier 2: unit tests only */
-    TEST,
-    /** Tier 3: full build */
-    FULL,
-    /** Auto-detect: calibrate on first run, then choose appropriate tier */
-    AUTO;
+enum class VerifyMode(val value: String) {
+    /** Full incremental build — fast thanks to Gradle caching */
+    BUILD("build"),
+    /** Compile only, skip tests */
+    COMPILE("compile"),
+    /** Skip verification, rely on pre-commit hook */
+    OFF("off");
 
     companion object {
         fun fromString(value: String): VerifyMode = when (value.lowercase()) {
+            "build" -> BUILD
             "compile" -> COMPILE
-            "test" -> TEST
-            "full" -> FULL
-            "auto" -> AUTO
+            "off" -> OFF
             else -> throw IllegalArgumentException(
-                "Unknown verify mode: '$value'. Valid: compile, test, full, auto"
+                "Unknown verify mode: '$value'. Valid: build, compile, off"
             )
         }
     }
@@ -250,7 +128,7 @@ enum class VerifyMode {
  */
 data class VerifyResult(
     val success: Boolean,
-    val tier: VerifyMode,
+    val mode: VerifyMode,
     val durationMs: Long,
     val message: String,
 )

@@ -7,7 +7,7 @@ import org.gradle.api.tasks.*
 import zone.clanker.gradle.exec.AgentRunner
 import zone.clanker.gradle.exec.CycleDetector
 import zone.clanker.gradle.exec.SpecParser
-import zone.clanker.gradle.exec.TieredVerifier
+import zone.clanker.gradle.exec.BuildVerifier
 import zone.clanker.gradle.exec.VerifyMode
 import zone.clanker.gradle.core.*
 import zone.clanker.gradle.tasks.workflow.TaskLifecycle
@@ -37,12 +37,6 @@ abstract class ExecTask : DefaultTask() {
     abstract val verifyMode: Property<String>
 
     @get:Input @get:Optional
-    abstract val verifyBatchSize: Property<Int>
-
-    @get:Input @get:Optional
-    abstract val verifyThreshold: Property<Int>
-
-    @get:Input @get:Optional
     abstract val syncBefore: Property<Boolean>
 
     @get:Input @get:Optional
@@ -58,9 +52,7 @@ abstract class ExecTask : DefaultTask() {
             "Options: -Pprompt=\"...\" (inline prompt), -Pspec=path/to/task.md (task spec file), " +
             "-Pagent=copilot|claude|codex|opencode (override agent), " +
             "-PmaxRetries=3 (retry attempts), -Pverify=true (run opsx-verify after), " +
-            "-Popsx.verify=compile|test|full|auto (tiered verification mode, default: auto), " +
-            "-Popsx.verify.batchSize=5 (tasks per batch for tier 2), " +
-            "-Popsx.verify.threshold=60 (seconds threshold for auto-downgrade), " +
+            "-Popsx.verify=build|compile|off (verification mode, default: build), " +
             "-PsyncBefore=true (fresh opsx-sync before each attempt), -PexecTimeout=600 (seconds). " +
             "Use when: you want Gradle to drive an AI agent end-to-end with retry and verification. " +
             "Chain: opsx-sync → opsx-exec → opsx-verify."
@@ -205,18 +197,17 @@ abstract class ExecTask : DefaultTask() {
                 continue
             }
 
-            // Verify (tiered)
+            // Verify (incremental build)
             if (resolvedVerify) {
-                val verifier = createTieredVerifier()
-                logger.lifecycle("Running tiered verification (${verifier.effectivePerTaskMode})...")
-                val verifyResult = verifier.verifyAfterTask()
-                logger.lifecycle(verifyResult.message + " (${verifyResult.durationMs / 1000}s)")
+                val verifier = createBuildVerifier()
+                val verifyResult = verifier.verify()
+                logger.lifecycle(verifyResult.message)
                 if (verifyResult.success) {
-                    logger.lifecycle("✓ Verification passed (${verifyResult.tier})")
+                    logger.lifecycle("✓ Verification passed")
                     writeSummary(outputDir, timestamp, taskId, attempts, "SUCCESS")
                     return true
                 } else {
-                    logger.warn("✗ Verification failed (${verifyResult.tier})")
+                    logger.warn("✗ Verification failed")
                     if (attempt < resolvedMaxRetries) {
                         val verifyOutput = getLastVerifyOutput()
                         if (cycleDetector.recordAndCheck(verifyOutput)) {
@@ -343,14 +334,14 @@ abstract class ExecTask : DefaultTask() {
                     // Verify if enabled (tiered)
                     val resolvedVerify = if (verify.isPresent) verify.get() else true
                     if (resolvedVerify) {
-                        val verifier = createTieredVerifier()
-                        val verifyResult = verifier.verifyAfterTask()
-                        logger.lifecycle("${verifyResult.message} (${verifyResult.durationMs / 1000}s)")
+                        val verifier = createBuildVerifier()
+                        val verifyResult = verifier.verify()
+                        logger.lifecycle(verifyResult.message)
                         if (verifyResult.success) {
                             success = true
                             break
                         } else {
-                            val msg = "Verification failed (${verifyResult.tier}: ${verifyResult.message})"
+                            val msg = "Verification failed (${verifyResult.mode.value}: ${verifyResult.message})"
                             TaskWriter.appendAttemptLog(tasksFile, code, attempt, msg)
                         }
                     } else {
@@ -527,30 +518,16 @@ abstract class ExecTask : DefaultTask() {
         summaryFile.writeText(summary)
     }
 
-    private fun createTieredVerifier(): TieredVerifier {
+    private fun createBuildVerifier(): BuildVerifier {
         val modeStr = when {
             verifyMode.isPresent -> verifyMode.get()
             project.hasProperty("opsx.verify") -> project.property("opsx.verify").toString()
-            else -> "auto"
+            else -> "build"
         }
-        val batch = when {
-            verifyBatchSize.isPresent -> verifyBatchSize.get()
-            project.hasProperty("opsx.verify.batchSize") ->
-                project.property("opsx.verify.batchSize").toString().toInt()
-            else -> 5
-        }
-        val threshold = when {
-            verifyThreshold.isPresent -> verifyThreshold.get().toLong()
-            project.hasProperty("opsx.verify.threshold") ->
-                project.property("opsx.verify.threshold").toString().toLong()
-            else -> 60L
-        }
-        return TieredVerifier(
+        return BuildVerifier(
             projectDir = project.projectDir,
             gradlewPath = resolveGradlew(),
             mode = VerifyMode.fromString(modeStr),
-            batchSize = batch,
-            thresholdSeconds = threshold,
         )
     }
 

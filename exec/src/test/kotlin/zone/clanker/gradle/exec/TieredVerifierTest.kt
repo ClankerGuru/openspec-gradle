@@ -1,15 +1,20 @@
 package zone.clanker.gradle.exec
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import java.io.File
 
-class TieredVerifierTest {
+class BuildVerifierTest {
 
     // ── VerifyMode ──
+
+    @Test
+    fun `fromString parses build`() {
+        assertEquals(VerifyMode.BUILD, VerifyMode.fromString("build"))
+    }
 
     @Test
     fun `fromString parses compile`() {
@@ -17,134 +22,66 @@ class TieredVerifierTest {
     }
 
     @Test
-    fun `fromString parses test`() {
-        assertEquals(VerifyMode.TEST, VerifyMode.fromString("test"))
-    }
-
-    @Test
-    fun `fromString parses full`() {
-        assertEquals(VerifyMode.FULL, VerifyMode.fromString("full"))
-    }
-
-    @Test
-    fun `fromString parses auto`() {
-        assertEquals(VerifyMode.AUTO, VerifyMode.fromString("auto"))
+    fun `fromString parses off`() {
+        assertEquals(VerifyMode.OFF, VerifyMode.fromString("off"))
     }
 
     @Test
     fun `fromString is case insensitive`() {
-        assertEquals(VerifyMode.COMPILE, VerifyMode.fromString("COMPILE"))
-        assertEquals(VerifyMode.AUTO, VerifyMode.fromString("Auto"))
+        assertEquals(VerifyMode.BUILD, VerifyMode.fromString("BUILD"))
+        assertEquals(VerifyMode.COMPILE, VerifyMode.fromString("Compile"))
+        assertEquals(VerifyMode.OFF, VerifyMode.fromString("OFF"))
     }
 
     @Test
     fun `fromString throws on unknown`() {
-        val ex = org.junit.jupiter.api.assertThrows<IllegalArgumentException> {
+        val ex = assertThrows<IllegalArgumentException> {
             VerifyMode.fromString("turbo")
         }
         assertTrue(ex.message!!.contains("turbo"))
     }
 
-    // ── Android detection ──
-
     @Test
-    fun `isAndroidProject detects android application plugin`(@TempDir dir: File) {
-        File(dir, "build.gradle.kts").writeText("""
-            plugins {
-                id("com.android.application")
-                id("org.jetbrains.kotlin.android")
-            }
-            android {
-                compileSdk = 34
-            }
-        """.trimIndent())
-        assertTrue(TieredVerifier.isAndroidProject(dir))
+    fun `fromString throws on old tier values`() {
+        assertThrows<IllegalArgumentException> { VerifyMode.fromString("test") }
+        assertThrows<IllegalArgumentException> { VerifyMode.fromString("full") }
+        assertThrows<IllegalArgumentException> { VerifyMode.fromString("auto") }
     }
 
+    // ── VerifyMode value ──
+
     @Test
-    fun `isAndroidProject detects android library plugin`(@TempDir dir: File) {
-        File(dir, "build.gradle.kts").writeText("""
-            plugins {
-                id("com.android.library")
-            }
-        """.trimIndent())
-        assertTrue(TieredVerifier.isAndroidProject(dir))
+    fun `mode value strings`() {
+        assertEquals("build", VerifyMode.BUILD.value)
+        assertEquals("compile", VerifyMode.COMPILE.value)
+        assertEquals("off", VerifyMode.OFF.value)
     }
 
-    @Test
-    fun `isAndroidProject returns false for plain kotlin`(@TempDir dir: File) {
-        File(dir, "build.gradle.kts").writeText("""
-            plugins {
-                kotlin("jvm")
-            }
-        """.trimIndent())
-        assertFalse(TieredVerifier.isAndroidProject(dir))
-    }
+    // ── Off mode ──
 
     @Test
-    fun `isAndroidProject returns false when no build file`(@TempDir dir: File) {
-        assertFalse(TieredVerifier.isAndroidProject(dir))
-    }
-
-    @Test
-    fun `isAndroidProject detects groovy build file`(@TempDir dir: File) {
-        File(dir, "build.gradle").writeText("""
-            apply plugin: 'com.android.application'
-        """.trimIndent())
-        assertTrue(TieredVerifier.isAndroidProject(dir))
-    }
-
-    // ── Task resolution ──
-
-    @Test
-    fun `resolveCompileTasks for kotlin project`(@TempDir dir: File) {
-        File(dir, "build.gradle.kts").writeText("plugins { kotlin(\"jvm\") }")
-        assertEquals(listOf("compileKotlin"), TieredVerifier.resolveCompileTasks(dir))
-    }
-
-    @Test
-    fun `resolveCompileTasks for android project`(@TempDir dir: File) {
-        File(dir, "build.gradle.kts").writeText("plugins { id(\"com.android.application\") }")
-        assertEquals(listOf("compileDebugKotlin"), TieredVerifier.resolveCompileTasks(dir))
-    }
-
-    @Test
-    fun `resolveTestTasks for kotlin project`(@TempDir dir: File) {
-        File(dir, "build.gradle.kts").writeText("plugins { kotlin(\"jvm\") }")
-        assertEquals(listOf("test"), TieredVerifier.resolveTestTasks(dir))
-    }
-
-    @Test
-    fun `resolveTestTasks for android project`(@TempDir dir: File) {
-        File(dir, "build.gradle.kts").writeText("plugins { id(\"com.android.library\") }")
-        assertEquals(listOf("testDebugUnitTest"), TieredVerifier.resolveTestTasks(dir))
-    }
-
-    // ── Batch boundary ──
-
-    @Test
-    fun `isBatchBoundary at multiples of batchSize`() {
-        val verifier = TieredVerifier(
+    fun `off mode returns success immediately`() {
+        val verifier = BuildVerifier(
             projectDir = File("."),
-            gradlewPath = "/fake/gradlew",
-            mode = VerifyMode.COMPILE,
-            batchSize = 3,
+            gradlewPath = "/nonexistent/gradlew",
+            mode = VerifyMode.OFF,
         )
-        // taskCount starts at 0, increments in verifyAfterTask
-        // We can't easily call verifyAfterTask without a real gradlew,
-        // so test the boundary detection directly
-        assertFalse(verifier.isBatchBoundary()) // 0 → false
+        val result = verifier.verify()
+        assertTrue(result.success)
+        assertEquals(VerifyMode.OFF, result.mode)
+        assertEquals(0, result.durationMs)
     }
 
     @Test
-    fun `resetBatchCounter resets to zero`() {
-        val verifier = TieredVerifier(
+    fun `off mode verifyModules returns success immediately`() {
+        val verifier = BuildVerifier(
             projectDir = File("."),
-            gradlewPath = "/fake/gradlew",
-            mode = VerifyMode.COMPILE,
+            gradlewPath = "/nonexistent/gradlew",
+            mode = VerifyMode.OFF,
         )
-        verifier.resetBatchCounter()
-        assertEquals(0, verifier.currentTaskCount)
+        val result = verifier.verifyModules(listOf(":core", ":app"))
+        assertTrue(result.success)
+        assertEquals(VerifyMode.OFF, result.mode)
     }
 
     // ── VerifyResult ──
@@ -153,34 +90,57 @@ class TieredVerifierTest {
     fun `VerifyResult data class`() {
         val result = VerifyResult(
             success = true,
-            tier = VerifyMode.COMPILE,
+            mode = VerifyMode.BUILD,
             durationMs = 1500,
-            message = "Tier 1 (compile): compileKotlin",
+            message = "Verify (build): build — 1s",
         )
         assertTrue(result.success)
-        assertEquals(VerifyMode.COMPILE, result.tier)
+        assertEquals(VerifyMode.BUILD, result.mode)
         assertEquals(1500, result.durationMs)
     }
 
-    // ── Mode defaults ──
+    @Test
+    fun `VerifyResult copy`() {
+        val r1 = VerifyResult(true, VerifyMode.BUILD, 100, "ok")
+        val r2 = r1.copy(success = false)
+        assertTrue(r1.success)
+        assertTrue(!r2.success)
+    }
+
+    // ── Build mode with bad gradlew ──
 
     @Test
-    fun `effectivePerTaskMode returns mode when not auto`() {
-        val verifier = TieredVerifier(
+    fun `build mode fails gracefully with missing gradlew`() {
+        val verifier = BuildVerifier(
             projectDir = File("."),
-            gradlewPath = "/fake/gradlew",
-            mode = VerifyMode.COMPILE,
+            gradlewPath = "/nonexistent/gradlew",
+            mode = VerifyMode.BUILD,
         )
-        assertEquals(VerifyMode.COMPILE, verifier.effectivePerTaskMode)
+        val result = verifier.verify()
+        assertTrue(!result.success)
+        assertEquals(VerifyMode.BUILD, result.mode)
     }
 
     @Test
-    fun `effectivePerTaskMode returns AUTO before calibration`() {
-        val verifier = TieredVerifier(
+    fun `compile mode fails gracefully with missing gradlew`() {
+        val verifier = BuildVerifier(
             projectDir = File("."),
-            gradlewPath = "/fake/gradlew",
-            mode = VerifyMode.AUTO,
+            gradlewPath = "/nonexistent/gradlew",
+            mode = VerifyMode.COMPILE,
         )
-        assertEquals(VerifyMode.AUTO, verifier.effectivePerTaskMode)
+        val result = verifier.verify()
+        assertTrue(!result.success)
+        assertEquals(VerifyMode.COMPILE, result.mode)
+    }
+
+    @Test
+    fun `verifyModules fails gracefully with missing gradlew`() {
+        val verifier = BuildVerifier(
+            projectDir = File("."),
+            gradlewPath = "/nonexistent/gradlew",
+            mode = VerifyMode.BUILD,
+        )
+        val result = verifier.verifyModules(listOf(":core"))
+        assertTrue(!result.success)
     }
 }
