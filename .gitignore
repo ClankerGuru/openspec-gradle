@@ -10,3 +10,4 @@ config/hooks/
 config/detekt.yml
 .editorconfig
 .claude/CLAUDE.md
+opsx/changes/archive/

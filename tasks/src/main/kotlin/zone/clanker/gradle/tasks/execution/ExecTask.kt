@@ -5,13 +5,23 @@ import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import zone.clanker.gradle.exec.AgentRunner
+import zone.clanker.gradle.exec.BuildVerifier
 import zone.clanker.gradle.exec.CycleDetector
 import zone.clanker.gradle.exec.SpecParser
+import zone.clanker.gradle.exec.ExecStatus
+import zone.clanker.gradle.exec.LevelScheduler
+import zone.clanker.gradle.exec.TaskExecStatus
+import zone.clanker.gradle.exec.TaskLogger
+import zone.clanker.gradle.exec.VerifyMode
 import zone.clanker.gradle.core.*
 import zone.clanker.gradle.tasks.workflow.TaskLifecycle
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 
 @UntrackedTask(because = "Exec spawns external agents with dynamic state — must never cache")
 abstract class ExecTask : DefaultTask() {
@@ -40,6 +50,15 @@ abstract class ExecTask : DefaultTask() {
     @get:Input @get:Optional
     abstract val taskCodes: Property<String>
 
+    @get:Input @get:Optional
+    abstract val verifyMode: Property<String>
+
+    @get:Input @get:Optional
+    abstract val parallel: Property<Boolean>
+
+    @get:Input @get:Optional
+    abstract val parallelThreads: Property<Int>
+
     init {
         group = "opsx"
         description = "[tool] Execute an AI agent with a prompt, verify output, retry on failure. " +
@@ -47,6 +66,7 @@ abstract class ExecTask : DefaultTask() {
             "Options: -Pprompt=\"...\" (inline prompt), -Pspec=path/to/task.md (task spec file), " +
             "-Pagent=copilot|claude|codex|opencode (override agent), " +
             "-PmaxRetries=3 (retry attempts), -Pverify=true (run opsx-verify after), " +
+            "-Popsx.verify=build|compile|off (verification mode, default: build), " +
             "-PsyncBefore=true (fresh opsx-sync before each attempt), -PexecTimeout=600 (seconds). " +
             "Use when: you want Gradle to drive an AI agent end-to-end with retry and verification. " +
             "Chain: opsx-sync → opsx-exec → opsx-verify."
@@ -137,18 +157,19 @@ abstract class ExecTask : DefaultTask() {
             configured = configuredAgents,
         )
 
-        logger.lifecycle("Agent: $resolvedAgent | Retries: $resolvedMaxRetries | Verify: $resolvedVerify")
+        val taskLog = TaskLogger(taskId) { msg -> logger.lifecycle(msg) }
+        taskLog.lifecycle("Agent: $resolvedAgent | Retries: $resolvedMaxRetries | Verify: $resolvedVerify")
 
         val cycleDetector = CycleDetector()
         val attempts = mutableListOf<AgentRunner.AgentResult>()
 
         for (attempt in 1..resolvedMaxRetries) {
-            logger.lifecycle("")
-            logger.lifecycle("── Attempt $attempt/$resolvedMaxRetries ──")
+            taskLog.lifecycle("")
+            taskLog.lifecycle("── Attempt $attempt/$resolvedMaxRetries ──")
 
             // Fresh sync before each attempt
             if (resolvedSyncBefore) {
-                logger.lifecycle("Running opsx-sync...")
+                taskLog.lifecycle("Running opsx-sync...")
                 runGradleTask("opsx-sync")
             }
 
@@ -161,12 +182,13 @@ abstract class ExecTask : DefaultTask() {
             }
 
             // Run agent
-            logger.lifecycle("Spawning $resolvedAgent...")
+            taskLog.progress("Spawning $resolvedAgent...")
             val result = AgentRunner.run(
                 agent = resolvedAgent,
                 prompt = fullPrompt,
                 workingDir = projectDir,
                 timeoutSeconds = resolvedTimeout,
+                onOutput = taskLog::output,
             )
             attempts.add(result)
 
@@ -191,11 +213,12 @@ abstract class ExecTask : DefaultTask() {
                 continue
             }
 
-            // Verify
+            // Verify (incremental build)
             if (resolvedVerify) {
-                logger.lifecycle("Running opsx-verify...")
-                val verifyPassed = runGradleTaskSafe("opsx-verify")
-                if (verifyPassed) {
+                val verifier = createBuildVerifier()
+                val verifyResult = verifier.verify()
+                logger.lifecycle(verifyResult.message)
+                if (verifyResult.success) {
                     logger.lifecycle("✓ Verification passed")
                     writeSummary(outputDir, timestamp, taskId, attempts, "SUCCESS")
                     return true
@@ -225,15 +248,19 @@ abstract class ExecTask : DefaultTask() {
 
     /**
      * Execute a chain of task codes from proposals.
+     * Uses LevelScheduler for DAG-based ordering and optional parallel execution.
      */
     private fun executeTaskChain(codesStr: String) {
         val projectDir = project.projectDir
         val codes = codesStr.split(",").map { it.trim() }.filter { it.isNotBlank() }
         val outputDir = File(projectDir, ".opsx/exec").also { it.mkdirs() }
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmm"))
+        val statusFile = File(projectDir, ".opsx/exec/status.json")
+        val isParallel = parallel.isPresent && parallel.get()
+        val threads = if (parallelThreads.isPresent) parallelThreads.get() else 4
 
         logger.lifecycle("")
-        logger.lifecycle("opsx-exec: task chain — ${codes.joinToString(", ")}")
+        logger.lifecycle("opsx-exec: task chain — ${codes.joinToString(", ")}${if (isParallel) " (parallel, $threads threads)" else ""}")
         logger.lifecycle("─".repeat(50))
 
         // Find proposals and validate all codes exist
@@ -243,140 +270,296 @@ abstract class ExecTask : DefaultTask() {
             found
         }
 
-        // Validate dependency chain
+        // Get all tasks from the proposal for scheduling
         val firstProposal = taskEntries.first().first
         val allTasks = firstProposal.flatten()
-        val graph = DependencyGraph(firstProposal.tasks)
 
-        for ((i, code) in codes.withIndex()) {
-            val task = allTasks.find { it.code == code } ?: continue
-            if (task.status == TaskStatus.DONE) continue // will be skipped
+        // Filter to only requested codes
+        val requestedTasks = allTasks.filter { it.code in codes }
 
-            for (depCode in task.explicitDeps) {
-                val dep = allTasks.find { it.code == depCode }
-                if (dep != null && dep.status != TaskStatus.DONE) {
-                    // Check if dep is earlier in chain
-                    val depIdx = codes.indexOf(depCode)
-                    if (depIdx < 0 || depIdx >= i) {
-                        throw GradleException(
-                            "Task '$code' depends on '$depCode' which is not DONE and not earlier in chain"
-                        )
-                    }
+        // Use LevelScheduler for DAG-based level grouping
+        val levels = LevelScheduler(requestedTasks).schedule()
+
+        logger.lifecycle("Scheduled ${requestedTasks.size} tasks across ${levels.size} levels")
+        for ((i, level) in levels.withIndex()) {
+            logger.lifecycle("  Level $i: ${level.map { it.code }.joinToString(", ")}")
+        }
+
+        // Initialize ExecStatus (concurrent map for thread-safe parallel updates)
+        val taskStatusMap: MutableMap<String, TaskExecStatus> = ConcurrentHashMap(
+            codes.associateWith { TaskExecStatus(status = TaskExecStatus.PENDING) }
+        )
+        val startedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        writeExecStatus(statusFile, firstProposal.name, startedAt, 0, taskStatusMap)
+
+        // Execute levels
+        for ((levelIdx, level) in levels.withIndex()) {
+            logger.lifecycle("\n── Level $levelIdx (${level.size} tasks) ──")
+            writeExecStatus(statusFile, firstProposal.name, startedAt, levelIdx, taskStatusMap)
+
+            if (isParallel && level.size > 1) {
+                executeLevelParallel(level, taskEntries, outputDir, timestamp, statusFile,
+                    firstProposal.name, startedAt, levelIdx, taskStatusMap, threads)
+            } else {
+                for (taskItem in level) {
+                    executeChainTask(taskItem, taskEntries, outputDir, timestamp, statusFile,
+                        firstProposal.name, startedAt, levelIdx, taskStatusMap)
                 }
+            }
+
+            // Sync between levels (not between tasks within a level)
+            if (levelIdx < levels.size - 1) {
+                logger.lifecycle("Running opsx-sync between levels...")
+                try { runGradleTask("opsx-sync") } catch (_: Exception) { /* non-fatal */ }
             }
         }
 
-        // Execute sequentially
-        for ((proposal, taskItem) in taskEntries) {
-            val code = taskItem.code
-            val tasksFile = File(projectDir, "opsx/changes/${proposal.name}/tasks.md")
+        // Clean up status file
+        statusFile.delete()
+        logger.lifecycle("\n✓ Task chain completed successfully")
+    }
 
-            // Re-parse to get fresh status
-            val freshTasks = TaskParser.parse(tasksFile)
-            val freshTask = freshTasks.flatMap { it.flatten() }.find { it.code == code }
-            if (freshTask?.status == TaskStatus.DONE) {
-                logger.lifecycle("\n⏭ $code — already DONE, skipping")
-                continue
+    /**
+     * Execute all tasks in a level in parallel using a thread pool.
+     */
+    private fun executeLevelParallel(
+        level: List<TaskItem>,
+        taskEntries: List<Pair<Proposal, TaskItem>>,
+        outputDir: File,
+        timestamp: String,
+        statusFile: File,
+        proposalName: String,
+        startedAt: String,
+        levelIdx: Int,
+        taskStatusMap: MutableMap<String, TaskExecStatus>,
+        threads: Int,
+    ) {
+        val pool = Executors.newFixedThreadPool(minOf(threads, level.size))
+        val futures = mutableListOf<Pair<String, Future<*>>>()
+
+        try {
+            for (taskItem in level) {
+                val future = pool.submit {
+                    executeChainTask(taskItem, taskEntries, outputDir, timestamp, statusFile,
+                        proposalName, startedAt, levelIdx, taskStatusMap)
+                }
+                futures.add(taskItem.code to future)
             }
 
-            logger.lifecycle("\n── $code: ${taskItem.description} ──")
-
-            // Mark as IN_PROGRESS
-            TaskWriter.updateStatus(tasksFile, code, TaskStatus.IN_PROGRESS)
-
-            // Resolve execution parameters from metadata
-            val meta = freshTask?.metadata ?: taskItem.metadata
-            val resolvedRetries = meta.retries
-                ?: (if (maxRetries.isPresent) maxRetries.get() else 3)
-            val resolvedCooldown = meta.cooldown ?: 0
-            val resolvedAgent = AgentRunner.resolveAgent(
-                explicit = meta.agent ?: (if (agent.isPresent) agent.get() else null),
-                configured = resolveConfiguredAgents(),
-            )
-            val resolvedTimeout = if (execTimeout.isPresent) execTimeout.get().toLong() else 600L
-
-            // Build file references — only project context, NOT the proposal
-            // The task description is the scope. The proposal is vision — agents go wild if they see it.
-            val contextFiles = mutableListOf<String>()
-            if (File(projectDir, ".opsx/context.md").exists()) contextFiles.add(".opsx/context.md")
-            if (File(projectDir, ".opsx/tree.md").exists()) contextFiles.add(".opsx/tree.md")
-
-            // Collect previous attempt logs from tasks.md
-            val previousLogs = extractAttemptLogs(tasksFile, code)
-
-            var success = false
-            for (attempt in 1..resolvedRetries) {
-                logger.lifecycle("Attempt $attempt/$resolvedRetries (agent: $resolvedAgent)")
-
-                val prompt = buildTaskPrompt(
-                    contextFiles, taskItem.description,
-                    previousLogs, attempt, resolvedRetries
-                )
-
-                val result = AgentRunner.run(
-                    agent = resolvedAgent,
-                    prompt = prompt,
-                    workingDir = projectDir,
-                    timeoutSeconds = resolvedTimeout,
-                )
-
-                val outputFile = File(outputDir, "$timestamp-$code-attempt-$attempt.md")
-                outputFile.writeText(buildOutputReport(resolvedAgent, attempt, result))
-
-                if (result.success) {
-                    // Verify if enabled
-                    val resolvedVerify = if (verify.isPresent) verify.get() else true
-                    if (resolvedVerify) {
-                        val verifyPassed = runGradleTaskSafe("opsx-verify")
-                        if (verifyPassed) {
-                            success = true
-                            break
-                        } else {
-                            val msg = "Verification failed (exit 0 but verify failed)"
-                            TaskWriter.appendAttemptLog(tasksFile, code, attempt, msg)
+            // Await all, fail-fast on first failure
+            for ((code, future) in futures) {
+                try {
+                    future.get()
+                } catch (e: Exception) {
+                    // Cancel remaining futures
+                    for ((_, remaining) in futures) {
+                        remaining.cancel(true)
+                    }
+                    // Mark uncompleted tasks as CANCELLED
+                    for (item in level) {
+                        val current = taskStatusMap[item.code]
+                        if (current?.status == TaskExecStatus.PENDING || current?.status == TaskExecStatus.RUNNING) {
+                            taskStatusMap[item.code] = TaskExecStatus(status = TaskExecStatus.CANCELLED)
                         }
-                    } else {
+                    }
+                    writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+                    val cause = e.cause ?: e
+                    throw if (cause is GradleException) cause else GradleException("Task '$code' failed: ${cause.message}", cause)
+                }
+            }
+        } finally {
+            pool.shutdown()
+        }
+    }
+
+    /**
+     * Execute a single task within a chain (used by both sequential and parallel paths).
+     */
+    private fun executeChainTask(
+        taskItem: TaskItem,
+        taskEntries: List<Pair<Proposal, TaskItem>>,
+        outputDir: File,
+        timestamp: String,
+        statusFile: File,
+        proposalName: String,
+        startedAt: String,
+        levelIdx: Int,
+        taskStatusMap: MutableMap<String, TaskExecStatus>,
+    ) {
+        val projectDir = project.projectDir
+        val code = taskItem.code
+        val entry = taskEntries.find { it.second.code == code }
+            ?: throw GradleException("Task entry not found for '$code'")
+        val (proposal, _) = entry
+        val tasksFile = File(projectDir, "opsx/changes/${proposal.name}/tasks.md")
+
+        // Re-parse to get fresh status
+        val freshTasks = TaskParser.parse(tasksFile)
+        val freshTask = freshTasks.flatMap { it.flatten() }.find { it.code == code }
+        if (freshTask?.status == TaskStatus.DONE) {
+            logger.lifecycle("\n⏭ $code — already DONE, skipping")
+            taskStatusMap[code] = TaskExecStatus(status = TaskExecStatus.DONE)
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+            return
+        }
+
+        val taskLog = TaskLogger(code) { msg -> logger.lifecycle(msg) }
+        taskLog.lifecycle("${taskItem.description}")
+
+        // Update status to RUNNING
+        val taskStartMs = System.currentTimeMillis()
+        val taskStartedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        taskStatusMap[code] = TaskExecStatus(
+            status = TaskExecStatus.RUNNING,
+            startedAt = taskStartedAt,
+        )
+        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+
+        // Mark as IN_PROGRESS in tasks.md
+        TaskWriter.updateStatus(tasksFile, code, TaskStatus.IN_PROGRESS)
+
+        // Resolve execution parameters
+        val meta = freshTask?.metadata ?: taskItem.metadata
+        val resolvedRetries = meta.retries
+            ?: (if (maxRetries.isPresent) maxRetries.get() else 3)
+        val resolvedCooldown = meta.cooldown ?: 0
+        val resolvedAgent = AgentRunner.resolveAgent(
+            explicit = meta.agent ?: (if (agent.isPresent) agent.get() else null),
+            configured = resolveConfiguredAgents(),
+        )
+        val resolvedTimeout = if (execTimeout.isPresent) execTimeout.get().toLong() else 600L
+
+        val contextFiles = mutableListOf<String>()
+        if (File(projectDir, ".opsx/context.md").exists()) contextFiles.add(".opsx/context.md")
+        if (File(projectDir, ".opsx/tree.md").exists()) contextFiles.add(".opsx/tree.md")
+
+        val previousLogs = extractAttemptLogs(tasksFile, code)
+
+        var success = false
+        for (attempt in 1..resolvedRetries) {
+            taskStatusMap[code] = TaskExecStatus(
+                status = TaskExecStatus.RUNNING,
+                attempt = attempt,
+                agent = resolvedAgent,
+                startedAt = taskStartedAt,
+            )
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+
+            taskLog.progress("Attempt $attempt/$resolvedRetries (agent: $resolvedAgent)")
+
+            val prompt = buildTaskPrompt(
+                contextFiles, taskItem.description,
+                previousLogs, attempt, resolvedRetries
+            )
+
+            val result = AgentRunner.run(
+                agent = resolvedAgent,
+                prompt = prompt,
+                workingDir = projectDir,
+                timeoutSeconds = resolvedTimeout,
+                onOutput = taskLog::output,
+            )
+
+            val outputFile = File(outputDir, "$timestamp-$code-attempt-$attempt.md")
+            outputFile.writeText(buildOutputReport(resolvedAgent, attempt, result))
+
+            if (result.success) {
+                val resolvedVerify = if (verify.isPresent) verify.get() else true
+                if (resolvedVerify) {
+                    val verifier = createBuildVerifier()
+                    val verifyResult = verifier.verify()
+                    logger.lifecycle(verifyResult.message)
+                    if (verifyResult.success) {
                         success = true
                         break
+                    } else {
+                        val msg = "Verification failed (${verifyResult.mode.value}: ${verifyResult.message})"
+                        TaskWriter.appendAttemptLog(tasksFile, code, attempt, msg)
                     }
                 } else {
-                    val errorMsg = result.stderr.take(200).ifBlank { "exit code ${result.exitCode}" }
-                    TaskWriter.appendAttemptLog(tasksFile, code, attempt, errorMsg)
-                }
-
-                if (attempt < resolvedRetries && resolvedCooldown > 0) {
-                    logger.lifecycle("Cooldown: ${resolvedCooldown}s")
-                    Thread.sleep(resolvedCooldown * 1000L)
-                }
-            }
-
-            if (success) {
-                // Use shared lifecycle pipeline: assertions → mark DONE → propagate
-                try {
-                    System.setProperty("opsx.exec.automated", "true")
-                    val verifyCommand = TaskLifecycle.resolveVerifyCommand(project)
-                    val freshItem = TaskParser.parse(tasksFile).flatMap { it.flatten() }
-                        .find { it.code == code } ?: taskItem
-                    TaskLifecycle.onTaskCompleted(
-                        project, tasksFile, code, freshItem,
-                        skipGate = false, verifyCommand, logger
-                    )
-                    logger.lifecycle("✓ $code — DONE")
-                } catch (e: GradleException) {
-                    TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
-                    logger.lifecycle("✗ $code — BLOCKED (verification failed: ${e.message})")
-                    throw GradleException("Task '$code' failed verification — chain stopped")
-                } finally {
-                    System.clearProperty("opsx.exec.automated")
+                    success = true
+                    break
                 }
             } else {
-                TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
-                logger.lifecycle("✗ $code — BLOCKED after all retries")
-                throw GradleException("Task '$code' failed — chain stopped")
+                val errorMsg = result.stderr.take(200).ifBlank { "exit code ${result.exitCode}" }
+                TaskWriter.appendAttemptLog(tasksFile, code, attempt, errorMsg)
+            }
+
+            if (attempt < resolvedRetries && resolvedCooldown > 0) {
+                logger.lifecycle("Cooldown: ${resolvedCooldown}s")
+                Thread.sleep(resolvedCooldown * 1000L)
             }
         }
 
-        logger.lifecycle("\n✓ Task chain completed successfully")
+        val durationMs = System.currentTimeMillis() - taskStartMs
+        val durationStr = "${durationMs / 1000}s"
+
+        if (success) {
+            try {
+                System.setProperty("opsx.exec.automated", "true")
+                val verifyCommand = TaskLifecycle.resolveVerifyCommand(project)
+                val freshItem = TaskParser.parse(tasksFile).flatMap { it.flatten() }
+                    .find { it.code == code } ?: taskItem
+                TaskLifecycle.onTaskCompleted(
+                    project, tasksFile, code, freshItem,
+                    skipGate = false, verifyCommand, logger
+                )
+                taskLog.success("$code — DONE")
+                taskStatusMap[code] = TaskExecStatus(
+                    status = TaskExecStatus.DONE,
+                    agent = resolvedAgent,
+                    startedAt = taskStartedAt,
+                    duration = durationStr,
+                )
+            } catch (e: GradleException) {
+                TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
+                taskLog.failure("$code — BLOCKED (verification failed: ${e.message})")
+                taskStatusMap[code] = TaskExecStatus(
+                    status = TaskExecStatus.FAILED,
+                    agent = resolvedAgent,
+                    startedAt = taskStartedAt,
+                    duration = durationStr,
+                    error = e.message,
+                )
+                writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+                throw GradleException("Task '$code' failed verification — chain stopped")
+            } finally {
+                System.clearProperty("opsx.exec.automated")
+            }
+        } else {
+            TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
+            taskLog.failure("$code — BLOCKED after all retries")
+            taskStatusMap[code] = TaskExecStatus(
+                status = TaskExecStatus.FAILED,
+                agent = resolvedAgent,
+                startedAt = taskStartedAt,
+                duration = durationStr,
+                error = "Failed after $resolvedRetries attempts",
+            )
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+            throw GradleException("Task '$code' failed — chain stopped")
+        }
+
+        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+    }
+
+    private val statusWriteLock = Any()
+
+    private fun writeExecStatus(
+        file: File,
+        proposal: String,
+        startedAt: String,
+        currentLevel: Int,
+        tasks: Map<String, TaskExecStatus>,
+    ) {
+        synchronized(statusWriteLock) {
+            ExecStatus.write(file, ExecStatus(
+                proposal = proposal,
+                startedAt = startedAt,
+                currentLevel = currentLevel,
+                tasks = tasks,
+            ))
+        }
     }
 
     private fun buildTaskPrompt(
@@ -509,6 +692,19 @@ abstract class ExecTask : DefaultTask() {
         summaryFile.writeText(summary)
     }
 
+    private fun createBuildVerifier(): BuildVerifier {
+        val modeStr = when {
+            verifyMode.isPresent -> verifyMode.get()
+            project.hasProperty("opsx.verify") -> project.property("opsx.verify").toString()
+            else -> "build"
+        }
+        return BuildVerifier(
+            projectDir = project.projectDir,
+            gradlewPath = resolveGradlew(),
+            mode = VerifyMode.fromString(modeStr),
+        )
+    }
+
     private fun resolveConfiguredAgents(): List<String> {
         val ext = project.extensions.findByType(zone.clanker.gradle.core.OpenSpecExtension::class.java)
         return ext?.tools?.orNull ?: emptyList()
@@ -520,28 +716,64 @@ abstract class ExecTask : DefaultTask() {
         return File(project.rootDir, wrapperName).absolutePath
     }
 
+    private fun resolveBuildTimeout(): Long {
+        return if (project.hasProperty("opsx.buildTimeout"))
+            project.property("opsx.buildTimeout").toString().toLong()
+        else 10L
+    }
+
     private fun runGradleTask(taskName: String) {
         val proc = ProcessBuilder(
             resolveGradlew(), taskName,
-            "--no-daemon", "-p", project.projectDir.absolutePath,
+            "-p", project.projectDir.absolutePath,
         )
             .directory(project.rootDir)
-            .inheritIO()
+            .redirectErrorStream(true)
             .start()
-        val exitCode = proc.waitFor()
-        if (exitCode != 0) throw GradleException("$taskName failed with exit code $exitCode")
+
+        val reader = Thread {
+            proc.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) }
+        }
+        reader.start()
+
+        val timeoutMinutes = resolveBuildTimeout()
+        val completed = proc.waitFor(timeoutMinutes, TimeUnit.MINUTES)
+        if (!completed) {
+            proc.destroyForcibly()
+            reader.join(2000)
+            throw GradleException("$taskName timed out after ${timeoutMinutes}m")
+        }
+        reader.join(5000)
+
+        if (proc.exitValue() != 0) {
+            throw GradleException("$taskName failed with exit code ${proc.exitValue()}")
+        }
     }
 
     private fun runGradleTaskSafe(taskName: String): Boolean {
         return try {
             val proc = ProcessBuilder(
                 resolveGradlew(), taskName,
-                "--no-daemon", "-p", project.projectDir.absolutePath,
+                "-p", project.projectDir.absolutePath,
             )
                 .directory(project.rootDir)
-                .inheritIO()
+                .redirectErrorStream(true)
                 .start()
-            proc.waitFor() == 0
+
+            val reader = Thread {
+                proc.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) }
+            }
+            reader.start()
+
+            val timeoutMinutes = resolveBuildTimeout()
+            val completed = proc.waitFor(timeoutMinutes, TimeUnit.MINUTES)
+            if (!completed) {
+                proc.destroyForcibly()
+                reader.join(2000)
+                return false
+            }
+            reader.join(5000)
+            proc.exitValue() == 0
         } catch (_: Exception) {
             false
         }

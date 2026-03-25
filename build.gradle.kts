@@ -4,10 +4,11 @@ plugins {
     alias(libs.plugins.vanniktech) apply false
 }
 
-version = providers.exec {
-    commandLine("git", "describe", "--tags", "--abbrev=0")
-}.standardOutput.asText.map { it.trim().removePrefix("v") }
-    .getOrElse("0.0.0-LOCAL")
+version = providers.gradleProperty("overrideVersion").orElse(
+    providers.exec {
+        commandLine("git", "describe", "--tags", "--abbrev=0")
+    }.standardOutput.asText.map { it.trim().removePrefix("v") }
+).getOrElse("0.0.0-LOCAL")
 
 // Propagate version to subprojects
 subprojects {
