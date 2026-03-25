@@ -1,6 +1,7 @@
 package zone.clanker.gradle.exec
 
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * Build verification for opsx-exec.
@@ -18,6 +19,7 @@ class BuildVerifier(
     private val projectDir: File,
     private val gradlewPath: String,
     private val mode: VerifyMode = VerifyMode.BUILD,
+    private val timeoutMinutes: Long = 10,
 ) {
 
     /**
@@ -59,6 +61,9 @@ class BuildVerifier(
         if (mode == VerifyMode.OFF) {
             return VerifyResult(true, VerifyMode.OFF, 0, "Verification skipped (mode=off)")
         }
+        if (modulePaths.isEmpty()) {
+            return verify()
+        }
 
         val taskSuffix = when (mode) {
             VerifyMode.BUILD -> "build"
@@ -89,8 +94,20 @@ class BuildVerifier(
                 .directory(projectDir)
                 .redirectErrorStream(true)
                 .start()
-            proc.inputStream.bufferedReader().readText()
-            proc.waitFor() == 0
+            // Drain stdout in a separate thread to prevent blocking
+            val reader = Thread { proc.inputStream.bufferedReader().readText() }
+            reader.start()
+            val completed = proc.waitFor(timeoutMinutes, TimeUnit.MINUTES)
+            if (!completed) {
+                proc.destroyForcibly()
+                reader.join(2000)
+                return false
+            }
+            reader.join(5000)
+            proc.exitValue() == 0
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            false
         } catch (_: Exception) {
             false
         }

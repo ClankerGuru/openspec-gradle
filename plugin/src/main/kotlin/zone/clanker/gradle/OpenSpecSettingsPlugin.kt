@@ -367,9 +367,31 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     if (project.hasProperty("verify")) task.verify.set(project.property("verify").toString().lowercase() == "true")
                     if (project.hasProperty("syncBefore")) task.syncBefore.set(project.property("syncBefore").toString().lowercase() == "true")
                     project.intProperty("execTimeout")?.let { task.execTimeout.set(it) }
-                    if (project.hasProperty("parallel")) task.parallel.set(project.property("parallel").toString().lowercase() == "true")
-                    project.intProperty("parallelThreads")?.let { task.parallelThreads.set(it) }
-                    if (project.hasProperty("opsx.verify")) task.verifyMode.set(project.property("opsx.verify").toString())
+                    if (project.hasProperty("parallel")) {
+                        val value = project.property("parallel").toString().trim().lowercase()
+                        if (value !in setOf("true", "false")) {
+                            throw org.gradle.api.GradleException("Invalid parallel value '$value' — must be 'true' or 'false'")
+                        }
+                        task.parallel.set(value == "true")
+                    }
+                    project.intProperty("parallelThreads")?.let {
+                        if (it <= 0) {
+                            throw org.gradle.api.GradleException("Invalid parallelThreads value '$it' — must be > 0")
+                        }
+                        task.parallelThreads.set(it)
+                    }
+                    // Prefer opsx.verify, fall back to legacy zone.clanker.openspec.verifyCommand
+                    val verifyProp = when {
+                        project.hasProperty("opsx.verify") -> project.property("opsx.verify").toString().trim().lowercase()
+                        project.hasProperty("zone.clanker.openspec.verifyCommand") -> project.property("zone.clanker.openspec.verifyCommand").toString().trim().lowercase()
+                        else -> null
+                    }
+                    if (verifyProp != null) {
+                        if (verifyProp !in setOf("build", "compile", "off")) {
+                            throw org.gradle.api.GradleException("Invalid verify mode '$verifyProp' — must be one of: build, compile, off")
+                        }
+                        task.verifyMode.set(verifyProp)
+                    }
                 }
             })
 
