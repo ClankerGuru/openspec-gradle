@@ -258,6 +258,11 @@ abstract class ExecTask : DefaultTask() {
         val statusFile = File(projectDir, ".opsx/exec/status.json")
         val isParallel = parallel.isPresent && parallel.get()
         val threads = if (parallelThreads.isPresent) parallelThreads.get() else 4
+        val resolvedVerifyMode = when {
+            verifyMode.isPresent -> verifyMode.get()
+            project.hasProperty("opsx.verify") -> project.property("opsx.verify").toString()
+            else -> "build"
+        }
 
         logger.lifecycle("")
         logger.lifecycle("opsx-exec: task chain — ${codes.joinToString(", ")}${if (isParallel) " (parallel, $threads threads)" else ""}")
@@ -290,20 +295,24 @@ abstract class ExecTask : DefaultTask() {
             codes.associateWith { TaskExecStatus(status = TaskExecStatus.PENDING) }
         )
         val startedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-        writeExecStatus(statusFile, firstProposal.name, startedAt, 0, taskStatusMap)
+        fun writeStatus(levelIdx: Int) = writeExecStatus(
+            statusFile, firstProposal.name, startedAt, levelIdx, taskStatusMap,
+            isParallel, threads, resolvedVerifyMode,
+        )
+        writeStatus(0)
 
         // Execute levels
         for ((levelIdx, level) in levels.withIndex()) {
             logger.lifecycle("\n── Level $levelIdx (${level.size} tasks) ──")
-            writeExecStatus(statusFile, firstProposal.name, startedAt, levelIdx, taskStatusMap)
+            writeStatus(levelIdx)
 
             if (isParallel && level.size > 1) {
                 executeLevelParallel(level, taskEntries, outputDir, timestamp, statusFile,
-                    firstProposal.name, startedAt, levelIdx, taskStatusMap, threads)
+                    firstProposal.name, startedAt, levelIdx, taskStatusMap, threads, resolvedVerifyMode)
             } else {
                 for (taskItem in level) {
                     executeChainTask(taskItem, taskEntries, outputDir, timestamp, statusFile,
-                        firstProposal.name, startedAt, levelIdx, taskStatusMap)
+                        firstProposal.name, startedAt, levelIdx, taskStatusMap, resolvedVerifyMode)
                 }
             }
 
@@ -333,6 +342,7 @@ abstract class ExecTask : DefaultTask() {
         levelIdx: Int,
         taskStatusMap: MutableMap<String, TaskExecStatus>,
         threads: Int,
+        verifyModeStr: String = "build",
     ) {
         val pool = Executors.newFixedThreadPool(minOf(threads, level.size))
         val futures = mutableListOf<Pair<String, Future<*>>>()
@@ -341,7 +351,7 @@ abstract class ExecTask : DefaultTask() {
             for (taskItem in level) {
                 val future = pool.submit {
                     executeChainTask(taskItem, taskEntries, outputDir, timestamp, statusFile,
-                        proposalName, startedAt, levelIdx, taskStatusMap)
+                        proposalName, startedAt, levelIdx, taskStatusMap, verifyModeStr)
                 }
                 futures.add(taskItem.code to future)
             }
@@ -362,7 +372,8 @@ abstract class ExecTask : DefaultTask() {
                             taskStatusMap[item.code] = TaskExecStatus(status = TaskExecStatus.CANCELLED)
                         }
                     }
-                    writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+                    writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                        isParallel = true, totalThreads = threads, verifyModeStr = verifyModeStr)
                     val cause = e.cause ?: e
                     throw if (cause is GradleException) cause else GradleException("Task '$code' failed: ${cause.message}", cause)
                 }
@@ -385,6 +396,7 @@ abstract class ExecTask : DefaultTask() {
         startedAt: String,
         levelIdx: Int,
         taskStatusMap: MutableMap<String, TaskExecStatus>,
+        verifyModeStr: String = "build",
     ) {
         val projectDir = project.projectDir
         val code = taskItem.code
@@ -398,8 +410,9 @@ abstract class ExecTask : DefaultTask() {
         val freshTask = freshTasks.flatMap { it.flatten() }.find { it.code == code }
         if (freshTask?.status == TaskStatus.DONE) {
             logger.lifecycle("\n⏭ $code — already DONE, skipping")
-            taskStatusMap[code] = TaskExecStatus(status = TaskExecStatus.DONE)
-            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+            taskStatusMap[code] = TaskExecStatus(status = TaskExecStatus.DONE, level = levelIdx)
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                verifyModeStr = verifyModeStr)
             return
         }
 
@@ -412,8 +425,10 @@ abstract class ExecTask : DefaultTask() {
         taskStatusMap[code] = TaskExecStatus(
             status = TaskExecStatus.RUNNING,
             startedAt = taskStartedAt,
+            level = levelIdx,
         )
-        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+            verifyModeStr = verifyModeStr)
 
         // Mark as IN_PROGRESS in tasks.md
         TaskWriter.updateStatus(tasksFile, code, TaskStatus.IN_PROGRESS)
@@ -440,10 +455,13 @@ abstract class ExecTask : DefaultTask() {
             taskStatusMap[code] = TaskExecStatus(
                 status = TaskExecStatus.RUNNING,
                 attempt = attempt,
+                maxAttempts = resolvedRetries,
                 agent = resolvedAgent,
                 startedAt = taskStartedAt,
+                level = levelIdx,
             )
-            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                verifyModeStr = verifyModeStr)
 
             taskLog.progress("Attempt $attempt/$resolvedRetries (agent: $resolvedAgent)")
 
@@ -459,6 +477,19 @@ abstract class ExecTask : DefaultTask() {
                 timeoutSeconds = resolvedTimeout,
                 onOutput = taskLog::output,
             )
+
+            // Update status with PID from the completed process
+            taskStatusMap[code] = TaskExecStatus(
+                status = TaskExecStatus.RUNNING,
+                attempt = attempt,
+                maxAttempts = resolvedRetries,
+                agent = resolvedAgent,
+                startedAt = taskStartedAt,
+                pid = result.pid,
+                level = levelIdx,
+            )
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                verifyModeStr = verifyModeStr)
 
             val outputFile = File(outputDir, "$timestamp-$code-attempt-$attempt.md")
             outputFile.writeText(buildOutputReport(resolvedAgent, attempt, result))
@@ -510,6 +541,7 @@ abstract class ExecTask : DefaultTask() {
                     agent = resolvedAgent,
                     startedAt = taskStartedAt,
                     duration = durationStr,
+                    level = levelIdx,
                 )
             } catch (e: GradleException) {
                 TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
@@ -520,8 +552,10 @@ abstract class ExecTask : DefaultTask() {
                     startedAt = taskStartedAt,
                     duration = durationStr,
                     error = e.message,
+                    level = levelIdx,
                 )
-                writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+                writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                    verifyModeStr = verifyModeStr)
                 throw GradleException("Task '$code' failed verification — chain stopped")
             } finally {
                 System.clearProperty("opsx.exec.automated")
@@ -535,12 +569,15 @@ abstract class ExecTask : DefaultTask() {
                 startedAt = taskStartedAt,
                 duration = durationStr,
                 error = "Failed after $resolvedRetries attempts",
+                level = levelIdx,
             )
-            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                verifyModeStr = verifyModeStr)
             throw GradleException("Task '$code' failed — chain stopped")
         }
 
-        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+            verifyModeStr = verifyModeStr)
     }
 
     private val statusWriteLock = Any()
@@ -551,13 +588,21 @@ abstract class ExecTask : DefaultTask() {
         startedAt: String,
         currentLevel: Int,
         tasks: Map<String, TaskExecStatus>,
+        isParallel: Boolean = false,
+        totalThreads: Int = 1,
+        verifyModeStr: String = "build",
     ) {
+        val activeCount = tasks.count { it.value.status == TaskExecStatus.RUNNING }
         synchronized(statusWriteLock) {
             ExecStatus.write(file, ExecStatus(
                 proposal = proposal,
                 startedAt = startedAt,
                 currentLevel = currentLevel,
                 tasks = tasks,
+                parallel = isParallel,
+                totalThreads = totalThreads,
+                activeThreads = activeCount,
+                verifyMode = verifyModeStr,
             ))
         }
     }
