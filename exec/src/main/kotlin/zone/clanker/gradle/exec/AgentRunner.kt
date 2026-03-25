@@ -63,6 +63,7 @@ object AgentRunner {
         workingDir: File,
         timeoutSeconds: Long = 300,
         environment: Map<String, String> = emptyMap(),
+        onOutput: (String) -> Unit = {},
     ): AgentResult {
         val command = buildCommand(agent, prompt)
         val process = ProcessBuilder(command)
@@ -79,18 +80,39 @@ object AgentRunner {
         val stderr = StringBuilder()
 
         val stdoutReader = Thread {
-            process.inputStream.bufferedReader().forEachLine { stdout.appendLine(it) }
+            process.inputStream.bufferedReader().forEachLine { line ->
+                onOutput(line)
+                stdout.appendLine(line)
+            }
         }
         val stderrReader = Thread {
-            process.errorStream.bufferedReader().forEachLine { stderr.appendLine(it) }
+            process.errorStream.bufferedReader().forEachLine { line ->
+                onOutput(line)
+                stderr.appendLine(line)
+            }
         }
+
+        // Heartbeat thread — logs every 30s during long operations
+        val heartbeat = Thread {
+            var elapsed = 0
+            while (process.isAlive) {
+                Thread.sleep(30_000)
+                elapsed += 30
+                if (process.isAlive) {
+                    onOutput("\u23f3 Still running... ${elapsed}s")
+                }
+            }
+        }
+        heartbeat.isDaemon = true
 
         stdoutReader.start()
         stderrReader.start()
+        heartbeat.start()
 
         val completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
         if (!completed) {
             process.destroyForcibly()
+            heartbeat.join(1000)
             stdoutReader.join(1000)
             stderrReader.join(1000)
             return AgentResult(
@@ -101,6 +123,7 @@ object AgentRunner {
             )
         }
 
+        heartbeat.join(1000)
         stdoutReader.join(5000)
         stderrReader.join(5000)
 
