@@ -576,7 +576,8 @@ abstract class ExecTask : DefaultTask() {
             throw GradleException("Task '$code' failed — chain stopped")
         }
 
-        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
+        writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+            verifyModeStr = verifyModeStr)
     }
 
     private val statusWriteLock = Any()

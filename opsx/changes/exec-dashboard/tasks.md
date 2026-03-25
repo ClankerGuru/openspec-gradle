@@ -14,10 +14,10 @@
   > New file: `exec/src/main/kotlin/zone/clanker/gradle/exec/ExecStatusReader.kt`
   > `read(file: File): ExecStatus?` — parse status.json, return null if missing/corrupt.
   > `renderDashboard(status: ExecStatus): String` — render the visual table:
-  >   - Header: boxed proposal name + progress bar + fraction
-  >   - Table: Code | Status (icon) | Agent | Time | Attempt | Level
-  >   - Footer: parallel info, verify mode, started time, elapsed
-  >   - Running task elapsed time computed from `startedAt` vs `System.currentTimeMillis()`
+  > - Header: boxed proposal name + progress bar + fraction
+  > - Table: Code | Status (icon) | Agent | Time | Attempt | Level
+  > - Footer: parallel info, verify mode, started time, elapsed
+  > - Running task elapsed time computed from `startedAt` vs `System.currentTimeMillis()`
   > Icons: `✅` done, `🔄` running, `⏳` pending, `❌` failed, `🚫` cancelled
   > Imports: `kotlinx.serialization.json.Json`, `kotlinx.serialization.decodeFromString`, `java.io.File`, `java.time.LocalDateTime`, `java.time.Duration`, `java.time.format.DateTimeFormatter`
   > verify: symbol-exists ExecStatusReader
@@ -26,20 +26,20 @@
   > depends: ed-2
   > New file: `exec/src/test/kotlin/zone/clanker/gradle/exec/ExecStatusReaderTest.kt`
   > Tests:
-  >   - `read returns null for missing file`
-  >   - `read returns null for corrupt JSON`
-  >   - `read parses valid status JSON`
-  >   - `renderDashboard shows progress bar with correct percentage`
-  >   - `renderDashboard shows running tasks with elapsed time`
-  >   - `renderDashboard shows parallel info when parallel=true`
-  >   - `renderDashboard hides parallel line when parallel=false`
+  > - `read returns null for missing file`
+  > - `read returns null for corrupt JSON`
+  > - `read parses valid status JSON`
+  > - `renderDashboard shows progress bar with correct percentage`
+  > - `renderDashboard shows running tasks with elapsed time`
+  > - `renderDashboard shows parallel info when parallel=true`
+  > - `renderDashboard hides parallel line when parallel=false`
   > verify: test-passes ExecStatusReaderTest
 
 - [x] `ed-4` Integrate ExecStatusReader into StatusTask
   > depends: ed-2
   > File: `tasks/src/main/kotlin/zone/clanker/gradle/tasks/workflow/StatusTask.kt`
   > In `execute()`, before the proposal rendering block, add:
-  > ```
+  > ```kotlin
   > val statusFile = File(project.projectDir, ".opsx/exec/status.json")
   > val execStatus = ExecStatusReader.read(statusFile)
   > if (execStatus != null) {
@@ -54,14 +54,14 @@
   > depends: ed-1
   > File: `tasks/src/main/kotlin/zone/clanker/gradle/tasks/execution/ExecTask.kt`
   > Update `writeExecStatus()` signature and all call sites to include:
-  >   - `parallel` from `isParallel` local variable
-  >   - `totalThreads` from `threads` local variable
-  >   - `activeThreads` — count of RUNNING entries in `taskStatusMap`
-  >   - `verifyMode` from resolved verify mode string
+  > - `parallel` from `isParallel` local variable
+  > - `totalThreads` from `threads` local variable
+  > - `activeThreads` — count of RUNNING entries in `taskStatusMap`
+  > - `verifyMode` from resolved verify mode string
   > Update `executeChainTask()` to set:
-  >   - `pid` from `Process.pid()` after `AgentRunner.run()` — requires exposing PID from AgentRunner
-  >   - `level` from `levelIdx` parameter
-  >   - `maxAttempts` from `resolvedRetries`
+  > - `pid` from `Process.pid()` after `AgentRunner.run()` — requires exposing PID from AgentRunner
+  > - `level` from `levelIdx` parameter
+  > - `maxAttempts` from `resolvedRetries`
   > verify: symbol-exists ExecTask
 
 - [x] `ed-6` Expose process PID from AgentRunner
@@ -76,7 +76,7 @@
   > depends: ed-4, ed-5
   > New file: `tasks/src/test/kotlin/zone/clanker/gradle/tasks/workflow/StatusTaskExecTest.kt`
   > Write a `.opsx/exec/status.json` fixture, invoke StatusTask rendering logic, assert the output contains:
-  >   - Progress bar
-  >   - Task table with icons
-  >   - Parallel thread info
+  > - Progress bar
+  > - Task table with icons
+  > - Parallel thread info
   > verify: test-passes StatusTaskExecTest
