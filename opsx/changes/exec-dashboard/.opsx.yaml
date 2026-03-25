@@ -1,0 +1,19 @@
+name: exec-dashboard
+created: 2026-03-25
+status: active
+schema: spec-driven
+artifacts:
+  - id: proposal
+    path: proposal.md
+    status: done
+    dependencies: []
+  - id: design
+    path: design.md
+    status: done
+    dependencies: [proposal]
+  - id: tasks
+    path: tasks.md
+    status: done
+    dependencies: [design]
+apply:
+  requires: [tasks]

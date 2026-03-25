@@ -10,6 +10,7 @@ import zone.clanker.gradle.core.DependencyGraph
 import zone.clanker.gradle.core.ProposalScanner
 import zone.clanker.gradle.core.Proposal
 import zone.clanker.gradle.core.TaskStatus
+import zone.clanker.gradle.exec.ExecStatusReader
 
 @UntrackedTask(because = "Reads and displays proposal status from filesystem")
 abstract class StatusTask : DefaultTask() {
@@ -49,6 +50,14 @@ abstract class StatusTask : DefaultTask() {
         }
 
         val sb = StringBuilder()
+
+        // Live execution dashboard (if opsx-exec is running)
+        val statusFile = java.io.File(project.projectDir, ".opsx/exec/status.json")
+        val execStatus = ExecStatusReader.read(statusFile)
+        if (execStatus != null) {
+            sb.appendLine(ExecStatusReader.renderDashboard(execStatus))
+            sb.appendLine()
+        }
 
         if (proposals.isEmpty()) {
             sb.appendLine("# Status")

@@ -19,6 +19,10 @@ data class ExecStatus(
     val startedAt: String,
     val currentLevel: Int,
     val tasks: Map<String, TaskExecStatus>,
+    val parallel: Boolean = false,
+    val totalThreads: Int = 1,
+    val activeThreads: Int = 0,
+    val verifyMode: String = "build",
 ) {
     companion object {
         /** Atomic write: write to temp file, then rename. */
@@ -38,10 +42,13 @@ data class ExecStatus(
 data class TaskExecStatus(
     val status: String,
     val attempt: Int? = null,
+    val maxAttempts: Int? = null,
     val agent: String? = null,
     val startedAt: String? = null,
     val duration: String? = null,
     val error: String? = null,
+    val pid: Long? = null,
+    val level: Int? = null,
 ) {
     companion object {
         const val PENDING = "PENDING"

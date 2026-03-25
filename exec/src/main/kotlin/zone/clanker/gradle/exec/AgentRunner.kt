@@ -13,6 +13,7 @@ object AgentRunner {
         val stdout: String,
         val stderr: String,
         val durationMs: Long,
+        val pid: Long? = null,
     ) {
         val success: Boolean get() = exitCode == 0
     }
@@ -75,6 +76,7 @@ object AgentRunner {
             .start()
 
         val startTime = System.currentTimeMillis()
+        val pid = process.pid()
 
         val stdout = StringBuilder()
         val stderr = StringBuilder()
@@ -120,6 +122,7 @@ object AgentRunner {
                 stdout = stdout.toString(),
                 stderr = stderr.toString() + "\n[TIMEOUT after ${timeoutSeconds}s]",
                 durationMs = System.currentTimeMillis() - startTime,
+                pid = pid,
             )
         }
 
@@ -132,6 +135,7 @@ object AgentRunner {
             stdout = stdout.toString(),
             stderr = stderr.toString(),
             durationMs = System.currentTimeMillis() - startTime,
+            pid = pid,
         )
     }
 
