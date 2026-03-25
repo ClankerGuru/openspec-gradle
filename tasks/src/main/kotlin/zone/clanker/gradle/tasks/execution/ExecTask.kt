@@ -18,6 +18,7 @@ import zone.clanker.gradle.tasks.workflow.TaskLifecycle
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
@@ -284,10 +285,10 @@ abstract class ExecTask : DefaultTask() {
             logger.lifecycle("  Level $i: ${level.map { it.code }.joinToString(", ")}")
         }
 
-        // Initialize ExecStatus
-        val taskStatusMap = codes.associateWith { code ->
-            TaskExecStatus(status = TaskExecStatus.PENDING)
-        }.toMutableMap()
+        // Initialize ExecStatus (concurrent map for thread-safe parallel updates)
+        val taskStatusMap: MutableMap<String, TaskExecStatus> = ConcurrentHashMap(
+            codes.associateWith { TaskExecStatus(status = TaskExecStatus.PENDING) }
+        )
         val startedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         writeExecStatus(statusFile, firstProposal.name, startedAt, 0, taskStatusMap)
 
@@ -374,7 +375,6 @@ abstract class ExecTask : DefaultTask() {
     /**
      * Execute a single task within a chain (used by both sequential and parallel paths).
      */
-    @Synchronized
     private fun executeChainTask(
         taskItem: TaskItem,
         taskEntries: List<Pair<Proposal, TaskItem>>,
@@ -407,6 +407,7 @@ abstract class ExecTask : DefaultTask() {
         taskLog.lifecycle("${taskItem.description}")
 
         // Update status to RUNNING
+        val taskStartMs = System.currentTimeMillis()
         val taskStartedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         taskStatusMap[code] = TaskExecStatus(
             status = TaskExecStatus.RUNNING,
@@ -490,8 +491,7 @@ abstract class ExecTask : DefaultTask() {
             }
         }
 
-        val durationMs = System.currentTimeMillis() -
-            java.time.LocalDateTime.parse(taskStartedAt).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val durationMs = System.currentTimeMillis() - taskStartMs
         val durationStr = "${durationMs / 1000}s"
 
         if (success) {
@@ -543,6 +543,8 @@ abstract class ExecTask : DefaultTask() {
         writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap)
     }
 
+    private val statusWriteLock = Any()
+
     private fun writeExecStatus(
         file: File,
         proposal: String,
@@ -550,12 +552,14 @@ abstract class ExecTask : DefaultTask() {
         currentLevel: Int,
         tasks: Map<String, TaskExecStatus>,
     ) {
-        ExecStatus.write(file, ExecStatus(
-            proposal = proposal,
-            startedAt = startedAt,
-            currentLevel = currentLevel,
-            tasks = tasks,
-        ))
+        synchronized(statusWriteLock) {
+            ExecStatus.write(file, ExecStatus(
+                proposal = proposal,
+                startedAt = startedAt,
+                currentLevel = currentLevel,
+                tasks = tasks,
+            ))
+        }
     }
 
     private fun buildTaskPrompt(

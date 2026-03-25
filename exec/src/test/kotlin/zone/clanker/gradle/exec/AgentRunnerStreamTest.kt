@@ -3,7 +3,6 @@ package zone.clanker.gradle.exec
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledOnOs
 import org.junit.jupiter.api.condition.OS
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class AgentRunnerStreamTest {
@@ -13,8 +12,7 @@ class AgentRunnerStreamTest {
     fun `onOutput callback receives lines from process`() {
         val received = mutableListOf<String>()
 
-        // Use a simple echo command as a fake agent
-        val process = ProcessBuilder("echo", "hello\nworld")
+        val process = ProcessBuilder("sh", "-c", "printf 'hello\nworld\n'")
             .redirectErrorStream(true)
             .start()
 
@@ -23,7 +21,9 @@ class AgentRunnerStreamTest {
         }
         process.waitFor()
 
-        assertTrue(received.isNotEmpty())
+        assertTrue(received.size >= 2, "Expected at least 2 lines, got ${received.size}")
+        assertTrue(received.contains("hello"))
+        assertTrue(received.contains("world"))
     }
 
     @Test
@@ -31,8 +31,6 @@ class AgentRunnerStreamTest {
     fun `output is still captured in AgentResult with callback`() {
         val received = mutableListOf<String>()
 
-        // AgentRunner.buildCommand would fail for unknown agents,
-        // so we test the streaming pattern directly
         val stdout = StringBuilder()
         val process = ProcessBuilder("echo", "test-output")
             .redirectErrorStream(true)
@@ -50,7 +48,6 @@ class AgentRunnerStreamTest {
 
     @Test
     fun `default no-op callback does not break`() {
-        // Verify the default callback signature compiles and works
         val noOp: (String) -> Unit = {}
         noOp("test") // should not throw
     }

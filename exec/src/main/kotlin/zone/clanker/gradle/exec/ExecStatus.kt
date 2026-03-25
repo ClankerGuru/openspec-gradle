@@ -4,6 +4,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 private val json = Json { prettyPrint = true }
 
@@ -24,7 +26,7 @@ data class ExecStatus(
             file.parentFile?.mkdirs()
             val tmp = File(file.parentFile, ".${file.name}.tmp")
             tmp.writeText(json.encodeToString(status))
-            tmp.renameTo(file)
+            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
     }
 }

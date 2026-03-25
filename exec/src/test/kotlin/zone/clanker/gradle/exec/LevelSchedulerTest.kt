@@ -106,4 +106,14 @@ class LevelSchedulerTest {
         assertEquals(1, levels.size)
         assertEquals(listOf("a"), levels[0].map { it.code })
     }
+
+    @Test
+    fun `dependency on non-existent task is ignored`() {
+        val tasks = listOf(
+            task("a", deps = listOf("missing")),
+        )
+        val levels = LevelScheduler(tasks).schedule()
+        assertEquals(1, levels.size)
+        assertEquals(listOf("a"), levels[0].map { it.code })
+    }
 }

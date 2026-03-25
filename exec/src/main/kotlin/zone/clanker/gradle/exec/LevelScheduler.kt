@@ -34,12 +34,13 @@ class LevelScheduler(private val tasks: List<TaskItem>) {
 
         val doneSet = flat.filter { it.status == TaskStatus.DONE }.map { it.code }.toMutableSet()
         val remaining = pending.associateBy { it.code }.toMutableMap()
+        val knownCodes = flat.map { it.code }.toSet()
         val levels = mutableListOf<List<TaskItem>>()
 
         while (remaining.isNotEmpty()) {
-            // Find tasks whose dependencies are all done
+            // Find tasks whose dependencies (within known codes) are all done
             val ready = remaining.values.filter { task ->
-                task.explicitDeps.all { dep -> dep in doneSet }
+                task.explicitDeps.filter { it in knownCodes }.all { dep -> dep in doneSet }
             }
 
             if (ready.isEmpty()) {

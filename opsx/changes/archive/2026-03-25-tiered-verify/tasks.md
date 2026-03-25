@@ -43,7 +43,7 @@ After each task: verify step → mark done via `./gradlew opsx-tv-N --set=done`.
 
 - [x] `tv-0` Add kotlinx-serialization-json to version catalog and :exec module
   - **File:** `gradle/libs.versions.toml` (MODIFY)
-    - Add `kotlinx-serialization = "1.8.1"` to `[versions]`
+    - Add `kotlinx-serialization = "1.10.0"` to `[versions]`
     - Add `kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }` to `[libraries]`
     - Add `kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-compiler" }` to `[plugins]`
   - **File:** `exec/build.gradle.kts` (MODIFY)

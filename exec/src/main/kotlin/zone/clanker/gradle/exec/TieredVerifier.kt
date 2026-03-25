@@ -11,7 +11,7 @@ import java.io.File
  *
  * Modes:
  * - **build** (default): Full incremental `./gradlew build`. Fast thanks to caching.
- * - **compile**: Compile only, skip tests. For when even unit tests are too slow.
+ * - **compile**: Assemble only, skip tests. For when even unit tests are too slow.
  * - **off**: Skip verification entirely. Rely on pre-commit hook.
  */
 class BuildVerifier(
@@ -36,8 +36,7 @@ class BuildVerifier(
 
         val tasks = when (mode) {
             VerifyMode.BUILD -> listOf("build")
-            VerifyMode.COMPILE -> listOf("classes", "testClasses")
-            VerifyMode.OFF -> return VerifyResult(true, VerifyMode.OFF, 0, "off")
+            VerifyMode.COMPILE -> listOf("assemble")
         }
 
         val startMs = System.currentTimeMillis()
@@ -63,8 +62,7 @@ class BuildVerifier(
 
         val taskSuffix = when (mode) {
             VerifyMode.BUILD -> "build"
-            VerifyMode.COMPILE -> "classes"
-            VerifyMode.OFF -> return VerifyResult(true, VerifyMode.OFF, 0, "off")
+            VerifyMode.COMPILE -> "assemble"
         }
         val tasks = modulePaths.map { "$it:$taskSuffix" }
 

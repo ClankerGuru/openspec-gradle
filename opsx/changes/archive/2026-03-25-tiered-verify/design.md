@@ -165,7 +165,7 @@ Add `kotlinx-serialization-json` to the version catalog and `:exec` module:
 ```toml
 # gradle/libs.versions.toml
 [versions]
-kotlinx-serialization = "1.8.1"
+kotlinx-serialization = "1.10.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }

@@ -367,6 +367,9 @@ class OpenSpecSettingsPlugin : Plugin<Settings> {
                     if (project.hasProperty("verify")) task.verify.set(project.property("verify").toString().lowercase() == "true")
                     if (project.hasProperty("syncBefore")) task.syncBefore.set(project.property("syncBefore").toString().lowercase() == "true")
                     project.intProperty("execTimeout")?.let { task.execTimeout.set(it) }
+                    if (project.hasProperty("parallel")) task.parallel.set(project.property("parallel").toString().lowercase() == "true")
+                    project.intProperty("parallelThreads")?.let { task.parallelThreads.set(it) }
+                    if (project.hasProperty("opsx.verify")) task.verifyMode.set(project.property("opsx.verify").toString())
                 }
             })
 
