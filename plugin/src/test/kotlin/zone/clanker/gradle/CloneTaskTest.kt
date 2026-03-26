@@ -117,4 +117,38 @@ class CloneTaskTest {
         assertEquals(TaskOutcome.SUCCESS, result.task(":opsx-clone")?.outcome)
         assertTrue(result.output.contains("Config file not found"))
     }
+
+    @Test
+    fun `includeEnabled includes existing repos as composite builds`() {
+        val configFile = File(testProjectDir, "monolith.json")
+        val cloneDir = File(workspaceDir, "clones")
+
+        // Create a fake repo directory with a settings file so includeBuild works
+        val fakeRepo = File(cloneDir, "my-repo")
+        fakeRepo.mkdirs()
+        File(fakeRepo, "settings.gradle.kts").writeText("rootProject.name = \"my-repo\"")
+        File(fakeRepo, "build.gradle.kts").writeText("")
+
+        configFile.writeText("""
+            [
+              {"name": "ClankerGuru/my-repo", "enable": true, "category": "libs", "substitutions": []}
+            ]
+        """.trimIndent())
+
+        File(testProjectDir, "settings.gradle.kts").writeText("""
+            plugins {
+                id("zone.clanker.monolith")
+            }
+            monolith.includeEnabled()
+        """.trimIndent())
+
+        val result = gradle(
+            "projects",
+            "-Pzone.clanker.openspec.monolithFile=${configFile.absolutePath}",
+            "-Pzone.clanker.openspec.monolithDir=${cloneDir.absolutePath}"
+        ).build()
+
+        // The included build should appear in the projects listing
+        assertTrue(result.output.contains("my-repo"))
+    }
 }

@@ -21,7 +21,11 @@ abstract class MonolithPlugin : Plugin<Settings> {
         val configFile = File(rawPath.replace("~", home))
         val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
 
+        val monolithDir = settings.providers.gradleProperty("zone.clanker.openspec.monolithDir")
+            .orNull?.let { File(it.replace("~", home)) } ?: File(defaultDir)
+
         val extension = settings.extensions.create("monolith", MonolithExtension::class.java)
+        extension.baseDir = monolithDir
         for (entry in entries) {
             require(entry.name.isNotBlank()) { "monolith.json contains a repo with blank 'name'" }
             val propertyName = MonolithExtension.toCamelCase(entry.directoryName)
@@ -31,8 +35,15 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 substitutions = entry.substitutions,
                 defaultEnabled = entry.enable
             )
+            repo.clonePath = File(monolithDir, entry.directoryName)
             extension.register(propertyName, repo)
             (extension as ExtensionAware).extensions.add(propertyName, repo)
+        }
+
+        extension.includeAction = { repo ->
+            if (repo.clonePath.exists()) {
+                settings.includeBuild(repo.clonePath)
+            }
         }
 
         settings.gradle.rootProject {
