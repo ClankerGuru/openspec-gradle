@@ -48,6 +48,7 @@ abstract class MonolithPlugin : Plugin<Settings> {
         extension.includeAction = { repo ->
             if (repo.clonePath.exists()) {
                 settings.includeBuild(repo.clonePath) {
+                    name = repo.sanitizedBuildName
                     if (repo.substitute && repo.substitutions.isNotEmpty()) {
                         dependencySubstitution {
                             repo.substitutions.forEach { dep ->

@@ -316,6 +316,39 @@ monolith.includeEnabled()
 ./gradlew opsx-pull                   # sync all repos to latest main
 ```
 
+### Tree DSL for Composite Builds
+
+Express your dependency tree explicitly — the plugin flattens it for Gradle:
+
+```kotlin
+// settings.gradle.kts
+plugins {
+    id("zone.clanker.monolith") version "<version>"
+}
+monolith {
+    featureUi.includeBuild(coreModels, coreUtils)
+    featureData.includeBuild(coreModels, coreUtils)
+    hostApp.includeBuild(featureUi, featureData)
+}
+monolith.includeTree(monolith["hostApp"])
+```
+
+`includeTree` walks the tree depth-first, deduplicates, validates no build name collisions, and calls `settings.includeBuild` once per unique repo. The root (host project) is excluded since it's the caller.
+
+Build names are automatically sanitized for Gradle compatibility:
+- `"My Cool Project"` → `my-cool-project`
+- `"foo__bar"` → `foo-bar`
+- Special characters, consecutive hyphens, and leading/trailing hyphens are normalized
+
+DSL accessors use camelCase derived from directory names:
+- `core-models` → `coreModels`
+- `My Cool Project` → `myCoolProject`
+- `foo_bar` → `fooBar`
+
+Duplicate sanitized build names (e.g., `"My Lib"` and `"my_lib"` both → `my-lib`) are detected at configuration time with a clear error message.
+
+`includeEnabled()` continues to work as before for flat inclusion of all enabled repos.
+
 See the full guide: **[docs/monolith-plugin.md](docs/monolith-plugin.md)**
 
 ---
