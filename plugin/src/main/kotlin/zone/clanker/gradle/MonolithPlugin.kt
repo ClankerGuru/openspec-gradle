@@ -1,23 +1,47 @@
 package zone.clanker.gradle
 
 import org.gradle.api.GradleException
+import zone.clanker.gradle.core.MonolithExtension
+import zone.clanker.gradle.core.MonolithRepo
+import zone.clanker.gradle.core.RepoEntry
 import zone.clanker.gradle.tasks.execution.CloneTask
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
+import java.io.File
 
 abstract class MonolithPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
+        val home = System.getProperty("user.home")
+        val defaultDir = "$home/dev/monolith"
+
+        val filePath = settings.providers.gradleProperty("zone.clanker.openspec.monolithFile")
+            .orNull ?: "$defaultDir/monolith.json"
+        val configFile = File(filePath)
+        val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
+
+        val extension = MonolithExtension()
+        for (entry in entries) {
+            val propertyName = MonolithExtension.toCamelCase(entry.directoryName)
+            extension.register(propertyName, MonolithRepo(
+                repoName = entry.name,
+                category = entry.category,
+                substitutions = entry.substitutions,
+                defaultEnabled = entry.enable
+            ))
+        }
+        settings.extensions.add("monolith", extension)
+
         settings.gradle.rootProject {
-            applyToSettings(this)
+            applyToSettings(this, extension)
         }
     }
 
     companion object {
-        internal fun applyToSettings(project: org.gradle.api.Project) {
+        internal fun applyToSettings(project: org.gradle.api.Project, extension: MonolithExtension) {
             if (project.tasks.findByName("opsx-clone") != null) return
 
-            project.tasks.register("opsx-clone", CloneTask::class.java).configure{
+            project.tasks.register("opsx-clone", CloneTask::class.java).configure {
                 val home = System.getProperty("user.home")
                 reposDir.convention(
                     project.provider {
@@ -40,6 +64,8 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 } else {
                     dryRun.convention(true)
                 }
+
+                extensionRepos.addAll(extension.allEntries())
             }
         }
     }
