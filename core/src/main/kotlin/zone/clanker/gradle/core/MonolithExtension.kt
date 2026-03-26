@@ -6,9 +6,15 @@ open class MonolithRepo(
     val repoName: String,
     val category: String,
     val substitutions: List<String>,
-    defaultEnabled: Boolean
+    defaultEnabled: Boolean,
+    defaultSubstitute: Boolean = false
 ) {
     var enabled: Boolean = defaultEnabled
+    var substitute: Boolean = defaultSubstitute
+
+    fun substitute(value: Boolean) {
+        substitute = value
+    }
 
     /** The directory name derived from the repo name (last path segment). */
     val directoryName: String

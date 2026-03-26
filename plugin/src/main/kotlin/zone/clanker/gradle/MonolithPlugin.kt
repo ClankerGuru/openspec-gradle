@@ -33,7 +33,8 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 repoName = entry.name,
                 category = entry.category,
                 substitutions = entry.substitutions,
-                defaultEnabled = entry.enable
+                defaultEnabled = entry.enable,
+                defaultSubstitute = entry.substitute
             )
             repo.clonePath = File(monolithDir, entry.directoryName)
             extension.register(propertyName, repo)
@@ -42,7 +43,16 @@ abstract class MonolithPlugin : Plugin<Settings> {
 
         extension.includeAction = { repo ->
             if (repo.clonePath.exists()) {
-                settings.includeBuild(repo.clonePath)
+                settings.includeBuild(repo.clonePath) {
+                    if (repo.substitute && repo.substitutions.isNotEmpty()) {
+                        dependencySubstitution {
+                            repo.substitutions.forEach { dep ->
+                                val (artifact, projectName) = RepoEntry.parseSubstitution(dep)
+                                substitute(module(artifact)).using(project(":$projectName"))
+                            }
+                        }
+                    }
+                }
             }
         }
 
