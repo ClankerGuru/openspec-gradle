@@ -113,7 +113,7 @@ All published to Maven Central via Vanniktech plugin. Version derived from git t
 - **Init script** — installed to `~/.gradle/init.d/` by `opsx-install`, auto-applies to all projects
 - **Agent resolution** — priority: `-P` flag → project `gradle.properties` → global `~/.gradle/gradle.properties` → PATH scan
 - **4 adapters** — Claude, Copilot, Codex, OpenCode (each formats files differently via `ToolAdapter` interface)
-- **Instructions delivery** (all use marker-based append `<!-- OPSX:BEGIN -->` / `<!-- OPSX:END -->`):
+- **Instructions delivery** (all use marker-based append ``):
   - Claude → `.claude/CLAUDE.md`
   - Copilot → `.github/copilot-instructions.md`
   - Codex → `AGENTS.md`
