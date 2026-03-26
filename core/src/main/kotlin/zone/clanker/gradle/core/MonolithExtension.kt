@@ -1,12 +1,33 @@
 package zone.clanker.gradle.core
 
+import java.io.File
+
 open class MonolithRepo(
     val repoName: String,
     val category: String,
     val substitutions: List<String>,
-    defaultEnabled: Boolean
+    defaultEnabled: Boolean,
+    defaultSubstitute: Boolean = false,
+    defaultRef: String = "main"
 ) {
     var enabled: Boolean = defaultEnabled
+    var substitute: Boolean = defaultSubstitute
+    var ref: String = defaultRef
+
+    fun substitute(value: Boolean) {
+        substitute = value
+    }
+
+    fun ref(value: String) {
+        ref = value
+    }
+
+    /** The directory name derived from the repo name (last path segment). */
+    val directoryName: String
+        get() = RepoEntry(repoName, true, category, substitutions).directoryName
+
+    /** The absolute path where this repo is (or would be) cloned. Set by the plugin. */
+    var clonePath: File = File("")
 
     fun enable(value: Boolean) {
         enabled = value
@@ -15,6 +36,22 @@ open class MonolithRepo(
 
 open class MonolithExtension {
     internal val repos = mutableMapOf<String, MonolithRepo>()
+
+    /** Base directory for cloned repos. Set by the plugin. */
+    var baseDir: File = File("")
+
+    /** Action to include a repo as a build. Set by the plugin to call settings.includeBuild. */
+    var includeAction: ((MonolithRepo) -> Unit)? = null
+
+    /**
+     * Include all enabled repos as composite builds via `settings.includeBuild`.
+     * Only includes repos whose clone directory exists on disk.
+     */
+    fun includeEnabled() {
+        val action = includeAction
+            ?: error("includeEnabled() can only be called from settings.gradle.kts with the monolith plugin applied")
+        enabledEntries().forEach { action(it) }
+    }
 
     fun register(propertyName: String, repo: MonolithRepo) {
         require(propertyName !in repos) {
