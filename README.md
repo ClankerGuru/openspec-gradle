@@ -355,7 +355,26 @@ plugins {
 }
 ```
 
-### 3. Preview what will be cloned
+### 3. (Optional) Override repos via the Settings DSL
+
+The plugin exposes a `monolith` extension on `Settings`. Each repo from the JSON becomes a camelCase property you can toggle:
+
+```kotlin
+plugins {
+    id("zone.clanker.monolith") version "<version>"
+}
+
+monolith {
+    myLib.enable(false)       // disable a repo that's enabled in JSON
+    sharedUtils.enable(true)  // enable a repo that's disabled in JSON
+}
+```
+
+Bracket syntax also works: `monolith["myLib"].enable(false)`
+
+Property names are derived from the repo's directory name: `MyOrg/my-lib` → `myLib`, `MyOrg/shared-utils` → `sharedUtils`. DSL overrides win over JSON defaults.
+
+### 4. Preview what will be cloned
 
 ```bash
 ./gradlew opsx-clone
@@ -363,7 +382,7 @@ plugins {
 
 By default, the task runs in **dry-run mode** — it lists what would be cloned without actually doing it.
 
-### 4. Clone the repositories
+### 5. Clone the repositories
 
 ```bash
 ./gradlew opsx-clone -PdryRun=false
@@ -390,7 +409,7 @@ Override via command line:
 
 ### Example output
 
-```
+```text
 Cloning 3 repo(s) with 3 threads...
 
 [internal]
