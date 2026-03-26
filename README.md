@@ -300,127 +300,23 @@ Most AI context tools work outside the build system — scanning files, guessing
 
 ## Monolith Workspace Plugin
 
-The **Monolith plugin** (`zone.clanker.monolith`) manages multi-repo workspaces — declare your repositories in a JSON file and clone them all with a single command.
-
-### Prerequisites
-
-- [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated (`gh auth login`)
-
-### 1. Create the configuration file
-
-Create `~/dev/monolith/monolith.json` with your repositories:
-
-```json
-[
-  {
-    "name": "MyOrg/my-lib",
-    "enable": true,
-    "category": "internal",
-    "substitutions": []
-  },
-  {
-    "name": "MyOrg/shared-utils",
-    "enable": true,
-    "category": "libs",
-    "substitutions": [
-      "com.example:shared-utils,shared-utils"
-    ]
-  }
-]
-```
-
-Each entry has four fields:
-
-| Field | Type | Description |
-|---|---|---|
-| `name` | string | Full GitHub repo path (`owner/repo`), passed to `gh repo clone` |
-| `enable` | boolean | Whether the repo is active |
-| `category` | string | Grouping label for output (e.g., `"internal"`, `"libs"`) |
-| `substitutions` | string[] | Dependency substitution pairs (`"artifact:coordinate,local-project"`) |
-
-### 2. Apply the plugin
-
-Add to your project's `settings.gradle.kts`:
+The **Monolith plugin** (`zone.clanker.monolith`) manages multi-repo workspaces — clone, include as composite builds with dependency substitution, and manage branches across all your repos.
 
 ```kotlin
-pluginManagement {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-
+// settings.gradle.kts
 plugins {
     id("zone.clanker.monolith") version "<version>"
 }
+monolith.includeEnabled()
 ```
-
-### 3. (Optional) Override repos via the Settings DSL
-
-The plugin exposes a `monolith` extension on `Settings`. Each repo from the JSON becomes a camelCase property you can toggle:
-
-```kotlin
-plugins {
-    id("zone.clanker.monolith") version "<version>"
-}
-
-monolith {
-    myLib.enable(false)       // disable a repo that's enabled in JSON
-    sharedUtils.enable(true)  // enable a repo that's disabled in JSON
-}
-```
-
-Bracket syntax also works: `monolith["myLib"].enable(false)`
-
-Property names are derived from the repo's directory name: `MyOrg/my-lib` → `myLib`, `MyOrg/shared-utils` → `sharedUtils`. DSL overrides win over JSON defaults.
-
-### 4. Preview what will be cloned
 
 ```bash
-./gradlew opsx-clone
+./gradlew opsx-clone -PdryRun=false   # clone all repos
+./gradlew opsx-checkout               # checkout configured branches
+./gradlew opsx-pull                   # sync all repos to latest main
 ```
 
-By default, the task runs in **dry-run mode** — it lists what would be cloned without actually doing it.
-
-### 5. Clone the repositories
-
-```bash
-./gradlew opsx-clone -PdryRun=false
-```
-
-Repos are cloned in parallel (up to 4 concurrent clones) into `~/dev/monolith/`. Existing directories are skipped automatically.
-
-### Configuration properties
-
-| Property | Default | Description |
-|---|---|---|
-| `zone.clanker.openspec.monolithFile` | `~/dev/monolith/monolith.json` | Path to the JSON config file |
-| `zone.clanker.openspec.monolithDir` | `~/dev/monolith` | Base directory for cloned repos |
-| `dryRun` | `true` | Set to `false` to actually clone |
-
-Override via command line:
-
-```bash
-./gradlew opsx-clone \
-  -Pzone.clanker.openspec.monolithDir=/path/to/workspace \
-  -Pzone.clanker.openspec.monolithFile=/path/to/repos.json \
-  -PdryRun=false
-```
-
-### Example output
-
-```text
-Cloning 3 repo(s) with 3 threads...
-
-[internal]
-  CLONE MyOrg/my-lib → /Users/you/dev/monolith/my-lib
-  SKIP  MyOrg/existing-repo (already exists)
-
-[libs]
-  CLONE MyOrg/shared-utils → /Users/you/dev/monolith/shared-utils
-
-Summary: 2 cloned, 1 skipped, 0 failed (3 total)
-```
+See the full guide: **[docs/monolith-plugin.md](docs/monolith-plugin.md)**
 
 ---
 
