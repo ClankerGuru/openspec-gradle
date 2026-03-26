@@ -5,7 +5,9 @@ import org.gradle.api.plugins.ExtensionAware
 import zone.clanker.gradle.core.MonolithExtension
 import zone.clanker.gradle.core.MonolithRepo
 import zone.clanker.gradle.core.RepoEntry
+import zone.clanker.gradle.tasks.execution.CheckoutTask
 import zone.clanker.gradle.tasks.execution.CloneTask
+import zone.clanker.gradle.tasks.execution.PullTask
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import java.io.File
@@ -34,7 +36,8 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 category = entry.category,
                 substitutions = entry.substitutions,
                 defaultEnabled = entry.enable,
-                defaultSubstitute = entry.substitute
+                defaultSubstitute = entry.substitute,
+                defaultRef = entry.ref
             )
             repo.clonePath = File(monolithDir, entry.directoryName)
             extension.register(propertyName, repo)
@@ -64,6 +67,14 @@ abstract class MonolithPlugin : Plugin<Settings> {
     companion object {
         internal fun applyToSettings(project: org.gradle.api.Project, extension: MonolithExtension) {
             if (project.tasks.findByName("opsx-clone") != null) return
+
+            project.tasks.register("opsx-checkout", CheckoutTask::class.java).configure {
+                extensionRepos.addAll(extension.allEntries())
+            }
+
+            project.tasks.register("opsx-pull", PullTask::class.java).configure {
+                extensionRepos.addAll(extension.allEntries())
+            }
 
             project.tasks.register("opsx-clone", CloneTask::class.java).configure {
                 val home = System.getProperty("user.home")

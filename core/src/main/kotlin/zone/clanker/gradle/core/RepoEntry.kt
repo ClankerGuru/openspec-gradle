@@ -12,7 +12,8 @@ data class RepoEntry(
     val enable: Boolean,
     val category: String,
     val substitutions: List<String>,
-    val substitute: Boolean = false
+    val substitute: Boolean = false,
+    val ref: String = "main"
 ) {
     val directoryName: String
         get() {
