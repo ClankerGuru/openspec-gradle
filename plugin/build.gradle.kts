@@ -38,6 +38,13 @@ gradlePlugin {
             description = "Gradle-native alternative to OpenSpec for Kotlin/JVM projects. Extracts project context from the Gradle build model (dependencies, module graph, frameworks) and generates command/skill files for AI coding assistants. Supports GitHub Copilot, Claude Code, Codex, and OpenCode. Zero-config via init script — no plugins block or DSL required."
             tags = listOf("ai", "copilot", "claude", "codex", "opencode", "openspec", "kotlin", "android", "skills", "prompts", "coding-assistant", "context")
         }
+        register("monolith") {
+            id = "zone.clanker.monolith"
+            implementationClass = "zone.clanker.gradle.MonolithPlugin"
+            displayName = "Monolith Workspace Plugin"
+            description = "Manages multi-repo workspaces via a declarative JSON config. Clones missing repositories and provides dependency substitution rules. Apply via init.gradle.kts for zero-config workspace setup."
+            tags = listOf("monolith", "workspace", "clone", "dependency-substitution", "multi-repo")
+        }
     }
 }
 

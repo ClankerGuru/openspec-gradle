@@ -16,7 +16,6 @@ import zone.clanker.gradle.tasks.workflow.*
 import zone.clanker.gradle.tasks.execution.*
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.initialization.Settings
 import java.io.File
 
