@@ -4,7 +4,7 @@
 
 Given this repo graph:
 
-```
+```text
 host-app (demo/host app)
 ├── com.test:feature-ui       → feature-ui lib (local)
 │   ├── com.test:core-models  → core-models lib (local)
@@ -94,7 +94,7 @@ monolith {
 ```
 
 This builds a tree:
-```
+```text
 fooApp
 ├── barLib
 ├── bazLib
@@ -102,7 +102,7 @@ fooApp
 └── mozLib
 ```
 
-But the plugin flattens it to: include `fooApp`, `barLib`, `bazLib`, `mozLib` — each once, all at root level.
+But the plugin flattens it to: include `barLib`, `bazLib`, `mozLib` — each once, all at root level. The root (`fooApp`) stays in the visited set for cycle protection but is not included as a composite build (it's the host project calling `includeBuild`).
 
 ### Alternative: just use `includeEnabled()`
 
@@ -129,8 +129,9 @@ fun includeTree(root: MonolithRepo) {
     allRepos.add(root)
     root.includedBuilds.forEach { collect(it) }
 
-    // Filter to repos that exist on disk (consistent with includeEnabled behavior)
-    val reposToInclude = allRepos.filter { it.clonePath.exists() }
+    // Exclude the root (host project) — it's the caller, not an included build.
+    // Filter to repos that exist on disk (consistent with includeEnabled behavior).
+    val reposToInclude = allRepos.filter { it !== root && it.clonePath.exists() }
 
     // Validate no duplicate sanitized names among repos we'll actually include
     val names = reposToInclude.groupBy { it.sanitizedBuildName }
@@ -169,7 +170,7 @@ val sanitizedBuildName: String
     get() {
         val raw = directoryName
         return raw
-            .replace(Regex("[^a-zA-Z0-9_-]"), "-")  // spaces/special → hyphens
+            .replace(Regex("[^a-zA-Z0-9-]"), "-")   // spaces/special/underscores → hyphens
             .replace(Regex("-+"), "-")                // collapse multiple hyphens
             .trim('-')                                // no leading/trailing hyphens
             .lowercase()
@@ -179,7 +180,7 @@ val sanitizedBuildName: String
 Examples:
 - `"My Cool Project"` → `"my-cool-project"`
 - `"bazLib (v2)"` → `"bazlib-v2"`
-- `"foo__bar"` → `"foo-bar"` (underscores kept, but could normalize)
+- `"foo__bar"` → `"foo-bar"`
 
 ## Duplicate Project Name Handling
 
