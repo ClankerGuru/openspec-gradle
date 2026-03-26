@@ -20,7 +20,7 @@
   - Pass `entry.mode` to `MonolithRepo` constructor as `mode = entry.mode`
   - Set `repo.clonePath` conditionally: worktree → `File(monolithDir, "${entry.ref}/${entry.directoryName}")`, clone → `File(monolithDir, entry.directoryName)` (existing)
   - Set `repo.bareDir` for worktree mode: `File(monolithDir, ".bare/${entry.directoryName}.git")`
-  - Filter `opsx-clone`, `opsx-checkout`, `opsx-pull` to only operate on `mode == "clone"` repos
+  - Filter `opsx-clone` and `opsx-checkout` to only operate on `mode == "clone"` repos (`opsx-pull` supports both modes — see ww-14)
   > verify: compile
   → depends: ww-2
 
@@ -92,7 +92,7 @@
 ### Phase 4: Worktree list/prune
 
 - [ ] `ww-10` Create `WorktreeListTask` (`tasks/src/main/kotlin/zone/clanker/gradle/tasks/execution/WorktreeListTask.kt`)
-  - Group: `"opsx"`
+  - Group: `"opsx"`, description: `"[tool] List all worktrees across worktree-mode repos, grouped by branch."`
   - Filter to `repo.isWorktree && repo.enabled && repo.bareDir.exists()`
   - For each repo: `git -C <bareDir> worktree list --porcelain`
   - Parse and display grouped by branch, then by repo
@@ -101,7 +101,7 @@
   → depends: ww-6
 
 - [ ] `ww-11` Create `WorktreeCleanTask` (`tasks/src/main/kotlin/zone/clanker/gradle/tasks/execution/WorktreeCleanTask.kt`)
-  - Group: `"opsx"`
+  - Group: `"opsx"`, description: `"[tool] Prune stale worktree entries across worktree-mode repos."`
   - Filter to `repo.isWorktree && repo.enabled && repo.bareDir.exists()`
   - For each repo: `git -C <bareDir> worktree prune`
   - Report pruned entries per repo

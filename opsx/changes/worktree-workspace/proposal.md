@@ -15,7 +15,7 @@ Replace full git clones with bare-repo + git-worktree layout for the monolith wo
 
 ### In scope
 - `mode` field in `monolith.json` — `"worktree"` or `"clone"` (default `"clone"`)
-- `opsx-worktree-init` — clone bare repos (or convert existing clones to bare)
+- `opsx-worktree-init` — clone bare repos and create initial worktrees (warns and skips existing regular clones for safety)
 - `opsx-worktree-add -Pbranch=<name>` — create worktrees for a branch across all enabled repos
 - `opsx-worktree-remove -Pbranch=<name>` — remove worktrees for a branch
 - `opsx-worktree-list` — list all worktrees across all repos

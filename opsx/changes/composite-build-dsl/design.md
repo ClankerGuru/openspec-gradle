@@ -119,7 +119,7 @@ fun includeTree(root: MonolithRepo) {
         ?: error("includeTree() can only be called from settings.gradle.kts")
 
     // Collect all unique repos from the tree (depth-first)
-    val allRepos = mutableLinkedSetOf<MonolithRepo>()
+    val allRepos = linkedSetOf<MonolithRepo>()
     fun collect(repo: MonolithRepo) {
         if (allRepos.add(repo)) {
             repo.includedBuilds.forEach { collect(it) }
@@ -129,8 +129,11 @@ fun includeTree(root: MonolithRepo) {
     allRepos.add(root)
     root.includedBuilds.forEach { collect(it) }
 
-    // Validate no duplicate sanitized names
-    val names = allRepos.groupBy { it.sanitizedBuildName }
+    // Filter to repos that exist on disk (consistent with includeEnabled behavior)
+    val reposToInclude = allRepos.filter { it.clonePath.exists() }
+
+    // Validate no duplicate sanitized names among repos we'll actually include
+    val names = reposToInclude.groupBy { it.sanitizedBuildName }
     val dupes = names.filter { it.value.size > 1 }
     if (dupes.isNotEmpty()) {
         val detail = dupes.entries.joinToString { (name, repos) ->
@@ -139,8 +142,8 @@ fun includeTree(root: MonolithRepo) {
         throw GradleException("Duplicate build names after sanitization: $detail")
     }
 
-    // Include each unique repo
-    allRepos.forEach { action(it) }
+    // Include each unique repo that exists on disk
+    reposToInclude.forEach { action(it) }
 }
 ```
 

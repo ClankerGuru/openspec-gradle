@@ -29,8 +29,10 @@
   > verify: test
   → depends: cbd-2
 
-- [ ] `cbd-4` Apply `sanitizedBuildName` in `MonolithPlugin.includeAction` (`plugin/src/main/kotlin/zone/clanker/gradle/MonolithPlugin.kt`)
+- [ ] `cbd-4` Apply `sanitizedBuildName` in `MonolithPlugin.includeAction` and fix accessor names (`plugin/src/main/kotlin/zone/clanker/gradle/MonolithPlugin.kt`)
   - Set `name = repo.sanitizedBuildName` inside `settings.includeBuild(repo.clonePath) { ... }`
+  - Update `MonolithExtension.toCamelCase()` (or add `toSafeCamelCase()`) to handle spaces in addition to hyphens, so repos like `"Core Models Lib"` produce accessor `coreModelsLib` instead of failing
+  - Use the updated sanitization when computing `propertyName` in `MonolithPlugin.apply()`
   - Existing `includeEnabled()` path benefits automatically
   > verify: compile
   → depends: cbd-2

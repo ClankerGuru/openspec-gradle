@@ -2,7 +2,7 @@
 
 ## Directory Layout
 
-```
+```text
 ~/dev/monolith/                          ← baseDir
 ├── .bare/                               ← bare repos live here (hidden)
 │   ├── gort.git/                        ← bare clone of ClankerGuru/gort
@@ -22,7 +22,7 @@
 **Key insight:** The branch name becomes a directory level. `includeBuild` points to `~/dev/monolith/<active-branch>/<repo-name>` — the "active branch" is determined by the repo's `ref` field.
 
 ### Clone mode layout (unchanged)
-```
+```text
 ~/dev/monolith/
 ├── gort/                                ← regular clone
 ├── openspec-gradle/                     ← regular clone

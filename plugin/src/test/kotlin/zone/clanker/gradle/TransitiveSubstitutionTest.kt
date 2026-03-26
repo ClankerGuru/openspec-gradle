@@ -180,21 +180,21 @@ class TransitiveSubstitutionTest {
 
         val output = result.output
 
-        // All four should be substituted with local projects
+        // All four should be substituted with local projects — match each specific module
         assertTrue(
-            output.contains("project :core-models") || output.contains("-> project :"),
+            output.contains("project :Core Models Lib") || output.contains("project :core-models"),
             "Expected core-models to be substituted. Output:\n$output"
         )
         assertTrue(
-            output.contains("project :core-utils") || output.contains("-> project :"),
+            output.contains("project :Core Utils Lib") || output.contains("project :core-utils"),
             "Expected core-utils to be substituted. Output:\n$output"
         )
         assertTrue(
-            output.contains("project :feature-ui") || output.contains("-> project :"),
+            output.contains("project :Feature UI Module") || output.contains("project :feature-ui"),
             "Expected feature-ui to be substituted. Output:\n$output"
         )
         assertTrue(
-            output.contains("project :feature-data") || output.contains("-> project :"),
+            output.contains("project :Feature Data Module") || output.contains("project :feature-data"),
             "Expected feature-data to be substituted. Output:\n$output"
         )
     }
@@ -464,37 +464,11 @@ class TransitiveSubstitutionTest {
     }
 
     @Test
-    fun `selective substitution - only feature-ui substitutes core-models, feature-data uses published`() {
-        // KEY TEST: Can we substitute core-models for feature-ui but NOT for feature-data?
-        //
-        // Setup: feature-data depends on core-models but we do NOT include core-models
-        // as a composite build. Instead, feature-data should resolve it from a repo.
-        //
-        // Since we have no Maven repo in this test, feature-data will FAIL to resolve
-        // com.test:core-models:1.0.0 — proving that substitution is all-or-nothing.
-        //
-        // We test this by:
-        // 1. Including core-models (substituted) and feature-ui (substituted) — works
-        // 2. Including feature-data (substituted) WITHOUT declaring it needs core-models
-        //    → feature-data still gets core-models substituted because it's GLOBAL
-        //
-        // This proves you CANNOT selectively substitute per consumer with flat includeBuild.
-
-        // Setup: include everything but feature-data does NOT "know" about core-utils
-        // Only core-models is substituted, NOT core-utils.
-        // feature-ui depends on both. feature-data depends on both.
-        // If substitution is global: both get core-models substituted.
-        // core-utils is NOT substituted for anyone → build fails for both.
-
-        // Simpler test: include core-models substituted, DON'T include core-utils.
-        // feature-ui depends on both → core-models works, core-utils fails.
-        // This shows substitution doesn't "leak" — only declared ones apply.
-
-        // Actually the real question is:
-        // Can I substitute core-models for feature-ui but NOT for feature-data?
-        // Answer: NO. dependencySubstitution is global.
-        //
-        // Let's prove it by showing that both get it.
+    fun `substitution is global - both consumers get core-models substituted even with asymmetric deps`() {
+        // PROVES: substitution is global, not per-consumer.
+        // Both feature-ui AND feature-data depend on core-models.
+        // We substitute core-models once. Both consumers get the local version.
+        // There is no way to give one the published version and the other the local one.
 
         // Create a host-only lib that neither feature imports
         val hostOnlyLib = File(workspaceDir, "Host Only Analytics")
@@ -512,7 +486,7 @@ class TransitiveSubstitutionTest {
             public class Analytics {}
         """.trimIndent())
 
-        // Modify feature-ui to ONLY depend on core-models (not core-utils)
+        // feature-ui depends on core-models only (asymmetric)
         File(File(workspaceDir, "Feature UI Module"), "build.gradle.kts").writeText("""
             plugins { id("java-library") }
             group = "com.test"
@@ -522,12 +496,14 @@ class TransitiveSubstitutionTest {
             }
         """.trimIndent())
 
-        // Modify feature-data to ONLY depend on core-utils (not core-models)
+        // feature-data ALSO depends on core-models (the shared dep we're testing)
+        // plus core-utils (asymmetric — only feature-data has this)
         File(File(workspaceDir, "Feature Data Module"), "build.gradle.kts").writeText("""
             plugins { id("java-library") }
             group = "com.test"
             version = "1.0.0"
             dependencies {
+                implementation("com.test:core-models:1.0.0")
                 implementation("com.test:core-utils:1.0.0")
             }
         """.trimIndent())
@@ -544,7 +520,7 @@ class TransitiveSubstitutionTest {
             }
         """.trimIndent())
 
-        // Include ALL with substitutions — everything is substituted globally
+        // Include ALL with substitutions
         File(testProjectDir, "settings.gradle.kts").writeText("""
             rootProject.name = "host-app"
 
@@ -575,11 +551,21 @@ class TransitiveSubstitutionTest {
             }
         """.trimIndent())
 
-        // This should work — all deps substituted
+        // Build succeeds — both feature-ui and feature-data resolve core-models
+        // to the local project (because substitution is global).
+        // If substitution were per-consumer, we'd need separate configuration.
         val result = gradle("build").build()
         assertTrue(
             result.output.contains("BUILD SUCCESSFUL"),
-            "All 5 libs included and substituted should build. Output:\n${result.output}"
+            "Both consumers should get core-models substituted globally. Output:\n${result.output}"
+        )
+
+        // Verify via dependency tree that core-models appears as a project for both
+        val depsResult = gradle("dependencies", "--configuration", "compileClasspath").build()
+        val depsOutput = depsResult.output
+        assertTrue(
+            depsOutput.contains("project :Core Models Lib") || depsOutput.contains("project :core-models"),
+            "core-models should be substituted as a project. Output:\n$depsOutput"
         )
     }
 
@@ -660,15 +646,11 @@ class TransitiveSubstitutionTest {
     @Test
     fun `substitution is global not per-consumer - cannot scope substitution to one build`() {
         // CRITICAL TEST: Prove that you CANNOT substitute core-models only for feature-ui.
+        // Both feature-ui AND feature-data depend on core-models (from @BeforeEach).
+        // We substitute core-models once. Both consumers get the local version.
         //
-        // If you include core-models with substitution, ALL consumers get it —
-        // including feature-data, even if you didn't "want" it there.
-        //
-        // This means: there's no way to say "feature-ui uses local core-models
-        // but feature-data uses published core-models" with flat includeBuild.
-
-        // Both features depend on core-models
-        // (using the default setup from @BeforeEach)
+        // If per-consumer scoping existed, we could substitute only for feature-ui.
+        // But it doesn't — substitution is global.
 
         // Include everything with substitution
         File(testProjectDir, "settings.gradle.kts").writeText("""
@@ -696,26 +678,30 @@ class TransitiveSubstitutionTest {
             }
         """.trimIndent())
 
-        // Check dependency tree — both feature-ui AND feature-data should show
-        // core-models as a project substitution (proving it's global)
-        val result = gradle(
-            "dependencies", "--configuration", "compileClasspath"
-        ).build()
-
-        val output = result.output
-
-        // Both features resolve core-models to a project — no way to have only one do it
+        // Build succeeds — both feature-ui and feature-data resolve core-models
+        // to the local project. There's no published artifact to fall back to,
+        // so if substitution weren't global, one of them would fail.
+        val buildResult = gradle("build").build()
         assertTrue(
-            output.contains("BUILD SUCCESSFUL"),
-            "Build succeeds because substitution is global. Output:\n$output"
+            buildResult.output.contains("BUILD SUCCESSFUL"),
+            "Build succeeds because both consumers get core-models substituted globally. Output:\n${buildResult.output}"
         )
 
-        // The dependency tree should show project substitutions for core-models
-        // appearing under BOTH feature-ui and feature-data
-        // Note: Gradle uses the directory name for the project reference (e.g., "Core Models Lib")
+        // Verify in the dependency tree that core-models is substituted as a project
+        val depsResult = gradle(
+            "dependencies", "--configuration", "compileClasspath"
+        ).build()
+        val output = depsResult.output
+
+        // core-models should appear as a project substitution (both consumers get it)
         assertTrue(
             output.contains("project :Core Models Lib") || output.contains("project :core-models"),
-            "core-models should appear as project substitution. Output:\n$output"
+            "core-models should appear as project substitution for all consumers. Output:\n$output"
+        )
+        // core-utils too
+        assertTrue(
+            output.contains("project :Core Utils Lib") || output.contains("project :core-utils"),
+            "core-utils should appear as project substitution for all consumers. Output:\n$output"
         )
     }
 
