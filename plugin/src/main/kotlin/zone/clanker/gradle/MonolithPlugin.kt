@@ -8,6 +8,7 @@ import zone.clanker.gradle.core.RepoEntry
 import zone.clanker.gradle.tasks.execution.CheckoutTask
 import zone.clanker.gradle.tasks.execution.CloneTask
 import zone.clanker.gradle.tasks.execution.PullTask
+import zone.clanker.gradle.tasks.execution.ReposTask
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import java.io.File
@@ -51,7 +52,8 @@ abstract class MonolithPlugin : Plugin<Settings> {
                         dependencySubstitution {
                             repo.substitutions.forEach { dep ->
                                 val (artifact, projectName) = RepoEntry.parseSubstitution(dep)
-                                substitute(module(artifact)).using(project(":$projectName"))
+                                val projectPath = if (projectName == ":" || projectName.isBlank()) ":" else ":$projectName"
+                                substitute(module(artifact)).using(project(projectPath))
                             }
                         }
                     }
@@ -73,6 +75,11 @@ abstract class MonolithPlugin : Plugin<Settings> {
             }
 
             project.tasks.register("opsx-pull", PullTask::class.java).configure {
+                extensionRepos.addAll(extension.allEntries())
+            }
+
+            project.tasks.register("opsx-repos", ReposTask::class.java).configure {
+                outputFile.set(project.layout.projectDirectory.file(".opsx/repos.md"))
                 extensionRepos.addAll(extension.allEntries())
             }
 
