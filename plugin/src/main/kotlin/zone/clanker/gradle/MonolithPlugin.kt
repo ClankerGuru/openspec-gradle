@@ -1,6 +1,7 @@
 package zone.clanker.gradle
 
 import org.gradle.api.GradleException
+import org.gradle.api.plugins.ExtensionAware
 import zone.clanker.gradle.core.MonolithExtension
 import zone.clanker.gradle.core.MonolithRepo
 import zone.clanker.gradle.core.RepoEntry
@@ -20,18 +21,19 @@ abstract class MonolithPlugin : Plugin<Settings> {
         val configFile = File(rawPath.replace("~", home))
         val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
 
-        val extension = MonolithExtension()
+        val extension = settings.extensions.create("monolith", MonolithExtension::class.java)
         for (entry in entries) {
             require(entry.name.isNotBlank()) { "monolith.json contains a repo with blank 'name'" }
             val propertyName = MonolithExtension.toCamelCase(entry.directoryName)
-            extension.register(propertyName, MonolithRepo(
+            val repo = MonolithRepo(
                 repoName = entry.name,
                 category = entry.category,
                 substitutions = entry.substitutions,
                 defaultEnabled = entry.enable
-            ))
+            )
+            extension.register(propertyName, repo)
+            (extension as ExtensionAware).extensions.add(propertyName, repo)
         }
-        settings.extensions.add("monolith", extension)
 
         settings.gradle.rootProject {
             applyToSettings(this, extension)
