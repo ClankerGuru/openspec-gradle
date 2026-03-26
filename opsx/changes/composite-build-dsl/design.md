@@ -169,11 +169,15 @@ settings.includeBuild(repo.clonePath) {
 val sanitizedBuildName: String
     get() {
         val raw = directoryName
-        return raw
+        val sanitized = raw
             .replace(Regex("[^a-zA-Z0-9-]"), "-")   // spaces/special/underscores → hyphens
             .replace(Regex("-+"), "-")                // collapse multiple hyphens
             .trim('-')                                // no leading/trailing hyphens
             .lowercase()
+        require(sanitized.isNotBlank()) {
+            "Invalid build name after sanitization for repo '$repoName' (directoryName='$raw')"
+        }
+        return sanitized
     }
 ```
 

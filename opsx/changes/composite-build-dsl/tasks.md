@@ -18,14 +18,16 @@
 ### Phase 1: Build name sanitization
 
 - [ ] `cbd-2` Add `sanitizedBuildName` to `MonolithRepo` (`core/src/main/kotlin/zone/clanker/gradle/core/MonolithExtension.kt`)
-  - Add computed property: replaces spaces/special chars with hyphens, lowercases, collapses hyphens, trims
-  - `"My Cool Project"` → `"my-cool-project"`, `"foo (v2)"` → `"foo-v2"`
+  - Add computed property: replaces spaces/special chars/underscores with hyphens, lowercases, collapses hyphens, trims
+  - `"My Cool Project"` → `"my-cool-project"`, `"foo (v2)"` → `"foo-v2"`, `"foo__bar"` → `"foo-bar"`
+  - Add `require(sanitized.isNotBlank())` validation — fail fast with descriptive error if input like `"---"` sanitizes to empty
   > verify: symbol-exists MonolithRepo.sanitizedBuildName
   → depends: cbd-1
 
 - [ ] `cbd-3` Unit tests for `sanitizedBuildName` (`core/src/test/kotlin`)
-  - Test spaces, special chars, uppercase, consecutive hyphens, leading/trailing hyphens
+  - Test spaces, special chars, underscores, uppercase, consecutive hyphens, leading/trailing hyphens
   - Test that normal names pass through unchanged
+  - Test that all-symbol inputs (e.g., `"---"`, `"___"`) throw with descriptive error
   > verify: test
   → depends: cbd-2
 
