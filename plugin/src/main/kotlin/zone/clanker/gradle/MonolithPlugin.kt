@@ -15,13 +15,14 @@ abstract class MonolithPlugin : Plugin<Settings> {
         val home = System.getProperty("user.home")
         val defaultDir = "$home/dev/monolith"
 
-        val filePath = settings.providers.gradleProperty("zone.clanker.openspec.monolithFile")
+        val rawPath = settings.providers.gradleProperty("zone.clanker.openspec.monolithFile")
             .orNull ?: "$defaultDir/monolith.json"
-        val configFile = File(filePath)
+        val configFile = File(rawPath.replace("~", home))
         val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
 
         val extension = MonolithExtension()
         for (entry in entries) {
+            require(entry.name.isNotBlank()) { "monolith.json contains a repo with blank 'name'" }
             val propertyName = MonolithExtension.toCamelCase(entry.directoryName)
             extension.register(propertyName, MonolithRepo(
                 repoName = entry.name,

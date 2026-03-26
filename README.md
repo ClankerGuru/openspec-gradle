@@ -409,7 +409,7 @@ Override via command line:
 
 ### Example output
 
-```
+```text
 Cloning 3 repo(s) with 3 threads...
 
 [internal]
