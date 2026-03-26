@@ -1,12 +1,17 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.core.MonolithRepo
 import zone.clanker.gradle.core.RepoEntry
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import java.io.File
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 @org.gradle.api.tasks.UntrackedTask(because = "Clones external repositories based on config file")
 abstract class CloneTask : DefaultTask() {
@@ -20,6 +25,10 @@ abstract class CloneTask : DefaultTask() {
     @get:Input
     abstract val dryRun: Property<Boolean>
 
+    /** Populated by the plugin from the MonolithExtension. If empty, falls back to JSON file. */
+    @get:Internal
+    val extensionRepos: MutableList<MonolithRepo> = mutableListOf()
+
     init {
         group = "opsx"
         description = "[tool] Clone repositories from monolith.json via gh. " +
@@ -27,25 +36,40 @@ abstract class CloneTask : DefaultTask() {
             "Params: -PdryRun=false to clone, -PreposDir=path."
     }
 
+    private data class CloneEntry(val name: String, val category: String, val directoryName: String)
+
+    private sealed class CloneResult {
+        data class Cloned(val entry: CloneEntry, val targetDir: File) : CloneResult()
+        data class Failed(val entry: CloneEntry, val exitCode: Int, val output: String) : CloneResult()
+    }
+
     @TaskAction
     fun clone() {
         val home = System.getProperty("user.home")
-        val configFile = File(reposFile.get().replace("~", home))
         val baseDir = File(reposDir.get().replace("~", home))
         val isDryRun = dryRun.get()
 
-        if (!configFile.exists()) {
-            logger.warn("OpenSpec: Config file not found: ${configFile.absolutePath}")
-            logger.warn("OpenSpec: Create it with an array of repo entries, e.g.:")
-            logger.warn("""  [{"name":"MyOrg/my-repo","enable":true,"category":"internal","substitutions":[]}]""")
-            return
+        // Resolve entries: prefer extension, fall back to JSON file
+        val entries: List<CloneEntry> = if (extensionRepos.isNotEmpty()) {
+            extensionRepos.filter { it.enabled }.map { repo ->
+                val dirName = RepoEntry(repo.repoName, true, repo.category, repo.substitutions).directoryName
+                CloneEntry(repo.repoName, repo.category, dirName)
+            }
+        } else {
+            val configFile = File(reposFile.get().replace("~", home))
+            if (!configFile.exists()) {
+                logger.warn("OpenSpec: Config file not found: ${configFile.absolutePath}")
+                logger.warn("OpenSpec: Create it with an array of repo entries, e.g.:")
+                logger.warn("""  [{"name":"MyOrg/my-repo","enable":true,"category":"internal","substitutions":[]}]""")
+                return
+            }
+            RepoEntry.parseFile(configFile).filter { it.enable }.map {
+                CloneEntry(it.name, it.category, it.directoryName)
+            }
         }
 
-        val entries = RepoEntry.parseFile(configFile)
-        val enabled = entries.filter { it.enable }
-
-        if (enabled.isEmpty()) {
-            logger.lifecycle("OpenSpec: No enabled repos in ${configFile.absolutePath}")
+        if (entries.isEmpty()) {
+            logger.lifecycle("OpenSpec: No enabled repos to clone.")
             return
         }
 
@@ -55,22 +79,31 @@ abstract class CloneTask : DefaultTask() {
                 val proc = ProcessBuilder("gh", "--version")
                     .redirectErrorStream(true)
                     .start()
-                proc.waitFor()
+                val exitCode = proc.waitFor()
+                if (exitCode != 0) {
+                    throw GradleException(
+                        "gh (GitHub CLI) returned exit code $exitCode. Ensure it is installed and authenticated: https://cli.github.com/"
+                    )
+                }
+            } catch (e: GradleException) {
+                throw e
             } catch (e: Exception) {
                 throw GradleException(
-                    "gh (GitHub CLI) is not available on PATH. Install it: https://cli.github.com/"
+                    "gh (GitHub CLI) is not available on PATH. Install it: https://cli.github.com/", e
                 )
             }
+            baseDir.mkdirs()
         }
-
-        baseDir.mkdirs()
 
         val results = mutableMapOf<String, MutableList<String>>()
         var cloned = 0
         var skipped = 0
         var failed = 0
 
-        for (entry in enabled) {
+        // Separate skip/dry-run from actual clones
+        val toClone = mutableListOf<CloneEntry>()
+
+        for (entry in entries) {
             val targetDir = File(baseDir, entry.directoryName)
             val category = entry.category.ifBlank { "default" }
             val categoryList = results.getOrPut(category) { mutableListOf() }
@@ -87,22 +120,56 @@ abstract class CloneTask : DefaultTask() {
                 continue
             }
 
-            logger.lifecycle("Cloning ${entry.name}...")
-            val process = ProcessBuilder("gh", "repo", "clone", entry.name, targetDir.absolutePath)
-                .redirectErrorStream(true)
-                .start()
-            val output = process.inputStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
+            toClone.add(entry)
+        }
 
-            if (exitCode == 0) {
-                categoryList.add("  CLONE ${entry.name} → ${targetDir.absolutePath}")
-                cloned++
-            } else {
-                categoryList.add("  FAIL  ${entry.name} — exit code $exitCode")
-                if (output.isNotBlank()) {
-                    categoryList.add("        $output")
+        // Clone in parallel
+        if (toClone.isNotEmpty()) {
+            val threads = minOf(toClone.size, Runtime.getRuntime().availableProcessors(), 4)
+            logger.lifecycle("Cloning ${toClone.size} repo(s) with $threads threads...")
+
+            val executor = Executors.newFixedThreadPool(threads)
+            try {
+                val futures = toClone.map { entry ->
+                    val targetDir = File(baseDir, entry.directoryName)
+                    executor.submit(Callable {
+                        val process = ProcessBuilder("gh", "repo", "clone", entry.name, targetDir.absolutePath)
+                            .redirectErrorStream(true)
+                            .start()
+                        val output = process.inputStream.bufferedReader().readText()
+                        val finished = process.waitFor(5, TimeUnit.MINUTES)
+                        if (!finished) {
+                            process.destroyForcibly()
+                            CloneResult.Failed(entry, -1, "Clone timed out after 5 minutes")
+                        } else {
+                            val exitCode = process.exitValue()
+                            if (exitCode == 0) CloneResult.Cloned(entry, targetDir)
+                            else CloneResult.Failed(entry, exitCode, output)
+                        }
+                    })
                 }
-                failed++
+
+                for (future in futures) {
+                    when (val result = future.get()) {
+                        is CloneResult.Cloned -> {
+                            val category = result.entry.category.ifBlank { "default" }
+                            results.getOrPut(category) { mutableListOf() }
+                                .add("  CLONE ${result.entry.name} → ${result.targetDir.absolutePath}")
+                            cloned++
+                        }
+                        is CloneResult.Failed -> {
+                            val category = result.entry.category.ifBlank { "default" }
+                            val categoryList = results.getOrPut(category) { mutableListOf() }
+                            categoryList.add("  FAIL  ${result.entry.name} — exit code ${result.exitCode}")
+                            if (result.output.isNotBlank()) {
+                                categoryList.add("        ${result.output}")
+                            }
+                            failed++
+                        }
+                    }
+                }
+            } finally {
+                executor.shutdown()
             }
         }
 
@@ -115,7 +182,7 @@ abstract class CloneTask : DefaultTask() {
             lines.forEach { println(it) }
             println()
         }
-        println("Summary: $cloned cloned, $skipped skipped, $failed failed (${enabled.size} total)")
+        println("Summary: $cloned cloned, $skipped skipped, $failed failed (${entries.size} total)")
         if (isDryRun) println("Base directory: ${baseDir.absolutePath}")
     }
 }

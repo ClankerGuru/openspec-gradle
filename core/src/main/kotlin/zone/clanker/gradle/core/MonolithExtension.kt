@@ -17,6 +17,9 @@ open class MonolithExtension {
     internal val repos = mutableMapOf<String, MonolithRepo>()
 
     fun register(propertyName: String, repo: MonolithRepo) {
+        require(propertyName !in repos) {
+            "Repo '$propertyName' is already registered"
+        }
         repos[propertyName] = repo
     }
 
