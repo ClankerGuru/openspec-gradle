@@ -6,44 +6,44 @@ import java.io.File
 
 /**
  * Auto-applies detekt if not already configured.
- * 
+ *
  * System properties:
  *   -Dopenspec.detekt.enabled=false  → skip detekt entirely
  *   -Dopenspec.detekt.config=/path   → custom config file
- * 
+ *
  * Project properties (gradle.properties):
  *   openspec.detekt.enabled=false
  */
 class OpenSpecDetektPlugin : Plugin<Project> {
-    
+
     companion object {
         private const val DETEKT_PLUGIN_ID = "io.gitlab.arturbosch.detekt"
         private const val ENABLED_PROP = "openspec.detekt.enabled"
         private const val CONFIG_PROP = "openspec.detekt.config"
     }
-    
+
     override fun apply(project: Project) {
         val enabled = isEnabled(project)
-        
+
         if (!enabled) {
             project.logger.lifecycle("🔍 [OpenSpec] detekt disabled via system property — skipping")
             return
         }
-        
+
         project.afterEvaluate {
             if (project.plugins.hasPlugin(DETEKT_PLUGIN_ID)) {
                 project.logger.lifecycle("🔍 [OpenSpec] detekt already configured for ${project.name} — skipping")
                 return@afterEvaluate
             }
-            
+
             if (!isKotlinProject(project)) {
                 return@afterEvaluate
             }
-            
+
             applyDetekt(project)
         }
     }
-    
+
     private fun isEnabled(project: Project): Boolean {
         // System property takes precedence
         System.getProperty(ENABLED_PROP)?.let {
@@ -55,37 +55,37 @@ class OpenSpecDetektPlugin : Plugin<Project> {
         }
         return true
     }
-    
+
     private fun isKotlinProject(project: Project): Boolean {
         return project.plugins.hasPlugin("org.jetbrains.kotlin.jvm") ||
                project.plugins.hasPlugin("org.jetbrains.kotlin.android") ||
                project.plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
     }
-    
+
     private fun applyDetekt(project: Project) {
         project.plugins.apply(DETEKT_PLUGIN_ID)
-        
+
         val detektExtension = project.extensions.findByName("detekt")
         if (detektExtension != null) {
             // Configure via reflection to avoid compile-time dependency
             detektExtension.javaClass.getMethod("setBuildUponDefaultConfig", Boolean::class.java)
                 .invoke(detektExtension, true)
-            
+
             // Look for config file
-            val configPath = System.getProperty(CONFIG_PROP) 
+            val configPath = System.getProperty(CONFIG_PROP)
                 ?: project.findProperty(CONFIG_PROP)?.toString()
-            
+
             val configFile = when {
                 configPath != null -> File(configPath)
                 else -> project.file("${project.rootDir}/config/detekt.yml")
             }
-            
+
             if (configFile.exists()) {
                 val configProperty = detektExtension.javaClass.getMethod("getConfig").invoke(detektExtension)
-                configProperty.javaClass.getMethod("setFrom", Any::class.java).invoke(configProperty, configFile)
+                configProperty.javaClass.getMethod("setFrom", Array<Any>::class.java).invoke(configProperty, arrayOf<Any>(configFile))
             }
         }
-        
+
         // Hook into check and build tasks
         project.tasks.matching { it.name == "check" }.configureEach {
             dependsOn("detekt")
@@ -93,7 +93,7 @@ class OpenSpecDetektPlugin : Plugin<Project> {
         project.tasks.matching { it.name == "build" }.configureEach {
             dependsOn("detekt")
         }
-        
+
         project.logger.lifecycle("🔍 [OpenSpec] detekt enabled for ${project.name}")
     }
 }
