@@ -65,7 +65,7 @@ open class MonolithRepo(
     fun includeBuild(vararg repos: MonolithRepo): MonolithRepo {
         _includes.addAll(repos)
         val include = onInclude
-            ?: error("includeBuild() can only be called from settings.gradle.kts with the monolith plugin applied")
+            ?: error("includeBuild() requires the repo to be registered via the monolith plugin")
         include(this)
         repos.forEach { include(it) }
         return this
@@ -115,7 +115,7 @@ open class MonolithExtension {
         repo.onInclude = { target ->
             if (included.add(target)) {
                 val action = includeAction
-                    ?: error("includeBuild() can only be called from settings.gradle.kts with the monolith plugin applied")
+                    ?: error("includeBuild() requires includeAction to be set — ensure the monolith plugin is applied in settings.gradle.kts")
                 action(target)
             }
         }

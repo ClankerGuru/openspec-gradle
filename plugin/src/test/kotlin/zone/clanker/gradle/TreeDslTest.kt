@@ -487,7 +487,7 @@ class TreeDslTest {
         assertTrue(output.contains("baz"), "baz should be included")
         assertTrue(output.contains("moz"), "moz should be included")
         // bar should appear only once in the included builds list
-        val barCount = Regex("Included build.*bar").findAll(output).count()
+        val barCount = Regex("""\bbar\b""").findAll(output.lines().filter { it.contains("Included build") }.joinToString("\n")).count()
         assertEquals(1, barCount, "bar should be included exactly once. Output:\n$output")
     }
 }
