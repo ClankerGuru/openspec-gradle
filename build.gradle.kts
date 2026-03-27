@@ -7,6 +7,7 @@ plugins {
 version = providers.gradleProperty("overrideVersion").orElse(
     providers.exec {
         commandLine("git", "describe", "--tags", "--abbrev=0")
+        isIgnoreExitValue = true
     }.standardOutput.asText.map { it.trim().removePrefix("v") }
 ).getOrElse("0.0.0-LOCAL")
 
