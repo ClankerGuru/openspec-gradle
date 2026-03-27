@@ -216,11 +216,21 @@ class MonolithExtensionTest {
 
     // --- includeBuild() chaining (cbd-9) ---
 
+    private fun extensionWithRepos(vararg names: String): Pair<MonolithExtension, List<MonolithRepo>> {
+        val ext = MonolithExtension()
+        ext.includeAction = {} // no-op for unit tests
+        val repos = names.map { name ->
+            MonolithRepo("org/$name", "cat", emptyList(), defaultEnabled = true).also {
+                ext.register(name, it)
+            }
+        }
+        return ext to repos
+    }
+
     @Test
     fun `includeBuild adds repos to includedBuilds`() {
-        val a = MonolithRepo("org/a", "cat", emptyList(), defaultEnabled = true)
-        val b = MonolithRepo("org/b", "cat", emptyList(), defaultEnabled = true)
-        val c = MonolithRepo("org/c", "cat", emptyList(), defaultEnabled = true)
+        val (_, repos) = extensionWithRepos("a", "b", "c")
+        val (a, b, c) = repos
 
         a.includeBuild(b, c)
 
@@ -231,8 +241,8 @@ class MonolithExtensionTest {
 
     @Test
     fun `includeBuild returns this for chaining`() {
-        val a = MonolithRepo("org/a", "cat", emptyList(), defaultEnabled = true)
-        val b = MonolithRepo("org/b", "cat", emptyList(), defaultEnabled = true)
+        val (_, repos) = extensionWithRepos("a", "b")
+        val (a, b) = repos
 
         val result = a.includeBuild(b)
         assertSame(a, result)
@@ -240,9 +250,8 @@ class MonolithExtensionTest {
 
     @Test
     fun `includeBuild can be called multiple times`() {
-        val a = MonolithRepo("org/a", "cat", emptyList(), defaultEnabled = true)
-        val b = MonolithRepo("org/b", "cat", emptyList(), defaultEnabled = true)
-        val c = MonolithRepo("org/c", "cat", emptyList(), defaultEnabled = true)
+        val (_, repos) = extensionWithRepos("a", "b", "c")
+        val (a, b, c) = repos
 
         a.includeBuild(b).includeBuild(c)
 
@@ -257,13 +266,70 @@ class MonolithExtensionTest {
 
     @Test
     fun `includedBuilds returns defensive copy`() {
-        val a = MonolithRepo("org/a", "cat", emptyList(), defaultEnabled = true)
-        val b = MonolithRepo("org/b", "cat", emptyList(), defaultEnabled = true)
+        val (_, repos) = extensionWithRepos("a", "b")
+        val (a, b) = repos
         a.includeBuild(b)
 
         val list1 = a.includedBuilds
         val list2 = a.includedBuilds
         assertEquals(list1, list2)
         assertNotSame(list1, list2)
+    }
+
+    // --- includeBuild() triggers inclusion ---
+
+    @Test
+    fun `includeBuild with no args includes self`() {
+        val ext = MonolithExtension()
+        val included = mutableListOf<String>()
+        ext.includeAction = { included.add(it.repoName) }
+
+        val foo = MonolithRepo("org/foo", "cat", emptyList(), defaultEnabled = true)
+        ext.register("foo", foo)
+
+        foo.includeBuild()
+
+        assertEquals(listOf("org/foo"), included)
+    }
+
+    @Test
+    fun `includeBuild with args includes self and deps`() {
+        val ext = MonolithExtension()
+        val included = mutableListOf<String>()
+        ext.includeAction = { included.add(it.repoName) }
+
+        val foo = MonolithRepo("org/foo", "cat", emptyList(), defaultEnabled = true)
+        val bar = MonolithRepo("org/bar", "cat", emptyList(), defaultEnabled = true)
+        val baz = MonolithRepo("org/baz", "cat", emptyList(), defaultEnabled = true)
+        ext.register("foo", foo)
+        ext.register("bar", bar)
+        ext.register("baz", baz)
+
+        foo.includeBuild(bar, baz)
+
+        assertEquals(listOf("org/foo", "org/bar", "org/baz"), included)
+    }
+
+    @Test
+    fun `includeBuild deduplicates across multiple calls`() {
+        val ext = MonolithExtension()
+        val included = mutableListOf<String>()
+        ext.includeAction = { included.add(it.repoName) }
+
+        val foo = MonolithRepo("org/foo", "cat", emptyList(), defaultEnabled = true)
+        val bar = MonolithRepo("org/bar", "cat", emptyList(), defaultEnabled = true)
+        val baz = MonolithRepo("org/baz", "cat", emptyList(), defaultEnabled = true)
+        val moz = MonolithRepo("org/moz", "cat", emptyList(), defaultEnabled = true)
+        ext.register("foo", foo)
+        ext.register("bar", bar)
+        ext.register("baz", baz)
+        ext.register("moz", moz)
+
+        // foo and baz both depend on bar
+        foo.includeBuild(bar)
+        baz.includeBuild(bar, moz)
+
+        // bar should only appear once
+        assertEquals(listOf("org/foo", "org/bar", "org/baz", "org/moz"), included)
     }
 }

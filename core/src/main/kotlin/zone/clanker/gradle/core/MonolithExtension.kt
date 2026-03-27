@@ -53,15 +53,28 @@ open class MonolithRepo(
     /** Repos that this repo explicitly includes as composite builds (tree DSL). */
     val includedBuilds: List<MonolithRepo> get() = _includes.toList()
 
-    /** Declare that this repo includes other repos as composite builds. Returns `this` for chaining. */
+    /** Callback set by MonolithExtension to perform the actual inclusion. */
+    internal var onInclude: ((MonolithRepo) -> Unit)? = null
+
+    /**
+     * Include this repo (and optionally its dependencies) as composite builds.
+     * `gort.includeBuild()` includes gort itself.
+     * `gort.includeBuild(libA, libB)` includes gort, libA, and libB.
+     * Returns `this` for chaining.
+     */
     fun includeBuild(vararg repos: MonolithRepo): MonolithRepo {
         _includes.addAll(repos)
+        val include = onInclude
+            ?: error("includeBuild() can only be called from settings.gradle.kts with the monolith plugin applied")
+        include(this)
+        repos.forEach { include(it) }
         return this
     }
 }
 
 open class MonolithExtension {
     internal val repos = mutableMapOf<String, MonolithRepo>()
+    private val included = linkedSetOf<MonolithRepo>()
 
     /** Base directory for cloned repos. Set by the plugin. */
     var baseDir: File = File("")
@@ -99,6 +112,13 @@ open class MonolithExtension {
             "Repo '$propertyName' is already registered"
         }
         repos[propertyName] = repo
+        repo.onInclude = { target ->
+            if (included.add(target)) {
+                val action = includeAction
+                    ?: error("includeBuild() can only be called from settings.gradle.kts with the monolith plugin applied")
+                action(target)
+            }
+        }
     }
 
     operator fun get(name: String): MonolithRepo =
