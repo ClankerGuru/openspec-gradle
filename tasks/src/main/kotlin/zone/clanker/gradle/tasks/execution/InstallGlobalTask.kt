@@ -80,8 +80,6 @@ abstract class InstallGlobalTask : DefaultTask() {
             |    }
             |    dependencies {
             |        classpath("zone.clanker:openspec-gradle:$version")
-            |        classpath("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7")
-            |        classpath("org.jlleitschuh.gradle:ktlint-gradle:12.1.2")
             |    }
             |}
             |
@@ -90,14 +88,26 @@ abstract class InstallGlobalTask : DefaultTask() {
             |}
             |
             |allprojects {
+            |    // Inject detekt/ktlint onto the project's buildscript classpath so they share
+            |    // the classloader with the Kotlin Gradle plugin (needed for KMP support classes)
+            |    buildscript {
+            |        repositories {
+            |            mavenCentral()
+            |            gradlePluginPortal()
+            |        }
+            |        dependencies {
+            |            classpath("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7")
+            |            classpath("org.jlleitschuh.gradle:ktlint-gradle:12.1.2")
+            |        }
+            |    }
             |    afterEvaluate {
             |        val lintingEnabled = System.getProperty("openspec.linting.enabled") != "false"
             |        if (!lintingEnabled) return@afterEvaluate
-            |        
+            |
             |        val isKotlinProject = plugins.hasPlugin("org.jetbrains.kotlin.jvm") ||
             |            plugins.hasPlugin("org.jetbrains.kotlin.android") ||
             |            plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
-            |        
+            |
             |        if (isKotlinProject) {
             |            apply<zone.clanker.gradle.linting.OpenSpecLintingPlugin>()
             |        }
