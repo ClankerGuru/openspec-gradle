@@ -342,4 +342,152 @@ class TreeDslTest {
             "disabled-lib should NOT be included. Output:\n${result.output}"
         )
     }
+
+    // --- includeBuild() direct inclusion with dependency substitution ---
+
+    @Test
+    fun `includeBuild with no args includes self with substitution`() {
+        createLibProject("foo", "foo", "com.test")
+
+        File(testProjectDir, "build.gradle.kts").writeText("""
+            plugins { id("java") }
+            dependencies {
+                implementation("com.test:foo:1.0.0")
+            }
+        """.trimIndent())
+
+        val configFile = File(testProjectDir, "monolith.json")
+        configFile.writeText("""
+            [
+              {"name": "TestOrg/foo", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:foo,:"]}
+            ]
+        """.trimIndent())
+
+        File(testProjectDir, "settings.gradle.kts").writeText("""
+            plugins {
+                id("zone.clanker.monolith")
+            }
+            monolith {
+                foo.includeBuild()
+            }
+        """.trimIndent())
+
+        val result = gradle(
+            "build",
+            "-Pzone.clanker.openspec.monolithFile=${esc(configFile.absolutePath)}",
+            "-Pzone.clanker.openspec.monolithDir=${esc(workspaceDir.absolutePath)}"
+        ).build()
+
+        assertTrue(
+            result.output.contains("BUILD SUCCESSFUL"),
+            "includeBuild() with no args should include self with substitution. Output:\n${result.output}"
+        )
+    }
+
+    @Test
+    fun `includeBuild with args includes self and deps with substitution`() {
+        // foo -> bar -> baz -> moz (dependency chain)
+        createLibProject("moz", "moz", "com.test")
+        createLibProject("baz", "baz", "com.test",
+            dependencies = listOf("com.test:moz:1.0.0"))
+        createLibProject("bar", "bar", "com.test",
+            dependencies = listOf("com.test:baz:1.0.0"))
+        createLibProject("foo", "foo", "com.test",
+            dependencies = listOf("com.test:bar:1.0.0"))
+
+        File(testProjectDir, "build.gradle.kts").writeText("""
+            plugins { id("java") }
+            dependencies {
+                implementation("com.test:foo:1.0.0")
+            }
+        """.trimIndent())
+
+        val configFile = File(testProjectDir, "monolith.json")
+        configFile.writeText("""
+            [
+              {"name": "TestOrg/foo", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:foo,:"]},
+              {"name": "TestOrg/bar", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:bar,:"]},
+              {"name": "TestOrg/baz", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:baz,:"]},
+              {"name": "TestOrg/moz", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:moz,:"]}
+            ]
+        """.trimIndent())
+
+        File(testProjectDir, "settings.gradle.kts").writeText("""
+            plugins {
+                id("zone.clanker.monolith")
+            }
+            monolith {
+                foo.includeBuild(bar, baz, moz)
+            }
+        """.trimIndent())
+
+        val result = gradle(
+            "build",
+            "-Pzone.clanker.openspec.monolithFile=${esc(configFile.absolutePath)}",
+            "-Pzone.clanker.openspec.monolithDir=${esc(workspaceDir.absolutePath)}"
+        ).build()
+
+        assertTrue(
+            result.output.contains("BUILD SUCCESSFUL"),
+            "includeBuild(bar, baz, moz) should include all with substitution. Output:\n${result.output}"
+        )
+    }
+
+    @Test
+    fun `includeBuild deduplicates across multiple calls`() {
+        // foo and baz both depend on bar; moz is standalone
+        createLibProject("bar", "bar", "com.test")
+        createLibProject("moz", "moz", "com.test")
+        createLibProject("foo", "foo", "com.test",
+            dependencies = listOf("com.test:bar:1.0.0"))
+        createLibProject("baz", "baz", "com.test",
+            dependencies = listOf("com.test:bar:1.0.0"))
+
+        File(testProjectDir, "build.gradle.kts").writeText("""
+            plugins { id("java") }
+            dependencies {
+                implementation("com.test:foo:1.0.0")
+                implementation("com.test:baz:1.0.0")
+                implementation("com.test:moz:1.0.0")
+            }
+        """.trimIndent())
+
+        val configFile = File(testProjectDir, "monolith.json")
+        configFile.writeText("""
+            [
+              {"name": "TestOrg/foo", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:foo,:"]},
+              {"name": "TestOrg/bar", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:bar,:"]},
+              {"name": "TestOrg/baz", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:baz,:"]},
+              {"name": "TestOrg/moz", "enable": true, "substitute": true, "category": "libs", "substitutions": ["com.test:moz,:"]}
+            ]
+        """.trimIndent())
+
+        // foo includes bar, baz includes bar + moz — bar should not be duplicated
+        File(testProjectDir, "settings.gradle.kts").writeText("""
+            plugins {
+                id("zone.clanker.monolith")
+            }
+            monolith {
+                foo.includeBuild(bar)
+                baz.includeBuild(bar, moz)
+            }
+        """.trimIndent())
+
+        val result = gradle(
+            "projects",
+            "-Pzone.clanker.openspec.monolithFile=${esc(configFile.absolutePath)}",
+            "-Pzone.clanker.openspec.monolithDir=${esc(workspaceDir.absolutePath)}"
+        ).build()
+
+        val output = result.output
+        assertTrue(output.contains("BUILD SUCCESSFUL"), "Build should succeed. Output:\n$output")
+        // All 4 should be included
+        assertTrue(output.contains("foo"), "foo should be included")
+        assertTrue(output.contains("bar"), "bar should be included")
+        assertTrue(output.contains("baz"), "baz should be included")
+        assertTrue(output.contains("moz"), "moz should be included")
+        // bar should appear only once in the included builds list
+        val barCount = Regex("""\bbar\b""").findAll(output.lines().filter { it.contains("Included build") }.joinToString("\n")).count()
+        assertEquals(1, barCount, "bar should be included exactly once. Output:\n$output")
+    }
 }

@@ -1,0 +1,19 @@
+name: location-schema
+created: 2026-03-26
+status: active
+schema: spec-driven
+artifacts:
+  - id: proposal
+    path: proposal.md
+    status: done
+    dependencies: []
+  - id: design
+    path: design.md
+    status: todo
+    dependencies: [proposal]
+  - id: tasks
+    path: tasks.md
+    status: todo
+    dependencies: [design]
+apply:
+  requires: [tasks]
