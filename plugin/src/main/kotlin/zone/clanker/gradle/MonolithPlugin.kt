@@ -111,17 +111,28 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 extensionRepos.addAll(extension.allEntries())
             }
 
-            // Aggregate: wire root opsx-sync to all included builds' opsx-sync
+            // Aggregate: wire root opsx tasks to all included builds
             project.afterEvaluate {
-                val syncTask = project.tasks.findByName("opsx-sync") ?: return@afterEvaluate
                 val aggregate = project.findProperty("zone.clanker.openspec.monolith.aggregate")?.toString() != "false"
                 if (!aggregate) return@afterEvaluate
 
-                for (build in project.gradle.includedBuilds) {
-                    try {
-                        syncTask.dependsOn(build.task(":opsx-sync"))
-                    } catch (_: Exception) {
-                        // Included build may not have the OpenSpec plugin
+                val tasksToAggregate = listOf(
+                    // Lifecycle
+                    "opsx-sync", "opsx-clean",
+                    // Discovery
+                    "opsx-context", "opsx-tree", "opsx-modules", "opsx-deps", "opsx-devloop", "opsx-symbols",
+                    // Intelligence
+                    "opsx-arch", "opsx-find", "opsx-calls", "opsx-usages", "opsx-verify",
+                )
+
+                for (taskName in tasksToAggregate) {
+                    val rootTask = project.tasks.findByName(taskName) ?: continue
+                    for (build in project.gradle.includedBuilds) {
+                        try {
+                            rootTask.dependsOn(build.task(":$taskName"))
+                        } catch (_: Exception) {
+                            // Included build may not have this task
+                        }
                     }
                 }
             }
