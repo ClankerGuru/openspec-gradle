@@ -12,7 +12,13 @@ data class SkillContent(
     val instructions: String,
     val license: String = "MIT",
     val compatibility: String = "Requires Gradle build system.",
-    val metadata: Map<String, String> = mapOf("author" to "openspec-gradle", "version" to VersionInfo.PLUGIN_VERSION)
+    val metadata: Map<String, String> = mapOf("author" to "openspec-gradle", "version" to VersionInfo.PLUGIN_VERSION),
+    /** Claude Code: hint shown in autocomplete (e.g., "[symbol-name]") */
+    val argumentHint: String? = null,
+    /** Claude Code: glob patterns for auto-activation (e.g., "*.kt,*.kts") */
+    val paths: String? = null,
+    /** Claude Code: set false to hide from user menu but keep visible to model */
+    val userInvocable: Boolean? = null
 )
 
 /**
@@ -48,6 +54,25 @@ fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "ope
         |
         |${content.instructions}
     """.trimMargin() + "\n"
+}
+
+/**
+ * Claude Code-specific frontmatter — only fields Claude Code recognizes.
+ * Omits license, compatibility, and metadata which are not part of the Claude Code SKILL.md spec.
+ */
+fun formatSkillForClaude(content: SkillContent): String {
+    val sb = StringBuilder()
+    sb.appendLine("---")
+    sb.appendLine("name: ${escapeYaml(content.dirName)}")
+    sb.appendLine("description: ${escapeYaml(content.description)}")
+    content.argumentHint?.let { sb.appendLine("argument-hint: ${escapeYaml(it)}") }
+    content.paths?.let { sb.appendLine("paths: ${escapeYaml(it)}") }
+    content.userInvocable?.let { sb.appendLine("user-invocable: $it") }
+    sb.appendLine("---")
+    sb.appendLine()
+    sb.append(content.instructions)
+    sb.appendLine()
+    return sb.toString()
 }
 
 private val YAML_NEEDS_QUOTING = Regex("[:\\n\\r#{}\\[\\],&*!|>'\"% @`]|^\\s|\\s$")

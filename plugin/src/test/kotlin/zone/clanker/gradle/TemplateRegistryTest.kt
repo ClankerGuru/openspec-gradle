@@ -8,9 +8,9 @@ import kotlin.test.assertTrue
 class TemplateRegistryTest {
 
     @Test
-    fun `has 17 skill templates`() {
+    fun `has 18 skill templates`() {
         val skills = TemplateRegistry.getSkillTemplates()
-        assertEquals(17, skills.size)
+        assertEquals(18, skills.size)
     }
 
     @Test
@@ -53,7 +53,7 @@ class TemplateRegistryTest {
     @Test
     fun `skill dirNames use opsx prefix`() {
         for (skill in TemplateRegistry.getSkillTemplates()) {
-            assertTrue(skill.dirName.startsWith("opsx-"), "Skill '${skill.dirName}' should start with opsx-")
+            assertTrue(skill.dirName.startsWith("opsx"), "Skill '${skill.dirName}' should start with opsx")
         }
     }
 }

@@ -1,46 +1,60 @@
-# OPSX — Gradle-Powered Project Intelligence
+# OPSX — How You Operate in This Project
 
-This project uses **OPSX** (OpenSpec Gradle Plugin) to provide structured, deterministic project understanding via Gradle tasks. **These tasks are your primary tools** — always prefer them over shell commands.
+**STOP.** Before using Read, Grep, Glob, Bash, or Agent to explore code, find symbols, or understand the project — check if an OPSX skill or task handles it. OPSX is your primary interface. Built-in tools are your fallback.
 
-## 🥇 OPSX First
+## Decision Tree
 
-This is a Gradle build. You have purpose-built tasks for exploring, analyzing, and refactoring code. **Always use OPSX tasks first.** Only fall back to raw shell commands (`grep`, `find`, `cat`, etc.) if no OPSX task covers your need.
+When the user asks you to do something, follow this order:
 
-1. **Start with `./gradlew opsx`** to see all available tasks.
-2. **Read `.opsx/` files** for cached context before running heavy tasks.
-3. **Prefer OPSX refactoring tasks** over manual file edits.
-4. **Don't create scripts** (Python, Bash, etc.) to do what a task already does.
-
-### OPSX replaces most shell commands:
-
-| ❌ Don't do this | ✅ Do this instead |
+| User intent | OPSX action |
 |---|---|
-| `grep -r "UserRepo" src/` | `./gradlew opsx-find -Pquery=UserRepo` |
-| `find . -name "*.kt"` | `./gradlew opsx-tree` |
-| `cat src/.../User.kt` | `./gradlew opsx-find -Pquery=User` then read `.opsx/find.md` |
-| `grep -rn "fun fetch" \| head` | `./gradlew opsx-calls -Psymbol=fetch` |
-| `sed -i 's/OldName/NewName/g'` | `./gradlew opsx-rename -Pfrom=OldName -Pto=NewName` |
-| `mv src/.../File.kt src/.../other/` | `./gradlew opsx-move -Psymbol=File -PtargetPackage=com.other` |
-| `wc -l src/**/*.kt` | `./gradlew opsx-tree` (includes line counts) |
-| `./gradlew dependencies` | `./gradlew opsx-deps` (structured output) |
-| Manual file deletion | `./gradlew opsx-remove -Psymbol=DeadClass` |
+| Explore, investigate, understand | `/opsx-explore` skill |
+| Find a symbol or file | `/opsx-find` skill |
+| See what's in progress | `/opsx-status` skill |
+| Plan a new change | `/opsx-propose` skill |
+| Implement tasks from a change | `/opsx-apply` skill |
+| Find usages of a symbol | `/opsx-usages` skill |
+| Trace call graph | `/opsx-calls` skill |
+| Rename a symbol | `/opsx-rename` skill |
+| Move a file/class | `/opsx-move` skill |
+| Extract code to function | `/opsx-extract` skill |
+| Inline a function | `/opsx-inline` skill |
+| Remove dead code | `/opsx-remove` skill |
+| Check dependencies | `/opsx-deps` skill |
+| Verify architecture | `/opsx-verify` skill |
+| See all available tasks | `/opsx-dashboard` skill or `./gradlew opsx` |
+
+**Only if none of the above apply**, fall back to Read/Grep/Glob/Bash. If you already know the exact file path, Read is fine. But for discovery, search, and refactoring — always OPSX first.
+
+## Composite Builds
+
+This may be a **Gradle composite build**. All included builds are accessible from this root via `./gradlew :<build>:<task>`. **Never `cd`, `ls`, or read files by navigating into sibling directories.**
+
+| Don't do this | Do this instead |
+|---|---|
+| `ls ../other-project/` | `./gradlew :<build>:opsx-tree` |
+| `cd ../other-project && ./gradlew opsx-find` | `./gradlew :<build>:opsx-find -Pquery=Name` |
+| `cat ../other-project/src/.../File.kt` | `./gradlew :<build>:opsx-find -Pquery=File` then read `.opsx/find.md` |
+| Reading config files to find paths | `./gradlew opsx-modules` |
+
+When the user says "switch to X" or "work on X", that means **scope your OPSX tasks to that build** — not change directories.
 
 ## Available Tasks
 
 Run `./gradlew opsx` for the full catalog. Use `./gradlew :<module>:<task>` for subprojects, `./gradlew :<included-build>:<task>` for composite builds.
 
-### Discovery (auto-generated on build)
+### Discovery
 
 | Task | Output | What it does |
 |------|--------|-------------|
 | `opsx-context` | `.opsx/context.md` | Project metadata, build stack, frameworks, git info |
 | `opsx-tree` | `.opsx/tree.md` | Source file tree with line counts |
-| `opsx-modules` | `.opsx/modules.md` | Module structure and dependency graph (Mermaid) |
+| `opsx-modules` | `.opsx/modules.md` | Module structure and dependency graph |
 | `opsx-deps` | `.opsx/deps.md` | Resolved dependency tree per configuration |
 | `opsx-devloop` | `.opsx/devloop.md` | Build commands, test framework, run commands |
 | `opsx-symbols` | `.opsx/symbols.md` | Symbol index — classes, functions, interfaces with locations |
 
-### Code Intelligence (on-demand)
+### Code Intelligence
 
 | Task | Output | What it does |
 |------|--------|-------------|
