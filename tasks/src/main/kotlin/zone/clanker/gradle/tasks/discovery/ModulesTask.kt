@@ -35,12 +35,20 @@ abstract class ModulesTask : DefaultTask() {
         val root = project.rootProject
         val subs = root.subprojects.sortedBy { it.path }
 
+        val includedBuilds = project.gradle.includedBuilds.sortedBy { it.name }
+
         if (subs.isEmpty()) {
-            sb.appendLine("# Modules")
-            sb.appendLine()
-            sb.appendLine("Single-module project: `${root.name}`")
-            sb.appendLine()
-            appendModuleDetails(sb, root, root)
+            if (includedBuilds.isNotEmpty()) {
+                sb.appendLine("# Modules — Composite Build: `${root.name}`")
+                sb.appendLine()
+                appendIncludedBuilds(sb, includedBuilds, root)
+            } else {
+                sb.appendLine("# Modules")
+                sb.appendLine()
+                sb.appendLine("Single-module project: `${root.name}`")
+                sb.appendLine()
+                appendModuleDetails(sb, root, root)
+            }
             out.writeText(sb.toString())
             logger.lifecycle("OpenSpec: Generated modules at ${out.relativeTo(root.projectDir)}")
             return
@@ -101,8 +109,33 @@ abstract class ModulesTask : DefaultTask() {
             }
         }
 
+        // Append included builds (for multi-module projects that also have composite builds)
+        if (includedBuilds.isNotEmpty()) {
+            appendIncludedBuilds(sb, includedBuilds, root)
+        }
+
         out.writeText(sb.toString())
         logger.lifecycle("OpenSpec: Generated modules at ${out.relativeTo(root.projectDir)}")
+    }
+
+    private fun appendIncludedBuilds(
+        sb: StringBuilder,
+        builds: List<org.gradle.api.initialization.IncludedBuild>,
+        root: org.gradle.api.Project
+    ) {
+        sb.appendLine("## Included Builds (${builds.size})")
+        sb.appendLine()
+        for (build in builds) {
+            val relPath = try {
+                build.projectDir.relativeTo(root.projectDir).path
+            } catch (_: IllegalArgumentException) {
+                build.projectDir.absolutePath
+            }
+            sb.appendLine("### `${build.name}`")
+            sb.appendLine("- **Path:** `$relPath`")
+            sb.appendLine("- **Tasks:** `./gradlew :${build.name}:opsx-tree`, `:${build.name}:opsx-find`, etc.")
+            sb.appendLine()
+        }
     }
 
     private fun appendModuleDetails(sb: StringBuilder, proj: org.gradle.api.Project, root: org.gradle.api.Project) {

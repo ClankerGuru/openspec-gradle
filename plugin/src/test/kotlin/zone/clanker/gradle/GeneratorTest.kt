@@ -32,16 +32,16 @@ class GeneratorTest {
     // ── SkillGenerator ──────────────────────────────────
 
     @Test
-    fun `SkillGenerator generates 17 skills per tool`() {
+    fun `SkillGenerator generates 18 skills per tool`() {
         val files = SkillGenerator.generate(buildDir, listOf("claude"))
-        assertEquals(17, files.size)
+        assertEquals(18, files.size)
         files.forEach { assertTrue(it.file.exists()) }
     }
 
     @Test
     fun `SkillGenerator generates for multiple tools`() {
         val files = SkillGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(34, files.size) // 17 skills * 2 tools
+        assertEquals(36, files.size) // 18 skills * 2 tools
     }
 
     @Test
@@ -67,6 +67,6 @@ class GeneratorTest {
     @Test
     fun `SkillGenerator produces correct total for 2-tool setup`() {
         val skills = SkillGenerator.generate(buildDir, listOf("claude", "github-copilot"))
-        assertEquals(34, skills.size) // 17 * 2
+        assertEquals(36, skills.size) // 18 * 2
     }
 }

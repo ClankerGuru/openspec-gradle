@@ -94,8 +94,8 @@ class InstructionsGeneratorTest {
     fun `instruction content promotes OPSX first`() {
         val files = InstructionsGenerator.generate(buildDir, listOf("claude"))
         val content = files[0].file.readText()
-        assertTrue(content.contains("OPSX First"))
-        assertTrue(content.contains("Don't create scripts"))
+        assertTrue(content.contains("STOP"))
+        assertTrue(content.contains("Decision Tree"))
     }
 
     @Test

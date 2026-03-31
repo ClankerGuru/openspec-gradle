@@ -38,17 +38,24 @@ class ToolAdapterTest {
     }
 
     @Test
-    fun `Claude skill file has YAML frontmatter with all fields`() {
+    fun `Claude skill file has clean YAML frontmatter without non-standard fields`() {
         val output = ClaudeAdapter.formatSkillFile(sampleSkill)
         assertTrue(output.startsWith("---\n"), "Should start with YAML frontmatter")
         assertTrue(output.contains("name: test-skill"))
         assertTrue(output.contains("description:"))
-        assertTrue(output.contains("license: MIT"))
-        assertTrue(output.contains("compatibility:") && output.contains("Requires Gradle build system."))
-        assertTrue(output.contains("metadata:"))
-        assertTrue(output.contains("author:"))
-        assertTrue(output.contains("generatedBy:"))
+        assertTrue(!output.contains("license:"), "Should NOT contain license (not a Claude Code field)")
+        assertTrue(!output.contains("compatibility:"), "Should NOT contain compatibility (not a Claude Code field)")
+        assertTrue(!output.contains("metadata:"), "Should NOT contain metadata (not a Claude Code field)")
+        assertTrue(!output.contains("generatedBy:"), "Should NOT contain generatedBy (not a Claude Code field)")
         assertTrue(output.contains("Follow these instructions."))
+    }
+
+    @Test
+    fun `Claude skill file includes optional fields when set`() {
+        val skill = sampleSkill.copy(argumentHint = "[symbol-name]", paths = "**/*.kt")
+        val output = ClaudeAdapter.formatSkillFile(skill)
+        assertTrue(output.contains("argument-hint:"))
+        assertTrue(output.contains("paths:"))
     }
 
     // ── GitHub Copilot Adapter ──────────────────────────
@@ -175,17 +182,22 @@ class ToolAdapterTest {
     }
 
     @Test
-    fun `skill file format is consistent across all adapters`() {
+    fun `all adapters produce valid YAML frontmatter with name and description`() {
         for (adapter in ToolAdapterRegistry.all()) {
             val output = adapter.formatSkillFile(sampleSkill)
             assertTrue(output.startsWith("---\n"), "${adapter.toolId} skill should start with YAML frontmatter")
             assertTrue(output.contains("name: test-skill"), "${adapter.toolId} skill should have name")
             assertTrue(output.contains("description:"), "${adapter.toolId} skill should have description")
-            assertTrue(output.contains("license: MIT"), "${adapter.toolId} skill should have license")
-            assertTrue(output.contains("compatibility:"), "${adapter.toolId} skill should have compatibility")
-            assertTrue(output.contains("metadata:"), "${adapter.toolId} skill should have metadata")
-            assertTrue(output.contains("generatedBy:"), "${adapter.toolId} skill should have generatedBy")
             assertTrue(output.contains("Follow these instructions."), "${adapter.toolId} skill should have instructions body")
+        }
+    }
+
+    @Test
+    fun `non-Claude adapters still include full frontmatter`() {
+        for (adapter in ToolAdapterRegistry.all().filter { it.toolId != "claude" }) {
+            val output = adapter.formatSkillFile(sampleSkill)
+            assertTrue(output.contains("license: MIT"), "${adapter.toolId} skill should have license")
+            assertTrue(output.contains("metadata:"), "${adapter.toolId} skill should have metadata")
         }
     }
 }
