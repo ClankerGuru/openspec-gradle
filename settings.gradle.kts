@@ -17,4 +17,12 @@ include(
     ":tasks",
     ":linting",
     ":plugin",
+    // New split modules
+    ":gradle-tasks",
+    ":openspec-tasks",
+    ":monolith-tasks",
+    // New plugin modules
+    ":plugin-gradle",
+    ":plugin-openspec",
+    ":plugin-monolith",
 )
