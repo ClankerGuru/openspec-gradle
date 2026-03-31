@@ -111,7 +111,10 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 extensionRepos.addAll(extension.allEntries())
             }
 
-            // Aggregate: wire root opsx tasks to all included builds
+            // Aggregate: wire root opsx tasks to all included builds.
+            // Only cacheable discovery + lifecycle tasks propagate — they're free when UP-TO-DATE.
+            // Intelligence tasks (find, calls, usages, verify) are parameterized and expensive,
+            // so they stay per-build: use ./gradlew :gort:opsx-find -Psymbol=Foo
             project.afterEvaluate {
                 val aggregate = project.findProperty("zone.clanker.openspec.monolith.aggregate")?.toString() != "false"
                 if (!aggregate) return@afterEvaluate
@@ -119,10 +122,8 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 val tasksToAggregate = listOf(
                     // Lifecycle
                     "opsx-sync", "opsx-clean",
-                    // Discovery
+                    // Discovery (all @CacheableTask — skip when inputs unchanged)
                     "opsx-context", "opsx-tree", "opsx-modules", "opsx-deps", "opsx-devloop", "opsx-symbols",
-                    // Intelligence
-                    "opsx-arch", "opsx-find", "opsx-calls", "opsx-usages", "opsx-verify",
                 )
 
                 for (taskName in tasksToAggregate) {
