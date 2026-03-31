@@ -133,7 +133,7 @@ abstract class ModulesTask : DefaultTask() {
             }
             sb.appendLine("### `${build.name}`")
             sb.appendLine("- **Path:** `$relPath`")
-            sb.appendLine("- **Tasks:** `./gradlew :${build.name}:opsx-tree`, `:${build.name}:opsx-find`, etc.")
+            sb.appendLine("- **Tasks:** `./gradlew :${build.name}:opsx-tree`, `./gradlew :${build.name}:opsx-find`, etc.")
             sb.appendLine()
         }
     }

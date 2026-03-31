@@ -22,7 +22,7 @@ When the user asks you to do something, follow this order:
 | Remove dead code | `/opsx-remove` skill |
 | Check dependencies | `/opsx-deps` skill |
 | Verify architecture | `/opsx-verify` skill |
-| See all available tasks | `/opsx` skill or `./gradlew opsx` |
+| See all available tasks | `/opsx-dashboard` skill or `./gradlew opsx` |
 
 **Only if none of the above apply**, fall back to Read/Grep/Glob/Bash. If you already know the exact file path, Read is fine. But for discovery, search, and refactoring — always OPSX first.
 

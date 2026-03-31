@@ -54,8 +54,8 @@ class ToolAdapterTest {
     fun `Claude skill file includes optional fields when set`() {
         val skill = sampleSkill.copy(argumentHint = "[symbol-name]", paths = "**/*.kt")
         val output = ClaudeAdapter.formatSkillFile(skill)
-        assertTrue(output.contains("argument-hint:"))
-        assertTrue(output.contains("paths:"))
+        assertTrue(output.contains("argument-hint: \"[symbol-name]\""))
+        assertTrue(output.contains("paths: \"**/*.kt\""))
     }
 
     // ── GitHub Copilot Adapter ──────────────────────────
