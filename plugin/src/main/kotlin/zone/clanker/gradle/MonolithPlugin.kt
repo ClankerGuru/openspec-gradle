@@ -123,7 +123,7 @@ abstract class MonolithPlugin : Plugin<Settings> {
                     // Lifecycle
                     "opsx-sync", "opsx-clean",
                     // Discovery (all @CacheableTask — skip when inputs unchanged)
-                    "opsx-context", "opsx-tree", "opsx-modules", "opsx-deps", "opsx-devloop", "opsx-symbols",
+                    "opsx-context", "opsx-tree", "opsx-modules", "opsx-deps", "opsx-devloop", "opsx-symbols", "opsx-arch",
                 )
 
                 for (taskName in tasksToAggregate) {
