@@ -110,6 +110,21 @@ abstract class MonolithPlugin : Plugin<Settings> {
 
                 extensionRepos.addAll(extension.allEntries())
             }
+
+            // Aggregate: wire root opsx-sync to all included builds' opsx-sync
+            project.afterEvaluate {
+                val syncTask = project.tasks.findByName("opsx-sync") ?: return@afterEvaluate
+                val aggregate = project.findProperty("zone.clanker.openspec.monolith.aggregate")?.toString() != "false"
+                if (!aggregate) return@afterEvaluate
+
+                for (build in project.gradle.includedBuilds) {
+                    try {
+                        syncTask.dependsOn(build.task(":opsx-sync"))
+                    } catch (_: Exception) {
+                        // Included build may not have the OpenSpec plugin
+                    }
+                }
+            }
         }
     }
 }
