@@ -1,5 +1,4 @@
-// Convention for nested subprojects (plugin/ and tasks/).
-// Uses kotlin("jvm") WITHOUT java-library to avoid circular dependency.
+// Convention for nested plugin modules.
 plugins {
     kotlin("jvm")
 }

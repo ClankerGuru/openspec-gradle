@@ -11,16 +11,16 @@ include(
     ":arch",
     ":exec",
     ":generators",
+    ":quality",
     ":adapters:copilot",
     ":adapters:claude",
     ":adapters:codex",
     ":adapters:opencode",
-    // Gradle modules
-    ":quality",
-    ":gradle-tasks",
-    ":openspec-tasks",
-    ":monolith-tasks",
-    // Settings plugins (nested)
+    // Tasks
+    ":task:code-intel",
+    ":task:openspec",
+    ":task:monolith",
+    // Plugins
     ":plugin:code-intel",
     ":plugin:openspec",
     ":plugin:monolith",

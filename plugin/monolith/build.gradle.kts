@@ -3,10 +3,11 @@ plugins {
 }
 
 dependencies {
-    api(project(":core"))
-    api(project(":monolith-tasks"))
+    implementation(project(":core"))
+    implementation(files("${rootProject.projectDir}/task/monolith/build/classes/kotlin/main"))
     compileOnly(gradleApi())
-    testImplementation(libs.junit.jupiter)
-    testImplementation(libs.kotlin.test.junit5)
-    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(":task:monolith:compileKotlin")
 }

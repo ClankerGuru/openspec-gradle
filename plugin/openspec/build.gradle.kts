@@ -3,16 +3,17 @@ plugins {
 }
 
 dependencies {
-    api(project(":core"))
-    api(project(":openspec-tasks"))
-    api(project(":generators"))
-    api(project(":adapters:claude"))
-    api(project(":adapters:copilot"))
-    api(project(":adapters:codex"))
-    api(project(":adapters:opencode"))
-    api(project(":exec"))
+    implementation(project(":core"))
+    implementation(project(":generators"))
+    implementation(project(":adapters:claude"))
+    implementation(project(":adapters:copilot"))
+    implementation(project(":adapters:codex"))
+    implementation(project(":adapters:opencode"))
+    implementation(project(":exec"))
+    implementation(files("${rootProject.projectDir}/task/openspec/build/classes/kotlin/main"))
     compileOnly(gradleApi())
-    testImplementation(libs.junit.jupiter)
-    testImplementation(libs.kotlin.test.junit5)
-    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(":task:openspec:compileKotlin")
 }

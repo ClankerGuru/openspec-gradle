@@ -1,10 +1,12 @@
 plugins {
-    id("openspec-module")
+    id("openspec-plugin")
     id("openspec-publish")
 }
 
 dependencies {
-    api(project(":core"))
+    implementation(project(":core"))
+    implementation(project(":generators"))
+    implementation(project(":exec"))
     compileOnly(gradleApi())
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)
