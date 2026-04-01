@@ -59,10 +59,42 @@ The `agents` property accepts: `claude`, `github` (alias for `github-copilot`), 
 
 ### Execution
 
-| Task | Description | Key Flags |
-|---|---|---|
-| `opsx-exec` | Execute an AI agent with prompt, verify, retry | `-Pprompt="..."`, `-Pspec=path/to/task.md`, `-Ptask=code1,code2`, `-Pagent=claude\|copilot\|codex\|opencode`, `-PmaxRetries=3`, `-Pverify=true`, `-Popsx.verify=build\|compile\|off`, `-PexecTimeout=600`, `-Pparallel=true`, `-PparallelThreads=4` |
-| `opsx-dashboard` | Show live execution dashboard | -- |
+| Task | Description |
+|---|---|
+| `opsx-exec` | Execute an AI agent with prompt, verify, retry |
+| `opsx-dashboard` | Show live execution dashboard grouped by proposal |
+
+#### `opsx-exec` flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-Pprompt="..."` | *(required unless -Pspec or -Ptask)* | Inline prompt to send to the agent |
+| `-Pspec=path/to/task.md` | -- | Path to a task spec file (or directory of `task-*.md` files for batch mode) |
+| `-Ptask=code1,code2` | -- | Comma-separated task codes from proposals (e.g., `fvm-1,fvm-2`). Resolves dependencies via DAG scheduler. |
+| `-Pagent=claude` | First from `zone.clanker.opsx.agents`, or auto-detected from PATH | Which agent CLI to use. Values: `claude`, `github`, `github-copilot`, `codex`, `opencode` |
+| `-PmaxRetries=3` | `3` | How many times to retry on failure. Each retry includes error context from the previous attempt. |
+| `-Pverify=true` | `true` | Whether to run the build gate after the agent completes. Set `false` to skip verification. |
+| `-Popsx.verify=build` | `build` | Which verification mode to use. Values: `build` (full build), `compile` (compileKotlin only), `off` (no verification) |
+| `-PexecTimeout=600` | `600` (10 min) | Timeout in seconds for each agent invocation. Agent is killed after this. |
+| `-PsyncBefore=true` | `true` | Whether to run `opsx-sync` before each attempt to give the agent fresh context |
+| `-Pparallel=true` | `false` | Enable parallel execution of independent tasks within the same dependency level |
+| `-PparallelThreads=4` | `4` | Thread pool size for parallel execution |
+
+**Examples:**
+
+```bash
+# Inline prompt
+./gradlew opsx-exec -Pprompt="Fix the auth bug" -Pagent=claude
+
+# Task chain from a proposal (parallel, 120s timeout)
+./gradlew opsx-exec -Ptask=fvm-1,fvm-3,fvm-4,fvm-5,fvm-6 -Pparallel=true -PexecTimeout=120
+
+# Batch mode from spec files
+./gradlew opsx-exec -Pspec=opsx/changes/my-change/
+
+# No verification, no sync
+./gradlew opsx-exec -Pprompt="Add a README" -Pverify=false -PsyncBefore=false
+```
 
 ### Sync and Lifecycle
 

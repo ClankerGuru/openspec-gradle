@@ -137,6 +137,51 @@ zone.clanker.opsx.agents=claude
 
 Combine agents: `github,claude`. Set `none` to disable.
 
+## Configuration Reference
+
+All properties go in `gradle.properties` (per-project or `~/.gradle/gradle.properties` for global).
+
+### opsx — Workflow & Execution
+
+| Property | Default | Values | Description |
+|----------|---------|--------|-------------|
+| `zone.clanker.opsx.agents` | `github` | `github`, `claude`, `codex`, `opencode`, comma-separated, or `none` | Which AI agents to generate instruction/skill files for. `github` is an alias for `github-copilot`. Set `none` to disable generation and clean existing files. Combine multiple: `github,claude`. |
+| `zone.clanker.opsx.verifyCommand` | `assemble` | `assemble`, `build`, `compileKotlin`, or any Gradle task name | The Gradle task to run as a build gate when marking tasks done via `opsx-{code} --set=done`. If this task fails, the status stays IN_PROGRESS. |
+
+### wrkx — Workspace Management
+
+| Property | Default | Values | Description |
+|----------|---------|--------|-------------|
+| `zone.clanker.wrkx.configFile` | `workspace.json` in project root | Any path | Path to the JSON file that lists repos to include as composite builds. Falls back to `monolith.json` if `workspace.json` doesn't exist. |
+| `zone.clanker.wrkx.repoDir` | Parent directory (`../`) | Any directory path | Base directory where repos are cloned to. `wrkx-clone` puts repos here; `includeBuild()` reads from here. |
+| `zone.clanker.wrkx.aggregate` | `true` | `true`, `false` | Whether to wire aggregate tasks (e.g., root `srcx-context` triggers `srcx-context` in all included builds). Set `false` if you only want tasks in the root project. |
+
+### Deprecated (still work as fallback)
+
+| Old Property | New Property |
+|-------------|-------------|
+| `zone.clanker.openspec.agents` | `zone.clanker.opsx.agents` |
+| `zone.clanker.openspec.verifyCommand` | `zone.clanker.opsx.verifyCommand` |
+| `zone.clanker.openspec.monolithFile` | `zone.clanker.wrkx.configFile` |
+| `zone.clanker.openspec.monolithDir` | `zone.clanker.wrkx.repoDir` |
+| `zone.clanker.openspec.monolith.aggregate` | `zone.clanker.wrkx.aggregate` |
+
+### Example `gradle.properties`
+
+```properties
+# Generate skills for Claude and Copilot
+zone.clanker.opsx.agents=claude,github
+
+# Use 'build' (compile + test) as the verification gate
+zone.clanker.opsx.verifyCommand=build
+
+# Repos are cloned to ~/dev/workspace/
+zone.clanker.wrkx.repoDir=/Users/me/dev/workspace
+
+# Don't aggregate tasks across included builds
+zone.clanker.wrkx.aggregate=false
+```
+
 ## Version
 
 The project version is derived from git tags (`git describe --tags --abbrev=0`). The runtime version is available via `VersionInfo.PLUGIN_VERSION` from `lib/core`, which reads from a `openspec-gradle.properties` resource file stamped at build time.
