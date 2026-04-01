@@ -42,7 +42,7 @@ jobs:
           path: '**/build/test-results/test/*.xml'
           reporter: java-junit
 
-      - name: Verify plugin applies cleanly
+      - name: Verify plugins apply cleanly
         run: |
           ./gradlew publishToMavenLocal
           PLUGIN_VERSION=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')
@@ -62,11 +62,13 @@ jobs:
               }
           }
           plugins {
-              id("zone.clanker.gradle") version "$PLUGIN_VERSION"
+              id("zone.clanker.srcx") version "$PLUGIN_VERSION"
+              id("zone.clanker.opsx") version "$PLUGIN_VERSION"
           }
           rootProject.name = "verify"
           SETTINGS
           echo "" > build.gradle.kts
-          gradle opsx-sync
-          echo "✅ Plugin applies and generates files"
-          find .github -type f | sort
+          gradle srcx-context opsx-sync
+          echo "✅ Plugins apply and generate files"
+          find .claude -type f | sort || true
+          find .github -type f | sort || true
