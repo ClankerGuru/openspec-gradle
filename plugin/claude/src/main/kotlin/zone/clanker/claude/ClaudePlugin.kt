@@ -80,8 +80,8 @@ class ClaudePlugin : Plugin<Settings> {
                     if (project.hasProperty("prompt")) {
                         task.prompt.set(project.property("prompt").toString())
                     }
-                    if (project.hasProperty("model")) {
-                        task.model.set(project.property("model").toString())
+                    if (project.hasProperty("claudeModel")) {
+                        task.model.set(project.property("claudeModel").toString())
                     }
                     if (project.hasProperty("outputFormat")) {
                         task.outputFormat.set(project.property("outputFormat").toString())

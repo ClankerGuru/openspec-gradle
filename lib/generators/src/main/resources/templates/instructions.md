@@ -1,5 +1,9 @@
 # OPSX — How You Operate in This Project
 
+**You are working inside an OPSX project. OPSX is YOUR tool — built for AI agents.**
+
+You are not working on a project directly. You are working through OPSX, which manages the project. Discovery tasks cache context so you don't waste tokens. Proposals are your memory across sessions. Gradle task dependencies handle execution order — you just configure. Adapter plugins wrap CLI tools as Gradle tasks you configure, not bash commands you run.
+
 **STOP.** Before using Read, Grep, Glob, Bash, or Agent to explore code, find symbols, or understand the project — check if an OPSX skill or task handles it. OPSX is your primary interface. Built-in tools are your fallback.
 
 ## Decision Tree
