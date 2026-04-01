@@ -62,10 +62,32 @@ object SourceDiscovery {
         return dirs
     }
 
+    private val SOURCE_EXTENSIONS = setOf("kt", "java", "kts")
+    private val BUILD_FILE_NAMES = setOf(
+        "build.gradle.kts", "settings.gradle.kts", "gradle.properties",
+        "libs.versions.toml", "monolith.json"
+    )
+
     fun collectSourceFiles(dirs: List<File>): List<File> =
         dirs.flatMap { dir ->
-            dir.walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "java") }.toList()
+            dir.walkTopDown().filter { it.isFile && it.extension in SOURCE_EXTENSIONS }.toList()
         }.distinctBy { it.absolutePath }
+
+    /**
+     * Collect all indexable files — source code + build scripts + config.
+     * Used by opsx-find and opsx-symbols to search across everything.
+     */
+    fun collectAllFiles(dirs: List<File>, projectDirs: List<File> = emptyList()): List<File> {
+        val sourceFiles = collectSourceFiles(dirs)
+        val buildFiles = projectDirs.flatMap { dir ->
+            dir.walkTopDown()
+                .filter { it.isFile }
+                .filter { it.name in BUILD_FILE_NAMES || it.extension in setOf("toml", "properties") }
+                .filter { !it.path.contains("/build/") && !it.path.contains("/.gradle/") }
+                .toList()
+        }
+        return (sourceFiles + buildFiles).distinctBy { it.absolutePath }
+    }
 
     fun resolveProjects(project: Project, module: String?): List<Project> {
         val root = project.rootProject

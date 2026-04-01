@@ -166,10 +166,10 @@ object TaskLifecycle {
 
     /**
      * Resolve the verify command from project properties.
-     * Checks `zone.clanker.openspec.verifyCommand`, defaults to "build".
+     * Checks `zone.clanker.openspec.verifyCommand`, defaults to "assemble".
      */
     fun resolveVerifyCommand(project: Project): String {
-        return project.findProperty("zone.clanker.openspec.verifyCommand")?.toString() ?: "build"
+        return project.findProperty("zone.clanker.openspec.verifyCommand")?.toString() ?: "assemble"
     }
 
     /**
