@@ -8,7 +8,6 @@ import zone.clanker.gradle.core.RepoEntry
 import zone.clanker.gradle.tasks.execution.CheckoutTask
 import zone.clanker.gradle.tasks.execution.CloneTask
 import zone.clanker.gradle.tasks.execution.PullTask
-import zone.clanker.gradle.tasks.execution.BatchEditTask
 import zone.clanker.gradle.tasks.execution.ReposTask
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
@@ -118,12 +117,6 @@ abstract class MonolithPlugin : Plugin<Settings> {
                 }
 
                 extensionRepos.addAll(extension.allEntries())
-            }
-
-            project.tasks.register("opsx-batch", BatchEditTask::class.java).configure {
-                if (project.hasProperty("find")) find.set(project.property("find").toString())
-                if (project.hasProperty("replace")) replace.set(project.property("replace").toString())
-                if (project.hasProperty("glob")) glob.set(project.property("glob").toString())
             }
 
             // Aggregate: wire root opsx tasks to all included builds.
