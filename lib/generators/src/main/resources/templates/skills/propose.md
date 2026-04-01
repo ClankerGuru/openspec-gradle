@@ -29,9 +29,40 @@ When questions are needed:
 
 **When to stop:** When you can write the proposal without assuming anything important. If you'd have to guess — you haven't talked enough.
 
+## Grooming: Split Big Work
+
+Think of a proposal as a **ticket**, not an epic. During the conversation, watch for signs that the work is too big:
+
+- More than ~10 tasks forming
+- Multiple unrelated concerns bundled together
+- "Oh, but we also need to..." keeps happening
+- Different phases that could ship independently
+
+When this happens, **suggest splitting:**
+
+> "This is turning into 3 separate concerns: A, B, and C. Should we make them separate proposals? B depends on A, C is independent."
+
+Use **AskUserQuestion** to let the user decide how to split. Then create multiple proposals with dependencies between them:
+
+```yaml
+# proposal B's .opsx.yaml
+dependencies:
+  - proposal-a
+```
+
+A group of related proposals is like an **epic**. Each proposal is a **ticket** — small enough to implement in one session, specific enough to hand to another agent.
+
+**Signs a proposal is the right size:**
+- 3-8 tasks
+- One clear goal
+- Can be verified independently
+- Takes one session to implement
+
+**This is grooming.** The conversation IS the grooming session. Take it seriously — splitting well prevents rework.
+
 ## Writing Artifacts
 
-Once aligned, create proposal.md, design.md, tasks.md.
+Once aligned (and split if needed), create proposal.md, design.md, tasks.md.
 
 The proposal IS the documentation. Future sessions read it to understand the domain. Write it for the next agent, not just for execution.
 
