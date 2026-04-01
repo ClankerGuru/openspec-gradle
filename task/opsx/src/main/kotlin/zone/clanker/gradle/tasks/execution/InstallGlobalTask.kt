@@ -40,7 +40,7 @@ abstract class InstallGlobalTask : DefaultTask() {
         // Ensure default property exists in gradle.properties
         val gradleProps = File(gradleHome, "gradle.properties")
         val propsText = if (gradleProps.exists()) gradleProps.readText() else ""
-        if (!propsText.contains("zone.clanker.opsx.agents") && !propsText.contains("zone.clanker.openspec.agents")) {
+        if (!propsText.contains("zone.clanker.opsx.agents")) {
             gradleProps.appendText("\n# OpenSpec: comma-separated agents (github, claude, none)\nzone.clanker.opsx.agents=github\n")
             logger.lifecycle("OpenSpec: Added zone.clanker.opsx.agents=github to ${gradleProps.absolutePath}")
         }

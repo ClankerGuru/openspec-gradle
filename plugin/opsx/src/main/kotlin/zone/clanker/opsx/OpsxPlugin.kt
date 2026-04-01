@@ -67,15 +67,10 @@ class OpsxPlugin : Plugin<Settings> {
             val extension = project.extensions.create("openspec", OpenSpecExtension::class.java)
 
             val toolsProvider = project.provider {
-                // Try new name first, fall back to old name
-                val newProp = "zone.clanker.opsx.agents"
-                val oldProp = "zone.clanker.openspec.agents"
-                val agentsProp = project.findProperty(newProp)?.toString()?.trim()
-                    ?: project.findProperty(oldProp)?.toString()?.trim()
-                    ?: readGradleProperty(File(project.projectDir, "gradle.properties"), newProp)
-                    ?: readGradleProperty(File(project.projectDir, "gradle.properties"), oldProp)
-                    ?: readGradleProperty(File(System.getProperty("user.home"), ".gradle/gradle.properties"), newProp)
-                    ?: readGradleProperty(File(System.getProperty("user.home"), ".gradle/gradle.properties"), oldProp)
+                val prop = "zone.clanker.opsx.agents"
+                val agentsProp = project.findProperty(prop)?.toString()?.trim()
+                    ?: readGradleProperty(File(project.projectDir, "gradle.properties"), prop)
+                    ?: readGradleProperty(File(System.getProperty("user.home"), ".gradle/gradle.properties"), prop)
                     ?: "github"
                 parseAgents(agentsProp)
             }
@@ -135,9 +130,7 @@ class OpsxPlugin : Plugin<Settings> {
                     project.intProperty("parallelThreads")?.let { task.parallelThreads.set(it) }
                     val verifyProp = when {
                         project.hasProperty("opsx.verify") -> project.property("opsx.verify").toString().trim().lowercase()
-                        // Try new name first, fall back to old name
                         project.hasProperty("zone.clanker.opsx.verifyCommand") -> project.property("zone.clanker.opsx.verifyCommand").toString().trim().lowercase()
-                        project.hasProperty("zone.clanker.openspec.verifyCommand") -> project.property("zone.clanker.openspec.verifyCommand").toString().trim().lowercase()
                         else -> null
                     }
                     if (verifyProp != null) task.verifyMode.set(verifyProp)

@@ -31,7 +31,7 @@ abstract class CloneTask : DefaultTask() {
 
     init {
         group = "opsx"
-        description = "[tool] Clone repositories from monolith.json via gh. " +
+        description = "[tool] Clone repositories from workspace.json via gh. " +
             "Use when: Setting up a workspace or syncing missing repos. " +
             "Params: -PdryRun=false to clone, -PreposDir=path."
     }

@@ -152,19 +152,9 @@ All properties go in `gradle.properties` (per-project or `~/.gradle/gradle.prope
 
 | Property | Default | Values | Description |
 |----------|---------|--------|-------------|
-| `zone.clanker.wrkx.configFile` | `workspace.json` in project root | Any path | Path to the JSON file that lists repos to include as composite builds. Falls back to `monolith.json` if `workspace.json` doesn't exist. |
+| `zone.clanker.wrkx.configFile` | `workspace.json` in project root | Any path | Path to the JSON file that lists repos to include as composite builds. |
 | `zone.clanker.wrkx.repoDir` | Parent directory (`../`) | Any directory path | Base directory where repos are cloned to. `wrkx-clone` puts repos here; `includeBuild()` reads from here. |
 | `zone.clanker.wrkx.aggregate` | `true` | `true`, `false` | Whether to wire aggregate tasks (e.g., root `srcx-context` triggers `srcx-context` in all included builds). Set `false` if you only want tasks in the root project. |
-
-### Deprecated (still work as fallback)
-
-| Old Property | New Property |
-|-------------|-------------|
-| `zone.clanker.openspec.agents` | `zone.clanker.opsx.agents` |
-| `zone.clanker.openspec.verifyCommand` | `zone.clanker.opsx.verifyCommand` |
-| `zone.clanker.openspec.monolithFile` | `zone.clanker.wrkx.configFile` |
-| `zone.clanker.openspec.monolithDir` | `zone.clanker.wrkx.repoDir` |
-| `zone.clanker.openspec.monolith.aggregate` | `zone.clanker.wrkx.aggregate` |
 
 ### Example `gradle.properties`
 

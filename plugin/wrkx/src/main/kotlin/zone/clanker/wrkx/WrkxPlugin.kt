@@ -23,25 +23,16 @@ abstract class WrkxPlugin : Plugin<Settings> {
         val home = System.getProperty("user.home")
         val defaultDir = "$home/dev/monolith"
 
-        // Try new name first, fall back to old name
-        val rawPath = settings.providers.gradleProperty("zone.clanker.wrkx.configFile")
-            .orNull
-            ?: settings.providers.gradleProperty("zone.clanker.openspec.monolithFile")
-                .orNull
+        val rawPath = settings.providers.gradleProperty("zone.clanker.wrkx.configFile").orNull
         val configFile = if (rawPath != null) {
             File(rawPath.replace("~", home))
         } else {
-            // workspace.json first, fall back to monolith.json
-            val workspaceFile = File("$defaultDir/workspace.json")
-            if (workspaceFile.exists()) workspaceFile else File("$defaultDir/monolith.json")
+            File("$defaultDir/workspace.json")
         }
         val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
 
-        // Try new name first, fall back to old name
-        val monolithDir = (settings.providers.gradleProperty("zone.clanker.wrkx.repoDir")
-            .orNull
-            ?: settings.providers.gradleProperty("zone.clanker.openspec.monolithDir")
-                .orNull)?.let { File(it.replace("~", home)) } ?: File(defaultDir)
+        val monolithDir = settings.providers.gradleProperty("zone.clanker.wrkx.repoDir")
+            .orNull?.let { File(it.replace("~", home)) } ?: File(defaultDir)
 
         val extension = settings.extensions.create("wrkx", WrkxExtension::class.java)
         extension.baseDir = monolithDir
@@ -133,21 +124,14 @@ abstract class WrkxPlugin : Plugin<Settings> {
                 val home = System.getProperty("user.home")
                 it.reposDir.convention(
                     project.provider {
-                        // Try new name first, fall back to old name
                         project.findProperty("zone.clanker.wrkx.repoDir")?.toString()
-                            ?: project.findProperty("zone.clanker.openspec.monolithDir")?.toString()
                             ?: "$home/dev/monolith"
                     }
                 )
                 it.reposFile.convention(
                     project.provider {
-                        // Try new name first, fall back to old name
                         project.findProperty("zone.clanker.wrkx.configFile")?.toString()
-                            ?: project.findProperty("zone.clanker.openspec.monolithFile")?.toString()
-                            ?: run {
-                                val ws = "$home/dev/monolith/workspace.json"
-                                if (java.io.File(ws).exists()) ws else "$home/dev/monolith/monolith.json"
-                            }
+                            ?: "$home/dev/monolith/workspace.json"
                     }
                 )
                 if (project.hasProperty("dryRun")) {
@@ -168,9 +152,7 @@ abstract class WrkxPlugin : Plugin<Settings> {
             // Intelligence tasks (find, calls, usages, verify) are parameterized and expensive,
             // so they stay per-build: use ./gradlew :gort:srcx-find -Psymbol=Foo
             project.afterEvaluate {
-                // Try new name first, fall back to old name
-                val aggregate = (project.findProperty("zone.clanker.wrkx.aggregate")?.toString()
-                    ?: project.findProperty("zone.clanker.openspec.monolith.aggregate")?.toString()) != "false"
+                val aggregate = project.findProperty("zone.clanker.wrkx.aggregate")?.toString() != "false"
                 if (!aggregate) return@afterEvaluate
 
                 val tasksToAggregate = listOf(

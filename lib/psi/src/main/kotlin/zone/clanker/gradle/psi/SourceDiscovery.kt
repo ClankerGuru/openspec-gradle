@@ -65,7 +65,7 @@ object SourceDiscovery {
     private val SOURCE_EXTENSIONS = setOf("kt", "java", "kts")
     private val BUILD_FILE_NAMES = setOf(
         "build.gradle.kts", "settings.gradle.kts", "gradle.properties",
-        "libs.versions.toml", "monolith.json"
+        "libs.versions.toml", "workspace.json"
     )
 
     fun collectSourceFiles(dirs: List<File>): List<File> =

@@ -166,12 +166,10 @@ object TaskLifecycle {
 
     /**
      * Resolve the verify command from project properties.
-     * Checks `zone.clanker.opsx.verifyCommand`, falls back to `zone.clanker.openspec.verifyCommand`, defaults to "assemble".
+     * Checks `zone.clanker.opsx.verifyCommand`, defaults to "assemble".
      */
     fun resolveVerifyCommand(project: Project): String {
-        // Try new name first, fall back to old name
         return project.findProperty("zone.clanker.opsx.verifyCommand")?.toString()
-            ?: project.findProperty("zone.clanker.openspec.verifyCommand")?.toString()
             ?: "assemble"
     }
 
@@ -179,9 +177,7 @@ object TaskLifecycle {
      * Resolve configured agent tools from project properties.
      */
     private fun resolveTools(project: Project): List<String> {
-        // Try new name first, fall back to old name
         val raw = project.findProperty("zone.clanker.opsx.agents")?.toString()
-            ?: project.findProperty("zone.clanker.openspec.agents")?.toString()
             ?: return emptyList()
         return raw.split(",").map { it.trim() }.filter { it.isNotBlank() && it != "none" }
     }

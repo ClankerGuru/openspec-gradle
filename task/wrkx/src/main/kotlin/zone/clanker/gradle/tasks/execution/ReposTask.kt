@@ -29,7 +29,7 @@ abstract class ReposTask : DefaultTask() {
         out.parentFile.mkdirs()
 
         if (extensionRepos.isEmpty()) {
-            out.writeText("# Monolith Repos\n\nNo repos configured. Add repos to `monolith.json`.\n")
+            out.writeText("# Workspace Repos\n\nNo repos configured. Add repos to `workspace.json`.\n")
             logger.lifecycle("OpenSpec: No repos configured.")
             return
         }
