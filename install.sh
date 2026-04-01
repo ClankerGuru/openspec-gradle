@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-VERSION="${OPENSPEC_VERSION:-0.33.0}"
+VERSION="${OPENSPEC_VERSION:-0.34.3}"
 INIT_DIR="${GRADLE_USER_HOME:-$HOME/.gradle}/init.d"
 PROPS_FILE="${GRADLE_USER_HOME:-$HOME/.gradle}/gradle.properties"
 
@@ -73,6 +73,7 @@ initscript {
         classpath("zone.clanker:openspec-adapter-copilot:$VERSION")
         classpath("zone.clanker:openspec-adapter-codex:$VERSION")
         classpath("zone.clanker:openspec-adapter-opencode:$VERSION")
+        classpath("zone.clanker:quality:$VERSION")
     }
 }
 beforeSettings { apply<zone.clanker.opsx.OpsxPlugin>() }

@@ -87,6 +87,7 @@ abstract class InstallGlobalTask : DefaultTask() {
             |        classpath("zone.clanker:opsx-tasks:$version")
             |        classpath("zone.clanker:wrkx-tasks:$version")
             |        classpath("zone.clanker:plugin-claude:$version")
+            |        classpath("zone.clanker:quality:$version")
             |    }
             |}
             |
