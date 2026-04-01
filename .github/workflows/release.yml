@@ -67,7 +67,18 @@ jobs:
       - name: Attach JARs to release
         run: |
           shopt -s nullglob
-          jars=(plugin/*/build/libs/*.jar lib/*/build/libs/*.jar task/*/build/libs/*.jar lib/adapters/*/build/libs/*.jar)
+          # Collect main JARs only (no -javadoc, -sources) and rename to avoid collisions
+          mkdir -p /tmp/release-jars
+          for jar in plugin/*/build/libs/*.jar lib/*/build/libs/*.jar task/*/build/libs/*.jar lib/adapters/*/build/libs/*.jar; do
+            name=$(basename "$jar")
+            # Skip javadoc and sources JARs
+            [[ "$name" == *-javadoc.jar ]] && continue
+            [[ "$name" == *-sources.jar ]] && continue
+            # Prefix with module type to avoid plugin-opsx vs task-opsx collision
+            module=$(echo "$jar" | cut -d/ -f1-2 | tr '/' '-')
+            cp "$jar" "/tmp/release-jars/${module}-${name}"
+          done
+          jars=(/tmp/release-jars/*.jar)
           if [ ${#jars[@]} -eq 0 ]; then
             echo "::error::No JARs found to attach — build may have failed silently"
             exit 1
