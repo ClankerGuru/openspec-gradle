@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-    api(project(":generators"))
+    api(project(":lib:generators"))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)
     testRuntimeOnly(libs.junit.platform.launcher)

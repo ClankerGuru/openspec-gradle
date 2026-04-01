@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":core"))
+    implementation(project(":lib:core"))
     implementation(files("${rootProject.projectDir}/task/monolith/build/classes/kotlin/main"))
     compileOnly(gradleApi())
 }

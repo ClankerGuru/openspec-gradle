@@ -5,7 +5,7 @@ plugins {
 }
 
 dependencies {
-    api(project(":core"))
+    api(project(":lib:core"))
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)

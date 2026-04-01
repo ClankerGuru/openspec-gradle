@@ -4,9 +4,9 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":core"))
-    implementation(project(":generators"))
-    implementation(project(":exec"))
+    implementation(project(":lib:core"))
+    implementation(project(":lib:generators"))
+    implementation(project(":lib:exec"))
     compileOnly(gradleApi())
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)

@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":core"))
+    implementation(project(":lib:core"))
     compileOnly(gradleApi())
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)

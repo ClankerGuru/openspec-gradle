@@ -5,17 +5,17 @@ pluginManagement {
 rootProject.name = "openspec-gradle"
 
 include(
-    // Pure JVM libraries
-    ":core",
-    ":psi",
-    ":arch",
-    ":exec",
-    ":generators",
-    ":quality",
-    ":adapters:copilot",
-    ":adapters:claude",
-    ":adapters:codex",
-    ":adapters:opencode",
+    // Libraries
+    ":lib:core",
+    ":lib:psi",
+    ":lib:arch",
+    ":lib:exec",
+    ":lib:generators",
+    ":lib:quality",
+    ":lib:adapters:copilot",
+    ":lib:adapters:claude",
+    ":lib:adapters:codex",
+    ":lib:adapters:opencode",
     // Tasks
     ":task:code-intel",
     ":task:openspec",

@@ -3,13 +3,13 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":core"))
-    implementation(project(":generators"))
-    implementation(project(":adapters:claude"))
-    implementation(project(":adapters:copilot"))
-    implementation(project(":adapters:codex"))
-    implementation(project(":adapters:opencode"))
-    implementation(project(":exec"))
+    implementation(project(":lib:core"))
+    implementation(project(":lib:generators"))
+    implementation(project(":lib:adapters:claude"))
+    implementation(project(":lib:adapters:copilot"))
+    implementation(project(":lib:adapters:codex"))
+    implementation(project(":lib:adapters:opencode"))
+    implementation(project(":lib:exec"))
     implementation(files("${rootProject.projectDir}/task/openspec/build/classes/kotlin/main"))
     compileOnly(gradleApi())
 }
