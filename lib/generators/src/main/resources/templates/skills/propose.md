@@ -26,6 +26,13 @@ Tasks must be **specific enough that an agent can execute them without guessing.
 
 If the user provides reference material (CLI help, API docs, spec files), the tasks must cover EVERY item in that material — not a summary.
 
+**Every proposal MUST include test tasks.** No implementation is complete without tests:
+- **Unit tests** for every new class — verify inputs produce correct outputs
+- **Integration tests** for tasks that run external processes — verify they execute and return expected results
+- **Edge case tests** — missing required properties fail with clear errors, optional properties are truly optional
+- Test tasks should be separate from implementation tasks, with clear dependencies
+- A task without a corresponding test task is incomplete
+
 ---
 
 **Input**: The argument after `the opsx-propose skill` is the change name (kebab-case), OR a description of what the user wants to build.
