@@ -138,6 +138,8 @@ class OpenSpecPlugin : Plugin<Settings> {
                 }
             })
 
+            project.tasks.register("opsx-dashboard", DashboardTask::class.java)
+
             project.tasks.register("opsx-clean", CleanTask::class.java).configure(object : org.gradle.api.Action<CleanTask> {
                 override fun execute(task: CleanTask) { task.tools.set(extension.tools) }
             })

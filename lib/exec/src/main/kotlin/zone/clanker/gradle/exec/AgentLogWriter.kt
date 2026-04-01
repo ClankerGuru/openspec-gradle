@@ -109,6 +109,64 @@ object AgentLogWriter {
     }
 
     /**
+     * Write an answer to `.opsx/exec/answers/{taskCode}.md`.
+     * Called by the parent/dashboard when responding to an agent's question.
+     */
+    fun writeAnswer(execDir: File, taskCode: String, answer: String) {
+        val answersDir = File(execDir, "answers")
+        answersDir.mkdirs()
+        File(answersDir, "$taskCode.md").writeText(answer)
+    }
+
+    /**
+     * Poll for an answer file every [intervalMs] milliseconds.
+     * Blocks the calling thread until an answer is found or [timeoutMs] elapses.
+     * Returns the answer text, or `null` on timeout.
+     *
+     * When an answer is received, the question section is cleared from [logFile].
+     */
+    fun pollForAnswer(
+        execDir: File,
+        taskCode: String,
+        logFile: File,
+        intervalMs: Long = 10_000L,
+        timeoutMs: Long = Long.MAX_VALUE,
+    ): String? {
+        val deadline = if (timeoutMs == Long.MAX_VALUE) Long.MAX_VALUE
+            else System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            val answer = readAnswer(execDir, taskCode)
+            if (answer != null) {
+                clearQuestion(logFile)
+                step(logFile, "Answer received")
+                return answer
+            }
+            val sleepTime = minOf(intervalMs, deadline - System.currentTimeMillis())
+            if (sleepTime <= 0) break
+            Thread.sleep(sleepTime)
+        }
+        return null
+    }
+
+    /**
+     * Remove the `## Question` section from the agent's log file.
+     * Called after an answer has been received.
+     */
+    fun clearQuestion(logFile: File) {
+        val content = logFile.readText()
+        val questionIdx = content.indexOf("## Question")
+        if (questionIdx < 0) return
+
+        val nextSection = content.indexOf("\n## ", questionIdx + 1)
+        val cleaned = if (nextSection >= 0) {
+            content.substring(0, questionIdx).trimEnd() + "\n" + content.substring(nextSection)
+        } else {
+            content.substring(0, questionIdx).trimEnd() + "\n"
+        }
+        logFile.writeText(cleaned)
+    }
+
+    /**
      * Mark the task as complete: update Status, write elapsed time,
      * and append the last 50 lines of output to ## Output.
      */

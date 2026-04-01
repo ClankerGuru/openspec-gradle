@@ -4,9 +4,11 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
+import zone.clanker.gradle.exec.AgentLogWriter
 import zone.clanker.gradle.exec.AgentRunner
 import zone.clanker.gradle.exec.BuildVerifier
 import zone.clanker.gradle.exec.CycleDetector
+import zone.clanker.gradle.exec.DashboardReader
 import zone.clanker.gradle.exec.SpecParser
 import zone.clanker.gradle.exec.ExecStatus
 import zone.clanker.gradle.exec.LevelScheduler
@@ -162,6 +164,8 @@ abstract class ExecTask : DefaultTask() {
 
         val cycleDetector = CycleDetector()
         val attempts = mutableListOf<AgentRunner.AgentResult>()
+        val startMs = System.currentTimeMillis()
+        val logFile = AgentLogWriter.create(outputDir, taskId, resolvedAgent, taskSpec.title)
 
         for (attempt in 1..resolvedMaxRetries) {
             taskLog.lifecycle("")
@@ -182,6 +186,7 @@ abstract class ExecTask : DefaultTask() {
             }
 
             // Run agent
+            warnIfTooManyAgents(outputDir)
             taskLog.progress("Spawning $resolvedAgent...")
             val result = AgentRunner.run(
                 agent = resolvedAgent,
@@ -189,6 +194,7 @@ abstract class ExecTask : DefaultTask() {
                 workingDir = projectDir,
                 timeoutSeconds = resolvedTimeout,
                 onOutput = taskLog::output,
+                logFile = logFile,
             )
             attempts.add(result)
 
@@ -206,6 +212,7 @@ abstract class ExecTask : DefaultTask() {
                     if (cycleDetector.recordAndCheck(errorText)) {
                         val matchAttempt = cycleDetector.findCycleMatch(errorText)
                         logger.error("⚠ Cycle detected: attempt $attempt matches attempt $matchAttempt")
+                        AgentLogWriter.complete(logFile, false, System.currentTimeMillis() - startMs, attempts.last().stdout)
                         writeSummary(outputDir, timestamp, taskId, attempts, "CYCLE_DETECTED")
                         return false
                     }
@@ -220,6 +227,7 @@ abstract class ExecTask : DefaultTask() {
                 logger.lifecycle(verifyResult.message)
                 if (verifyResult.success) {
                     logger.lifecycle("✓ Verification passed")
+                    AgentLogWriter.complete(logFile, true, System.currentTimeMillis() - startMs, attempts.last().stdout)
                     writeSummary(outputDir, timestamp, taskId, attempts, "SUCCESS")
                     return true
                 } else {
@@ -229,6 +237,7 @@ abstract class ExecTask : DefaultTask() {
                         if (cycleDetector.recordAndCheck(verifyOutput)) {
                             val matchAttempt = cycleDetector.findCycleMatch(verifyOutput)
                             logger.error("⚠ Cycle detected: attempt $attempt matches attempt $matchAttempt")
+                            AgentLogWriter.complete(logFile, false, System.currentTimeMillis() - startMs, attempts.last().stdout)
                             writeSummary(outputDir, timestamp, taskId, attempts, "CYCLE_DETECTED")
                             return false
                         }
@@ -237,11 +246,13 @@ abstract class ExecTask : DefaultTask() {
                 }
             } else {
                 // No verify — success if agent exited 0
+                AgentLogWriter.complete(logFile, true, System.currentTimeMillis() - startMs, attempts.last().stdout)
                 writeSummary(outputDir, timestamp, taskId, attempts, "SUCCESS")
                 return true
             }
         }
 
+        AgentLogWriter.complete(logFile, false, System.currentTimeMillis() - startMs, attempts.lastOrNull()?.stdout ?: "")
         writeSummary(outputDir, timestamp, taskId, attempts, "FAILED")
         return false
     }
@@ -449,8 +460,10 @@ abstract class ExecTask : DefaultTask() {
         if (File(projectDir, ".opsx/tree.md").exists()) contextFiles.add(".opsx/tree.md")
 
         val previousLogs = extractAttemptLogs(tasksFile, code)
+        val logFile = AgentLogWriter.create(outputDir, code, resolvedAgent, taskItem.description)
 
         var success = false
+        var lastStdout = ""
         for (attempt in 1..resolvedRetries) {
             taskStatusMap[code] = TaskExecStatus(
                 status = TaskExecStatus.RUNNING,
@@ -463,6 +476,7 @@ abstract class ExecTask : DefaultTask() {
             writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
                 verifyModeStr = verifyModeStr)
 
+            warnIfTooManyAgents(outputDir)
             taskLog.progress("Attempt $attempt/$resolvedRetries (agent: $resolvedAgent)")
 
             val prompt = buildTaskPrompt(
@@ -827,5 +841,16 @@ abstract class ExecTask : DefaultTask() {
     private fun getLastVerifyOutput(): String {
         val verifyFile = File(project.projectDir, ".opsx/verify.md")
         return if (verifyFile.exists()) verifyFile.readText() else ""
+    }
+
+    private fun warnIfTooManyAgents(execDir: File) {
+        val runningCount = DashboardReader.scan(execDir).count { it.status == "running" }
+        if (runningCount > MAX_RECOMMENDED_AGENTS) {
+            logger.warn("\u26a0 $runningCount agents running (recommended max: $MAX_RECOMMENDED_AGENTS)")
+        }
+    }
+
+    companion object {
+        private const val MAX_RECOMMENDED_AGENTS = 10
     }
 }
