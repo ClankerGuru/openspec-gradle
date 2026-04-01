@@ -49,26 +49,30 @@ jobs:
           mkdir -p /tmp/verify-project
           cd /tmp/verify-project
           cat > settings.gradle.kts << SETTINGS
-          pluginManagement {
-              repositories {
-                  mavenLocal()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositories {
-                  mavenLocal()
-                  mavenCentral()
-              }
-          }
-          plugins {
-              id("zone.clanker.srcx") version "$PLUGIN_VERSION"
-              id("zone.clanker.opsx") version "$PLUGIN_VERSION"
-          }
           rootProject.name = "verify"
           SETTINGS
           echo "" > build.gradle.kts
-          gradle srcx-context opsx-sync
+          mkdir -p gradle/init.d
+          cat > gradle/init.d/test.init.gradle.kts << INIT
+          initscript {
+              repositories {
+                  mavenLocal()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+              dependencies {
+                  classpath("zone.clanker:plugin-srcx:$PLUGIN_VERSION")
+                  classpath("zone.clanker:plugin-opsx:$PLUGIN_VERSION")
+                  classpath("zone.clanker:srcx-tasks:$PLUGIN_VERSION")
+                  classpath("zone.clanker:opsx-tasks:$PLUGIN_VERSION")
+              }
+          }
+          beforeSettings {
+              apply<zone.clanker.srcx.SrcxPlugin>()
+              apply<zone.clanker.opsx.OpsxPlugin>()
+          }
+          INIT
+          gradle --init-script gradle/init.d/test.init.gradle.kts srcx-context opsx-sync
           echo "✅ Plugins apply and generate files"
           find .claude -type f | sort || true
           find .github -type f | sort || true
