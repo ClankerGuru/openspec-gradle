@@ -83,7 +83,10 @@ object SourceDiscovery {
             dir.walkTopDown()
                 .filter { it.isFile }
                 .filter { it.name in BUILD_FILE_NAMES || it.extension in setOf("toml", "properties") }
-                .filter { !it.path.contains("/build/") && !it.path.contains("/.gradle/") }
+                .filter { f ->
+                    val sep = File.separator
+                    !f.path.contains("${sep}build${sep}") && !f.path.contains("${sep}.gradle${sep}")
+                }
                 .toList()
         }
         return (sourceFiles + buildFiles).distinctBy { it.absolutePath }

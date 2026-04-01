@@ -78,7 +78,8 @@ abstract class RemoveTask : DefaultTask() {
         val filePath = sourceFile.get()
         val file = rootDir.resolve(filePath).canonicalFile
         // Block path traversal outside project root
-        if (!file.canonicalPath.startsWith(rootDir.canonicalPath)) {
+        if (!file.canonicalPath.startsWith(rootDir.canonicalPath + File.separator) &&
+            file.canonicalPath != rootDir.canonicalPath) {
             val msg = "# Remove\n\n> Path `$filePath` resolves outside the project root. Refusing to proceed.\n"
             out.writeText(msg)
             logger.lifecycle(msg.trimEnd())

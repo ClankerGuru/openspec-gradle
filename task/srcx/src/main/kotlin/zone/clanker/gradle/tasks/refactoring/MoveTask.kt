@@ -35,6 +35,9 @@ abstract class MoveTask : DefaultTask() {
             "Chain: Run srcx-find first to check impact."
     }
 
+    @get:Input @get:Optional
+    abstract val force: Property<Boolean>
+
     @TaskAction
     fun move() {
         val out = outputFile.get().asFile
@@ -43,6 +46,16 @@ abstract class MoveTask : DefaultTask() {
         val name = symbol.get()
         val newPkg = targetPackage.get()
         val preview = dryRun.getOrElse(false)
+
+        // Validate targetPackage matches a valid Java/Kotlin package pattern
+        val packagePattern = Regex("^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)*$")
+        if (!packagePattern.matches(newPkg)) {
+            val msg = "# Move\n\n> Invalid target package `$newPkg`. " +
+                "Package names must contain only alphanumeric characters, underscores, and dots.\n"
+            out.writeText(msg)
+            logger.lifecycle(msg.trimEnd())
+            return
+        }
 
         val projects = SourceDiscovery.resolveProjects(project, module.orNull)
         val srcDirs = SourceDiscovery.discoverSourceDirs(projects)
@@ -96,6 +109,23 @@ abstract class MoveTask : DefaultTask() {
         val srcDir = srcDirs.firstOrNull { sourceFile.startsWith(it) } ?: sourceFile.parentFile
         val newRelPath = newPkg.replace('.', File.separatorChar) + File.separator + sourceFile.name
         val newFile = File(srcDir, newRelPath)
+
+        // Verify the target file resolves under the source root (prevent path traversal)
+        if (!newFile.canonicalPath.startsWith(srcDir.canonicalPath + File.separator)) {
+            val msg = "# Move\n\n> Target path escapes source root. Refusing to proceed.\n"
+            out.writeText(msg)
+            logger.lifecycle(msg.trimEnd())
+            return
+        }
+
+        // Check target file doesn't already exist (unless force flag is set)
+        if (newFile.exists() && !force.getOrElse(false)) {
+            val msg = "# Move\n\n> Target file already exists: `${newFile.relativeTo(rootDir).path}`. " +
+                "Use `-Pforce=true` to overwrite.\n"
+            out.writeText(msg)
+            logger.lifecycle(msg.trimEnd())
+            return
+        }
 
         sb.appendLine("## File Move")
         sb.appendLine()

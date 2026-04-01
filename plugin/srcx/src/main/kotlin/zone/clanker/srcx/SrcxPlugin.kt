@@ -199,6 +199,7 @@ class SrcxPlugin : Plugin<Settings> {
                     if (project.hasProperty("symbol")) task.symbol.set(project.property("symbol").toString())
                     if (project.hasProperty("targetPackage")) task.targetPackage.set(project.property("targetPackage").toString())
                     if (project.hasProperty("dryRun")) task.dryRun.set(project.property("dryRun").toString().lowercase() == "true")
+                    if (project.hasProperty("force")) task.force.set(project.property("force").toString().lowercase() == "true")
                     if (project.hasProperty("module")) task.module.set(project.property("module").toString())
                     task.outputFile.set(project.layout.projectDirectory.file(".opsx/move.md"))
                 }

@@ -69,14 +69,12 @@ object TaskLifecycle {
         }
 
         // 4. Post-completion sync: regenerate task skill files (status icons update)
-        if (!skipGate) {
-            runPostCompletionSync(project, logger)
-        }
+        // Always run sync — even when skipGate is true, skill files must reflect updated status
+        runPostCompletionSync(project, logger)
 
         // 5. Reconcile remaining tasks against current codebase
-        if (!skipGate) {
-            runReconciliation(project, logger)
-        }
+        // Always run reconciliation — stale references matter regardless of gate
+        runReconciliation(project, logger)
 
         val marker = if (!verified) " (unverified)" else ""
         logger.lifecycle("✅ $code → DONE$marker: ${taskItem.description}")
@@ -169,7 +167,8 @@ object TaskLifecycle {
      * Checks `zone.clanker.opsx.verifyCommand`, defaults to "assemble".
      */
     fun resolveVerifyCommand(project: Project): String {
-        return project.findProperty("zone.clanker.opsx.verifyCommand")?.toString()
+        return project.findProperty("zone.clanker.opsx.verifyCommand")
+            ?.toString()?.takeIf { it.isNotBlank() }
             ?: "assemble"
     }
 
