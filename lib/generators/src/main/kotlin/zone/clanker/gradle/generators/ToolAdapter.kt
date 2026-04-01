@@ -61,6 +61,7 @@ fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "ope
  * Omits license, compatibility, and metadata which are not part of the Claude Code SKILL.md spec.
  */
 fun formatSkillForClaude(content: SkillContent): String {
+    val version = content.metadata["version"] ?: VersionInfo.PLUGIN_VERSION
     val sb = StringBuilder()
     sb.appendLine("---")
     sb.appendLine("name: ${escapeYaml(content.dirName)}")
@@ -69,6 +70,8 @@ fun formatSkillForClaude(content: SkillContent): String {
     content.paths?.let { sb.appendLine("paths: ${escapeYaml(it)}") }
     content.userInvocable?.let { sb.appendLine("user-invocable: $it") }
     sb.appendLine("---")
+    sb.appendLine()
+    sb.appendLine("<!-- openspec-gradle:$version -->")
     sb.appendLine()
     sb.append(content.instructions)
     sb.appendLine()
