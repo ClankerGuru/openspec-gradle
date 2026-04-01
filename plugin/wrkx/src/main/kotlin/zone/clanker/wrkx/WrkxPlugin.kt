@@ -21,7 +21,7 @@ abstract class WrkxPlugin : Plugin<Settings> {
             settings.extensions.findByName("monolith") != null) return
 
         val home = System.getProperty("user.home")
-        val defaultDir = "$home/dev/monolith"
+        val defaultDir = settings.settingsDir.absolutePath
 
         val rawPath = settings.providers.gradleProperty("zone.clanker.wrkx.configFile").orNull
         val configFile = if (rawPath != null) {
@@ -125,13 +125,13 @@ abstract class WrkxPlugin : Plugin<Settings> {
                 it.reposDir.convention(
                     project.provider {
                         project.findProperty("zone.clanker.wrkx.repoDir")?.toString()
-                            ?: "$home/dev/monolith"
+                            ?: project.rootDir.absolutePath
                     }
                 )
                 it.reposFile.convention(
                     project.provider {
                         project.findProperty("zone.clanker.wrkx.configFile")?.toString()
-                            ?: "$home/dev/monolith/workspace.json"
+                            ?: "${project.rootDir.absolutePath}/workspace.json"
                     }
                 )
                 if (project.hasProperty("dryRun")) {

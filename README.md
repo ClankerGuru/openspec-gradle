@@ -67,33 +67,92 @@ settings.gradle.kts
 
 ## Quick Start
 
+### One-line install (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ClankerGuru/openspec-gradle/main/install.sh | bash
+```
+
+This installs separate init scripts to `~/.gradle/init.d/`:
+
+```
+~/.gradle/init.d/
+  00-wrkx.init.gradle.kts     ← workspace management (loads first)
+  01-srcx.init.gradle.kts     ← source intelligence
+  02-opsx.init.gradle.kts     ← workflow engine + linting
+  03-claude.init.gradle.kts   ← Claude Code CLI wrapper
+```
+
+Every Gradle project on your machine gets all tasks automatically. No per-project config needed.
+
+To pin a specific version:
+
+```bash
+OPENSPEC_VERSION=0.34.0 curl -fsSL .../install.sh | bash
+```
+
+### Per-project install (alternative)
+
 Add to `settings.gradle.kts`:
 
 ```kotlin
 plugins {
+    id("zone.clanker.wrkx") version "<version>"
     id("zone.clanker.srcx") version "<version>"
+    id("zone.clanker.opsx") version "<version>"
 }
 ```
 
-Then run:
+### Install via Gradle task
 
-```bash
-./gradlew opsx-sync
-```
-
-Your agent now has project context and skills.
-
-### Global install (all projects, no per-project config)
+If you already have at least `plugin-opsx` applied:
 
 ```bash
 ./gradlew opsx-install
 ```
 
-This writes an init script to `~/.gradle/init.d/openspec-init.gradle.kts`. Every Gradle project on your machine gets OPSX automatically.
+### Additional agent plugins
 
-### Init script with all plugins
+Install only the agents you use:
 
-To use all available plugins, create `~/.gradle/init.d/openspec-init.gradle.kts`:
+```bash
+# Each writes its own init script — mix and match
+./gradlew copilot-install   # → 03-copilot.init.gradle.kts
+./gradlew codex-install     # → 03-codex.init.gradle.kts
+./gradlew opencode-install  # → 03-opencode.init.gradle.kts
+```
+
+### Init scripts explained
+
+Scripts load in numeric order. Each plugin is independent — delete any init script to remove that plugin:
+
+| File | Loads | Why this order |
+|------|-------|----------------|
+| `00-wrkx` | `WrkxPlugin` | Clones repos, wires `includeBuild()` — must run during settings eval first |
+| `01-srcx` | `SrcxPlugin` | Registers discovery/analysis tasks on the projects wrkx set up |
+| `02-opsx` | `OpsxPlugin` | Workflow + exec — `opsx-sync` depends on srcx tasks. Also applies linting. |
+| `03-claude` | `ClaudePlugin` | Agent wrapper, independent |
+| `03-copilot` | `CopilotPlugin` | Agent wrapper, independent |
+| `03-codex` | `CodexPlugin` | Agent wrapper, independent |
+| `03-opencode` | `OpencodePlugin` | Agent wrapper, independent |
+
+### Multiple workspaces
+
+Each workspace is just a directory with a `workspace.json`. The plugin reads the config from the project root — no global path. You can have as many workspaces as you want:
+
+```
+~/dev/work/workspace.json        ← work projects
+~/dev/personal/workspace.json    ← personal projects
+~/dev/oss/workspace.json         ← open source
+```
+
+### Uninstall
+
+```bash
+rm ~/.gradle/init.d/0*-*.init.gradle.kts
+```
+
+### Manual init script
 
 ```kotlin
 initscript {
