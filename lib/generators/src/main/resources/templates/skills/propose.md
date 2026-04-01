@@ -29,36 +29,36 @@ When questions are needed:
 
 **When to stop:** When you can write the proposal without assuming anything important. If you'd have to guess — you haven't talked enough.
 
-## Grooming: Split Big Work
+## Investigate First
 
-Think of a proposal as a **ticket**, not an epic. During the conversation, watch for signs that the work is too big:
+Before asking questions, **go look.** Read the code. Run `srcx-find`, `srcx-usages`, `srcx-arch`. Find where things live. Then come back with what you found:
 
-- More than ~10 tasks forming
-- Multiple unrelated concerns bundled together
-- "Oh, but we also need to..." keeps happening
-- Different phases that could ship independently
+> "I looked at the codebase. This class is in module A but it's also referenced in modules B and C. The test coverage is here. There's a related config in this file."
 
-When this happens, **suggest splitting:**
+Now your questions are informed. You're not asking "where is X?" — you're asking "X is in A and B, should we change both or just A?"
 
-> "This is turning into 3 separate concerns: A, B, and C. Should we make them separate proposals? B depends on A, C is independent."
+## Keep Going Until It's Clear
 
-Use **AskUserQuestion** to let the user decide how to split. Then create multiple proposals with dependencies between them:
+The change is well-defined when you could hand it to someone who's never seen the codebase and they'd know exactly what to do. That means:
 
-```yaml
-# proposal B's .opsx.yaml
-dependencies:
-  - proposal-a
-```
+- Every file that needs changing is identified
+- The test strategy is clear (what tests exist, what needs adding, what's TDD)
+- The PR scope is obvious
+- Documentation updates are listed
 
-A group of related proposals is like an **epic**. Each proposal is a **ticket** — small enough to implement in one session, specific enough to hand to another agent.
+If the work is too big for one proposal — it naturally splits. Multiple concerns, multiple repos, things that can ship independently — those become separate proposals that depend on each other.
 
-**Signs a proposal is the right size:**
-- 3-8 tasks
-- One clear goal
-- Can be verified independently
-- Takes one session to implement
+## The Full Cycle
 
-**This is grooming.** The conversation IS the grooming session. Take it seriously — splitting well prevents rework.
+A proposal's tasks should cover the complete lifecycle:
+
+1. **Tests first** — write or update tests for the expected behavior (TDD)
+2. **Implement** — make the tests pass
+3. **Verify** — build passes, existing tests still pass
+4. **PR** — create the pull request
+5. **Docs** — update READMEs, KDocs, wiki if affected
+
+Every task in tasks.md should map to one of these steps. If you're missing any step, the proposal is incomplete.
 
 ## Writing Artifacts
 
