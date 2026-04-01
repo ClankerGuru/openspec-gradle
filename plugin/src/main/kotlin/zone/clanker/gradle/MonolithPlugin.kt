@@ -16,6 +16,8 @@ import java.io.File
 abstract class MonolithPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
+        if (settings.extensions.findByName("monolith") != null) return
+
         val home = System.getProperty("user.home")
         val defaultDir = "$home/dev/monolith"
 

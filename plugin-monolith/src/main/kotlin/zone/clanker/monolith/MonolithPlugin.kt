@@ -16,6 +16,9 @@ import java.io.File
 abstract class MonolithPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
+        // Guard against double-application (init script + settings.gradle.kts)
+        if (settings.extensions.findByName("monolith") != null) return
+
         val home = System.getProperty("user.home")
         val defaultDir = "$home/dev/monolith"
 
@@ -60,6 +63,11 @@ abstract class MonolithPlugin : Plugin<Settings> {
                     }
                 }
             }
+        }
+
+        // Auto-include enabled repos if monolith.json exists
+        if (entries.isNotEmpty()) {
+            extension.includeEnabled()
         }
 
         settings.gradle.rootProject {
