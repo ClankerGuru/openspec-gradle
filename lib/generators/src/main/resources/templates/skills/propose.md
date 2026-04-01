@@ -9,6 +9,25 @@ When ready to implement, run the opsx-apply skill
 
 ---
 
+## Planning Philosophy
+
+**Spend more time planning.** A good proposal prevents rework. A bad proposal wastes tokens on failed execution.
+
+Before writing artifacts:
+- **Ask questions** if the request is vague — don't assume
+- **Enumerate exhaustively** — if wrapping a CLI, list every flag; if modifying files, list every file
+- **Call out gotchas** — "This will be tricky because X", "Watch out for Y"
+- **Show key decisions** — "These are the 3 things that matter most"
+- **Warn about risks** — "If we do A, then B might break"
+
+The proposal IS the documentation. Future sessions read it to understand the domain. Write it for the next agent, not just for execution.
+
+Tasks must be **specific enough that an agent can execute them without guessing.** Not "create the module" but "create file X with content Y, add Z to settings.gradle.kts, verify with ./gradlew :module:compileKotlin."
+
+If the user provides reference material (CLI help, API docs, spec files), the tasks must cover EVERY item in that material — not a summary.
+
+---
+
 **Input**: The argument after `the opsx-propose skill` is the change name (kebab-case), OR a description of what the user wants to build.
 
 **Steps**
