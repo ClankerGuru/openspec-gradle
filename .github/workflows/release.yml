@@ -68,10 +68,11 @@ jobs:
         run: |
           shopt -s nullglob
           jars=(plugin/*/build/libs/*.jar lib/*/build/libs/*.jar task/*/build/libs/*.jar lib/adapters/*/build/libs/*.jar)
-          if [ ${#jars[@]} -gt 0 ]; then
-            gh release upload "${{ github.event.release.tag_name }}" "${jars[@]}" --clobber
-          else
-            echo "No JARs found to attach"
+          if [ ${#jars[@]} -eq 0 ]; then
+            echo "::error::No JARs found to attach — build may have failed silently"
+            exit 1
           fi
+          echo "Attaching ${#jars[@]} JARs to release"
+          gh release upload "${{ github.event.release.tag_name }}" "${jars[@]}" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
