@@ -22,10 +22,19 @@ object AgentRunner {
      * Build the CLI command for the given agent.
      */
     fun buildCommand(agent: String, prompt: String): List<String> = when (agent) {
-        "github", "github-copilot" -> listOf("copilot", "-p", prompt, "--yolo", "-s")
-        "claude" -> listOf("claude", "-p", prompt, "--dangerously-skip-permissions")
-        "codex" -> listOf("codex", "exec", prompt, "--full-auto")
-        "opencode" -> listOf("opencode", "run", prompt)
+        "github", "github-copilot" -> listOf(
+            "copilot", "-p", prompt, "--yolo", "-s", "--no-ask-user"
+        )
+        "claude" -> listOf(
+            "claude", "-p", prompt, "--dangerously-skip-permissions",
+            "--output-format", "text", "--verbose"
+        )
+        "codex" -> listOf(
+            "codex", "exec", prompt, "--full-auto"
+        )
+        "opencode" -> listOf(
+            "opencode", "run", "--prompt", prompt
+        )
         else -> throw IllegalArgumentException("Unknown agent: $agent")
     }
 
@@ -67,9 +76,12 @@ object AgentRunner {
         onOutput: (String) -> Unit = {},
     ): AgentResult {
         val command = buildCommand(agent, prompt)
+        val devNull = if (System.getProperty("os.name").lowercase().contains("win"))
+            File("NUL") else File("/dev/null")
         val process = ProcessBuilder(command)
             .directory(workingDir)
             .redirectErrorStream(false)
+            .redirectInput(devNull)
             .also { pb ->
                 environment.forEach { (k, v) -> pb.environment()[k] = v }
             }
