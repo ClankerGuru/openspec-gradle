@@ -1,34 +1,18 @@
 package zone.clanker.opencode
 
-import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.TaskAction
-import java.io.File
 
-/** Base: runs an opencode CLI command with stdin from /dev/null and live output streaming. */
-abstract class OpencodeBaseTask : DefaultTask() {
-    init { group = "opencode" }
-
-    protected fun exec(cmd: List<String>) {
-        val devNull = File("/dev/null")
-        logger.lifecycle("opencode> ${cmd.joinToString(" ")}")
-        val process = ProcessBuilder(cmd)
-            .directory(project.rootDir)
-            .redirectInput(devNull)
-            .redirectErrorStream(false)
-            .start()
-        val out = Thread { process.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) } }
-        val err = Thread { process.errorStream.bufferedReader().forEachLine { logger.error(it) } }
-        out.start(); err.start()
-        val exit = process.waitFor()
-        out.join(5000); err.join(5000)
-        if (exit != 0) throw GradleException("opencode exited with code $exit")
+/** Base: runs an opencode CLI command via Gradle's Exec with stdin from /dev/null. */
+abstract class OpencodeBaseTask : Exec() {
+    init {
+        group = "opencode"
+        standardInput = java.io.InputStream.nullInputStream()
     }
 }
 
@@ -52,7 +36,7 @@ abstract class OpencodeRunTask : OpencodeBaseTask() {
 
     init { description = "Run opencode with a message (1:1 CLI wrapper)" }
 
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("opencode", "run", prompt.get())
         opencodeModel.orNull?.let { cmd += listOf("--model", it) }
         agent.orNull?.let { cmd += listOf("--agent", it) }
@@ -68,7 +52,8 @@ abstract class OpencodeRunTask : OpencodeBaseTask() {
         session.orNull?.let { cmd += listOf("--session", it) }
         if (fork.getOrElse(false)) cmd += "--fork"
         opencodePrompt.orNull?.let { cmd += listOf("--prompt", it) }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
@@ -77,11 +62,12 @@ abstract class OpencodeResumeTask : OpencodeBaseTask() {
     @get:Input @get:Optional abstract val session: Property<String>
     @get:Input @get:Optional abstract val fork: Property<Boolean>
     init { description = "Resume an opencode conversation" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("opencode")
         session.orNull?.let { cmd += listOf("--session", it) } ?: run { cmd += "--continue" }
         if (fork.getOrElse(false)) cmd += "--fork"
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
@@ -89,24 +75,31 @@ abstract class OpencodeResumeTask : OpencodeBaseTask() {
 abstract class OpencodePrTask : OpencodeBaseTask() {
     @get:Input abstract val pr: Property<String>
     init { description = "Fetch and checkout a GitHub PR branch, then run opencode" }
-    @TaskAction fun run() = exec(listOf("opencode", "pr", pr.get()))
+    override fun exec() {
+        commandLine("opencode", "pr", pr.get())
+        super.exec()
+    }
 }
 
 /** opencode attach <url> */
 abstract class OpencodeAttachTask : OpencodeBaseTask() {
     @get:Input abstract val url: Property<String>
     init { description = "Attach to a running opencode server" }
-    @TaskAction fun run() = exec(listOf("opencode", "attach", url.get()))
+    override fun exec() {
+        commandLine("opencode", "attach", url.get())
+        super.exec()
+    }
 }
 
 /** opencode upgrade [target] */
 abstract class OpencodeUpgradeTask : OpencodeBaseTask() {
     @get:Input @get:Optional abstract val target: Property<String>
     init { description = "Upgrade opencode to the latest or a specific version" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("opencode", "upgrade")
         target.orNull?.let { cmd += it }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
@@ -114,10 +107,11 @@ abstract class OpencodeUpgradeTask : OpencodeBaseTask() {
 abstract class OpencodeModelsTask : OpencodeBaseTask() {
     @get:Input @get:Optional abstract val provider: Property<String>
     init { description = "List all available models" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("opencode", "models")
         provider.orNull?.let { cmd += it }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
@@ -125,10 +119,11 @@ abstract class OpencodeModelsTask : OpencodeBaseTask() {
 abstract class OpencodeExportTask : OpencodeBaseTask() {
     @get:Input @get:Optional abstract val sessionId: Property<String>
     init { description = "Export session data as JSON" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("opencode", "export")
         sessionId.orNull?.let { cmd += it }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
@@ -136,14 +131,20 @@ abstract class OpencodeExportTask : OpencodeBaseTask() {
 abstract class OpencodeImportTask : OpencodeBaseTask() {
     @get:Input abstract val importFile: Property<String>
     init { description = "Import session data from JSON file or URL" }
-    @TaskAction fun run() = exec(listOf("opencode", "import", importFile.get()))
+    override fun exec() {
+        commandLine("opencode", "import", importFile.get())
+        super.exec()
+    }
 }
 
 /** opencode plugin <module> */
 abstract class OpencodePluginInstallTask : OpencodeBaseTask() {
     @get:Input abstract val module: Property<String>
     init { description = "Install plugin and update config" }
-    @TaskAction fun run() = exec(listOf("opencode", "plugin", module.get()))
+    override fun exec() {
+        commandLine("opencode", "plugin", module.get())
+        super.exec()
+    }
 }
 
 /** opencode serve — with server options */
@@ -154,14 +155,15 @@ abstract class OpencodeServeTask : OpencodeBaseTask() {
     @get:Input @get:Optional abstract val mdnsDomain: Property<String>
     @get:Input @get:Optional abstract val cors: ListProperty<String>
     init { description = "Start a headless opencode server" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("opencode", "serve")
         port.orNull?.let { cmd += listOf("--port", it.toString()) }
         hostname.orNull?.let { cmd += listOf("--hostname", it) }
         if (mdns.getOrElse(false)) cmd += "--mdns"
         mdnsDomain.orNull?.let { cmd += listOf("--mdns-domain", it) }
         cors.getOrElse(emptyList()).forEach { cmd += listOf("--cors", it) }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
@@ -170,72 +172,97 @@ abstract class OpencodeWebTask : OpencodeBaseTask() {
     @get:Input @get:Optional abstract val port: Property<Int>
     @get:Input @get:Optional abstract val hostname: Property<String>
     init { description = "Start opencode server and open web interface" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("opencode", "web")
         port.orNull?.let { cmd += listOf("--port", it.toString()) }
         hostname.orNull?.let { cmd += listOf("--hostname", it) }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
 abstract class OpencodeCompletionTask : OpencodeBaseTask() {
-    init { description = "Generate shell completion script" }
-    @TaskAction fun run() = exec(listOf("opencode", "completion"))
+    init {
+        description = "Generate shell completion script"
+        commandLine("opencode", "completion")
+    }
 }
 
 abstract class OpencodeAcpTask : OpencodeBaseTask() {
-    init { description = "Start ACP (Agent Client Protocol) server" }
-    @TaskAction fun run() = exec(listOf("opencode", "acp"))
+    init {
+        description = "Start ACP (Agent Client Protocol) server"
+        commandLine("opencode", "acp")
+    }
 }
 
 abstract class OpencodeMcpTask : OpencodeBaseTask() {
-    init { description = "Manage MCP (Model Context Protocol) servers" }
-    @TaskAction fun run() = exec(listOf("opencode", "mcp"))
+    init {
+        description = "Manage MCP (Model Context Protocol) servers"
+        commandLine("opencode", "mcp")
+    }
 }
 
 abstract class OpencodeDebugTask : OpencodeBaseTask() {
-    init { description = "Debugging and troubleshooting tools" }
-    @TaskAction fun run() = exec(listOf("opencode", "debug"))
+    init {
+        description = "Debugging and troubleshooting tools"
+        commandLine("opencode", "debug")
+    }
 }
 
 abstract class OpencodeProvidersTask : OpencodeBaseTask() {
-    init { description = "Manage AI providers and credentials" }
-    @TaskAction fun run() = exec(listOf("opencode", "providers"))
+    init {
+        description = "Manage AI providers and credentials"
+        commandLine("opencode", "providers")
+    }
 }
 
 abstract class OpencodeAgentTask : OpencodeBaseTask() {
-    init { description = "Manage agents" }
-    @TaskAction fun run() = exec(listOf("opencode", "agent"))
+    init {
+        description = "Manage agents"
+        commandLine("opencode", "agent")
+    }
 }
 
 abstract class OpencodeUninstallTask : OpencodeBaseTask() {
-    init { description = "Uninstall opencode and remove all related files" }
-    @TaskAction fun run() = exec(listOf("opencode", "uninstall"))
+    init {
+        description = "Uninstall opencode and remove all related files"
+        commandLine("opencode", "uninstall")
+    }
 }
 
 abstract class OpencodeStatsTask : OpencodeBaseTask() {
-    init { description = "Show token usage and cost statistics" }
-    @TaskAction fun run() = exec(listOf("opencode", "stats"))
+    init {
+        description = "Show token usage and cost statistics"
+        commandLine("opencode", "stats")
+    }
 }
 
 abstract class OpencodeGithubTask : OpencodeBaseTask() {
-    init { description = "Manage GitHub agent" }
-    @TaskAction fun run() = exec(listOf("opencode", "github"))
+    init {
+        description = "Manage GitHub agent"
+        commandLine("opencode", "github")
+    }
 }
 
 abstract class OpencodeSessionTask : OpencodeBaseTask() {
-    init { description = "Manage sessions" }
-    @TaskAction fun run() = exec(listOf("opencode", "session"))
+    init {
+        description = "Manage sessions"
+        commandLine("opencode", "session")
+    }
 }
 
 abstract class OpencodeDbTask : OpencodeBaseTask() {
-    init { description = "Database tools" }
-    @TaskAction fun run() = exec(listOf("opencode", "db"))
+    init {
+        description = "Database tools"
+        commandLine("opencode", "db")
+    }
 }
 
 abstract class OpencodeVersionTask : OpencodeBaseTask() {
-    init { description = "Show opencode version" }
-    @TaskAction fun run() = exec(listOf("opencode", "--version"))
+    init {
+        description = "Show opencode version"
+        commandLine("opencode", "--version")
+    }
 }
 
 /** Settings plugin: zone.clanker.opencode — registers all tasks. */

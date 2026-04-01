@@ -490,7 +490,9 @@ abstract class ExecTask : DefaultTask() {
                 workingDir = projectDir,
                 timeoutSeconds = resolvedTimeout,
                 onOutput = taskLog::output,
+                logFile = logFile,
             )
+            lastStdout = result.stdout
 
             // Update status with PID from the completed process
             taskStatusMap[code] = TaskExecStatus(
@@ -549,6 +551,7 @@ abstract class ExecTask : DefaultTask() {
                     project, tasksFile, code, freshItem,
                     skipGate = false, verifyCommand, logger
                 )
+                AgentLogWriter.complete(logFile, true, durationMs, lastStdout)
                 taskLog.success("$code — DONE")
                 taskStatusMap[code] = TaskExecStatus(
                     status = TaskExecStatus.DONE,
@@ -558,6 +561,7 @@ abstract class ExecTask : DefaultTask() {
                     level = levelIdx,
                 )
             } catch (e: GradleException) {
+                AgentLogWriter.complete(logFile, false, durationMs, lastStdout)
                 TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
                 taskLog.failure("$code — BLOCKED (verification failed: ${e.message})")
                 taskStatusMap[code] = TaskExecStatus(
@@ -575,6 +579,7 @@ abstract class ExecTask : DefaultTask() {
                 System.clearProperty("opsx.exec.automated")
             }
         } else {
+            AgentLogWriter.complete(logFile, false, durationMs, lastStdout)
             TaskWriter.updateStatus(tasksFile, code, TaskStatus.BLOCKED)
             taskLog.failure("$code — BLOCKED after all retries")
             taskStatusMap[code] = TaskExecStatus(

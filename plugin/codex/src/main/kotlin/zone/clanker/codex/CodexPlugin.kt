@@ -1,34 +1,19 @@
 package zone.clanker.codex
 
-import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.TaskAction
-import java.io.File
 
 /** Base: runs a codex CLI command with stdin from /dev/null and live output streaming. */
-abstract class CodexBaseTask : DefaultTask() {
-    init { group = "codex" }
-
-    protected fun exec(cmd: List<String>) {
-        val devNull = File("/dev/null")
-        logger.lifecycle("codex> ${cmd.joinToString(" ")}")
-        val process = ProcessBuilder(cmd)
-            .directory(project.rootDir)
-            .redirectInput(devNull)
-            .redirectErrorStream(false)
-            .start()
-        val out = Thread { process.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) } }
-        val err = Thread { process.errorStream.bufferedReader().forEachLine { logger.error(it) } }
-        out.start(); err.start()
-        val exit = process.waitFor()
-        out.join(5000); err.join(5000)
-        if (exit != 0) throw GradleException("codex exited with code $exit")
+abstract class CodexBaseTask : Exec() {
+    init {
+        group = "codex"
+        workingDir = project.rootDir
+        standardInput = java.io.InputStream.nullInputStream()
     }
 }
 
@@ -55,7 +40,7 @@ abstract class CodexExecTask : CodexBaseTask() {
 
     init { description = "Run Codex CLI in non-interactive exec mode (1:1 CLI wrapper)" }
 
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("codex", "exec", prompt.get())
         codexModel.orNull?.let { cmd += listOf("--model", it) }
         config.getOrElse(emptyList()).forEach { cmd += listOf("--config", it) }
@@ -76,24 +61,28 @@ abstract class CodexExecTask : CodexBaseTask() {
         cd.orNull?.let { cmd += listOf("--cd", it) }
         if (search.getOrElse(false)) cmd += "--search"
         addDir.getOrElse(emptyList()).forEach { cmd += listOf("--add-dir", it) }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
 /** codex review — non-interactive code review. */
 abstract class CodexReviewTask : CodexBaseTask() {
-    init { description = "Run a Codex code review non-interactively" }
-    @TaskAction fun run() = exec(listOf("codex", "review"))
+    init {
+        description = "Run a Codex code review non-interactively"
+        commandLine("codex", "review")
+    }
 }
 
 /** codex resume — resume a previous session. */
 abstract class CodexResumeTask : CodexBaseTask() {
     @get:Input @get:Optional abstract val last: Property<Boolean>
     init { description = "Resume a previous Codex interactive session" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("codex", "resume")
         if (last.getOrElse(false)) cmd += "--last"
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
@@ -101,94 +90,120 @@ abstract class CodexResumeTask : CodexBaseTask() {
 abstract class CodexForkTask : CodexBaseTask() {
     @get:Input @get:Optional abstract val last: Property<Boolean>
     init { description = "Fork a previous Codex interactive session" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("codex", "fork")
         if (last.getOrElse(false)) cmd += "--last"
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
 /** codex apply — apply latest diff as git apply. */
 abstract class CodexApplyTask : CodexBaseTask() {
-    init { description = "Apply the latest diff produced by Codex agent" }
-    @TaskAction fun run() = exec(listOf("codex", "apply"))
+    init {
+        description = "Apply the latest diff produced by Codex agent"
+        commandLine("codex", "apply")
+    }
 }
 
 /** codex login */
 abstract class CodexLoginTask : CodexBaseTask() {
-    init { description = "Manage Codex login" }
-    @TaskAction fun run() = exec(listOf("codex", "login"))
+    init {
+        description = "Manage Codex login"
+        commandLine("codex", "login")
+    }
 }
 
 /** codex logout */
 abstract class CodexLogoutTask : CodexBaseTask() {
-    init { description = "Remove stored Codex authentication credentials" }
-    @TaskAction fun run() = exec(listOf("codex", "logout"))
+    init {
+        description = "Remove stored Codex authentication credentials"
+        commandLine("codex", "logout")
+    }
 }
 
 /** codex mcp */
 abstract class CodexMcpTask : CodexBaseTask() {
-    init { description = "Manage external MCP servers for Codex" }
-    @TaskAction fun run() = exec(listOf("codex", "mcp"))
+    init {
+        description = "Manage external MCP servers for Codex"
+        commandLine("codex", "mcp")
+    }
 }
 
 /** codex mcp-server */
 abstract class CodexMcpServerTask : CodexBaseTask() {
-    init { description = "Start Codex as an MCP server (stdio)" }
-    @TaskAction fun run() = exec(listOf("codex", "mcp-server"))
+    init {
+        description = "Start Codex as an MCP server (stdio)"
+        commandLine("codex", "mcp-server")
+    }
 }
 
 /** codex app */
 abstract class CodexAppTask : CodexBaseTask() {
-    init { description = "Launch the Codex desktop app" }
-    @TaskAction fun run() = exec(listOf("codex", "app"))
+    init {
+        description = "Launch the Codex desktop app"
+        commandLine("codex", "app")
+    }
 }
 
 /** codex app-server */
 abstract class CodexAppServerTask : CodexBaseTask() {
-    init { description = "Run the Codex app server" }
-    @TaskAction fun run() = exec(listOf("codex", "app-server"))
+    init {
+        description = "Run the Codex app server"
+        commandLine("codex", "app-server")
+    }
 }
 
 /** codex completion <shell> */
 abstract class CodexCompletionTask : CodexBaseTask() {
     @get:Input @get:Optional abstract val shell: Property<String>
     init { description = "Generate shell completion scripts for Codex" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("codex", "completion")
         shell.orNull?.let { cmd += it }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
 /** codex sandbox */
 abstract class CodexSandboxTask : CodexBaseTask() {
-    init { description = "Run commands within a Codex-provided sandbox" }
-    @TaskAction fun run() = exec(listOf("codex", "sandbox"))
+    init {
+        description = "Run commands within a Codex-provided sandbox"
+        commandLine("codex", "sandbox")
+    }
 }
 
 /** codex debug */
 abstract class CodexDebugTask : CodexBaseTask() {
-    init { description = "Codex debugging tools" }
-    @TaskAction fun run() = exec(listOf("codex", "debug"))
+    init {
+        description = "Codex debugging tools"
+        commandLine("codex", "debug")
+    }
 }
 
 /** codex cloud */
 abstract class CodexCloudTask : CodexBaseTask() {
-    init { description = "Browse tasks from Codex Cloud and apply changes locally" }
-    @TaskAction fun run() = exec(listOf("codex", "cloud"))
+    init {
+        description = "Browse tasks from Codex Cloud and apply changes locally"
+        commandLine("codex", "cloud")
+    }
 }
 
 /** codex features */
 abstract class CodexFeaturesTask : CodexBaseTask() {
-    init { description = "Inspect Codex feature flags" }
-    @TaskAction fun run() = exec(listOf("codex", "features"))
+    init {
+        description = "Inspect Codex feature flags"
+        commandLine("codex", "features")
+    }
 }
 
 /** codex --version */
 abstract class CodexVersionTask : CodexBaseTask() {
-    init { description = "Show Codex CLI version" }
-    @TaskAction fun run() = exec(listOf("codex", "--version"))
+    init {
+        description = "Show Codex CLI version"
+        commandLine("codex", "--version")
+    }
 }
 
 /** Settings plugin: zone.clanker.codex — registers all tasks. */

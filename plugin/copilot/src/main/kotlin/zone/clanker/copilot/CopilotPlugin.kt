@@ -1,34 +1,24 @@
 package zone.clanker.copilot
 
-import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.TaskAction
-import java.io.File
 
-/** Base: runs a copilot CLI command with stdin from /dev/null and live output streaming. */
-abstract class CopilotBaseTask : DefaultTask() {
-    init { group = "copilot" }
+/** Base: runs a copilot CLI command with stdin closed and live output streaming. */
+abstract class CopilotBaseTask : Exec() {
+    init {
+        group = "copilot"
+        workingDir = project.rootDir
+        standardInput = "".byteInputStream()
+    }
 
-    protected fun exec(cmd: List<String>) {
-        val devNull = File("/dev/null")
-        logger.lifecycle("copilot> ${cmd.joinToString(" ")}")
-        val process = ProcessBuilder(cmd)
-            .directory(project.rootDir)
-            .redirectInput(devNull)
-            .redirectErrorStream(false)
-            .start()
-        val out = Thread { process.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) } }
-        val err = Thread { process.errorStream.bufferedReader().forEachLine { logger.error(it) } }
-        out.start(); err.start()
-        val exit = process.waitFor()
-        out.join(5000); err.join(5000)
-        if (exit != 0) throw GradleException("copilot exited with code $exit")
+    override fun exec() {
+        logger.lifecycle("copilot> ${commandLine.joinToString(" ")}")
+        super.exec()
     }
 }
 
@@ -92,7 +82,7 @@ abstract class CopilotRunTask : CopilotBaseTask() {
 
     init { description = "Run GitHub Copilot in non-interactive print mode (1:1 CLI wrapper)" }
 
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("copilot", "-p", prompt.get())
         copilotModel.orNull?.let { cmd += listOf("--model", it) }
         effort.orNull?.let { cmd += listOf("--reasoning-effort", it) }
@@ -149,7 +139,8 @@ abstract class CopilotRunTask : CopilotBaseTask() {
         pluginDir.getOrElse(emptyList()).forEach { cmd += listOf("--plugin-dir", it) }
         secretEnvVars.getOrElse(emptyList()).forEach { cmd += listOf("--secret-env-vars", it) }
 
-        exec(cmd)
+        commandLine = cmd
+        super.exec()
     }
 }
 
@@ -157,51 +148,63 @@ abstract class CopilotRunTask : CopilotBaseTask() {
 abstract class CopilotResumeTask : CopilotBaseTask() {
     @get:Input @get:Optional abstract val sessionId: Property<String>
     init { description = "Resume a GitHub Copilot conversation" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("copilot")
         sessionId.orNull?.let { cmd += listOf("--resume", it) } ?: run { cmd += "--continue" }
-        exec(cmd)
+        commandLine = cmd
+        super.exec()
     }
 }
 
 /** copilot login */
 abstract class CopilotLoginTask : CopilotBaseTask() {
-    init { description = "Authenticate with GitHub Copilot" }
-    @TaskAction fun run() = exec(listOf("copilot", "login"))
+    init {
+        description = "Authenticate with GitHub Copilot"
+        commandLine = listOf("copilot", "login")
+    }
 }
 
 /** copilot version */
 abstract class CopilotVersionTask : CopilotBaseTask() {
-    init { description = "Show GitHub Copilot CLI version" }
-    @TaskAction fun run() = exec(listOf("copilot", "--version"))
+    init {
+        description = "Show GitHub Copilot CLI version"
+        commandLine = listOf("copilot", "--version")
+    }
 }
 
 /** copilot update */
 abstract class CopilotUpdateTask : CopilotBaseTask() {
-    init { description = "Download the latest GitHub Copilot CLI version" }
-    @TaskAction fun run() = exec(listOf("copilot", "update"))
+    init {
+        description = "Download the latest GitHub Copilot CLI version"
+        commandLine = listOf("copilot", "update")
+    }
 }
 
 /** copilot init */
 abstract class CopilotInitTask : CopilotBaseTask() {
-    init { description = "Initialize Copilot instructions for a repository" }
-    @TaskAction fun run() = exec(listOf("copilot", "init"))
+    init {
+        description = "Initialize Copilot instructions for a repository"
+        commandLine = listOf("copilot", "init")
+    }
 }
 
 /** copilot plugin */
 abstract class CopilotPluginManageTask : CopilotBaseTask() {
-    init { description = "Manage GitHub Copilot plugins" }
-    @TaskAction fun run() = exec(listOf("copilot", "plugin"))
+    init {
+        description = "Manage GitHub Copilot plugins"
+        commandLine = listOf("copilot", "plugin")
+    }
 }
 
 /** copilot help [topic] */
 abstract class CopilotHelpTask : CopilotBaseTask() {
     @get:Input @get:Optional abstract val topic: Property<String>
     init { description = "Display GitHub Copilot help information" }
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("copilot", "help")
         topic.orNull?.let { cmd += it }
-        exec(cmd)
+        commandLine = cmd
+        super.exec()
     }
 }
 

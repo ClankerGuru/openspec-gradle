@@ -1,39 +1,15 @@
 package zone.clanker.claude
 
-import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.TaskAction
-import java.io.File
-
-/** Base: runs a claude CLI command with stdin from /dev/null and live output streaming. */
-abstract class ClaudeBaseTask : DefaultTask() {
-    init { group = "claude" }
-
-    protected fun exec(cmd: List<String>) {
-        val devNull = File("/dev/null")
-        logger.lifecycle("claude> ${cmd.joinToString(" ")}")
-        val process = ProcessBuilder(cmd)
-            .directory(project.rootDir)
-            .redirectInput(devNull)
-            .redirectErrorStream(false)
-            .start()
-        val out = Thread { process.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) } }
-        val err = Thread { process.errorStream.bufferedReader().forEachLine { logger.error(it) } }
-        out.start(); err.start()
-        val exit = process.waitFor()
-        out.join(5000); err.join(5000)
-        if (exit != 0) throw GradleException("claude exited with code $exit")
-    }
-}
 
 /** claude -p <prompt> — full 1:1 wrapper of every CLI flag. */
-abstract class ClaudeRunTask : ClaudeBaseTask() {
+abstract class ClaudeRunTask : Exec() {
     @get:Input abstract val prompt: Property<String>
     @get:Input @get:Optional abstract val claudeModel: Property<String>
     @get:Input @get:Optional abstract val effort: Property<String>
@@ -72,9 +48,12 @@ abstract class ClaudeRunTask : ClaudeBaseTask() {
     @get:Input @get:Optional abstract val debug: Property<String>
     @get:Input @get:Optional abstract val debugFile: Property<String>
 
-    init { description = "Run Claude Code in non-interactive print mode (1:1 CLI wrapper)" }
+    init {
+        group = "claude"
+        description = "Run Claude Code in non-interactive print mode (1:1 CLI wrapper)"
+    }
 
-    @TaskAction fun run() {
+    override fun exec() {
         val cmd = mutableListOf("claude", "-p", prompt.get())
         claudeModel.orNull?.let { cmd += listOf("--model", it) }
         effort.orNull?.let { cmd += listOf("--effort", it) }
@@ -112,83 +91,125 @@ abstract class ClaudeRunTask : ClaudeBaseTask() {
         betas.getOrElse(emptyList()).forEach { cmd += listOf("--betas", it) }
         debug.orNull?.let { cmd += listOf("--debug", it) }
         debugFile.orNull?.let { cmd += listOf("--debug-file", it) }
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
 /** claude --resume / --continue */
-abstract class ClaudeResumeTask : ClaudeBaseTask() {
+abstract class ClaudeResumeTask : Exec() {
     @get:Input @get:Optional abstract val sessionId: Property<String>
     @get:Input @get:Optional abstract val forkSession: Property<Boolean>
-    init { description = "Resume a Claude Code conversation" }
-    @TaskAction fun run() {
+    init {
+        group = "claude"
+        description = "Resume a Claude Code conversation"
+    }
+    override fun exec() {
         val cmd = mutableListOf("claude")
         sessionId.orNull?.let { cmd += listOf("--resume", it) } ?: run { cmd += "--continue" }
         if (forkSession.getOrElse(false)) cmd += "--fork-session"
-        exec(cmd)
+        commandLine(cmd)
+        super.exec()
     }
 }
 
 /** claude --from-pr <number> */
-abstract class ClaudeFromPrTask : ClaudeBaseTask() {
+abstract class ClaudeFromPrTask : Exec() {
     @get:Input abstract val pr: Property<String>
-    init { description = "Resume a Claude session linked to a PR" }
-    @TaskAction fun run() = exec(listOf("claude", "--from-pr", pr.get()))
-}
-
-abstract class ClaudeAuthTask : ClaudeBaseTask() {
-    init { description = "Manage Claude Code authentication" }
-    @TaskAction fun run() = exec(listOf("claude", "auth"))
-}
-
-abstract class ClaudeVersionTask : ClaudeBaseTask() {
-    init { description = "Show Claude Code version" }
-    @TaskAction fun run() = exec(listOf("claude", "--version"))
-}
-
-abstract class ClaudeDoctorTask : ClaudeBaseTask() {
-    init { description = "Check Claude Code auto-updater health" }
-    @TaskAction fun run() = exec(listOf("claude", "doctor"))
-}
-
-abstract class ClaudeMcpTask : ClaudeBaseTask() {
-    init { description = "Configure and manage MCP servers" }
-    @TaskAction fun run() = exec(listOf("claude", "mcp"))
-}
-
-abstract class ClaudeAgentsTask : ClaudeBaseTask() {
-    init { description = "List configured Claude agents" }
-    @TaskAction fun run() = exec(listOf("claude", "agents"))
-}
-
-abstract class ClaudeUpdateTask : ClaudeBaseTask() {
-    init { description = "Check for Claude Code updates" }
-    @TaskAction fun run() = exec(listOf("claude", "update"))
-}
-
-abstract class ClaudeSetupTokenTask : ClaudeBaseTask() {
-    init { description = "Set up a long-lived authentication token" }
-    @TaskAction fun run() = exec(listOf("claude", "setup-token"))
-}
-
-abstract class ClaudeAutoModeTask : ClaudeBaseTask() {
-    init { description = "Inspect auto mode classifier configuration" }
-    @TaskAction fun run() = exec(listOf("claude", "auto-mode"))
-}
-
-abstract class ClaudeInstallTask : ClaudeBaseTask() {
-    @get:Input @get:Optional abstract val target: Property<String>
-    init { description = "Install Claude Code native build" }
-    @TaskAction fun run() {
-        val cmd = mutableListOf("claude", "install")
-        target.orNull?.let { cmd += it }
-        exec(cmd)
+    init {
+        group = "claude"
+        description = "Resume a Claude session linked to a PR"
+    }
+    override fun exec() {
+        commandLine("claude", "--from-pr", pr.get())
+        super.exec()
     }
 }
 
-abstract class ClaudePluginsTask : ClaudeBaseTask() {
-    init { description = "Manage Claude Code plugins" }
-    @TaskAction fun run() = exec(listOf("claude", "plugins"))
+abstract class ClaudeAuthTask : Exec() {
+    init {
+        group = "claude"
+        description = "Manage Claude Code authentication"
+        commandLine("claude", "auth")
+    }
+}
+
+abstract class ClaudeVersionTask : Exec() {
+    init {
+        group = "claude"
+        description = "Show Claude Code version"
+        commandLine("claude", "--version")
+    }
+}
+
+abstract class ClaudeDoctorTask : Exec() {
+    init {
+        group = "claude"
+        description = "Check Claude Code auto-updater health"
+        commandLine("claude", "doctor")
+    }
+}
+
+abstract class ClaudeMcpTask : Exec() {
+    init {
+        group = "claude"
+        description = "Configure and manage MCP servers"
+        commandLine("claude", "mcp")
+    }
+}
+
+abstract class ClaudeAgentsTask : Exec() {
+    init {
+        group = "claude"
+        description = "List configured Claude agents"
+        commandLine("claude", "agents")
+    }
+}
+
+abstract class ClaudeUpdateTask : Exec() {
+    init {
+        group = "claude"
+        description = "Check for Claude Code updates"
+        commandLine("claude", "update")
+    }
+}
+
+abstract class ClaudeSetupTokenTask : Exec() {
+    init {
+        group = "claude"
+        description = "Set up a long-lived authentication token"
+        commandLine("claude", "setup-token")
+    }
+}
+
+abstract class ClaudeAutoModeTask : Exec() {
+    init {
+        group = "claude"
+        description = "Inspect auto mode classifier configuration"
+        commandLine("claude", "auto-mode")
+    }
+}
+
+abstract class ClaudeInstallTask : Exec() {
+    @get:Input @get:Optional abstract val target: Property<String>
+    init {
+        group = "claude"
+        description = "Install Claude Code native build"
+    }
+    override fun exec() {
+        val cmd = mutableListOf("claude", "install")
+        target.orNull?.let { cmd += it }
+        commandLine(cmd)
+        super.exec()
+    }
+}
+
+abstract class ClaudePluginsTask : Exec() {
+    init {
+        group = "claude"
+        description = "Manage Claude Code plugins"
+        commandLine("claude", "plugins")
+    }
 }
 
 /** Settings plugin: zone.clanker.claude — registers all tasks. */
