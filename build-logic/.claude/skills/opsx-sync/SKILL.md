@@ -3,6 +3,8 @@ name: opsx-sync
 description: "Regenerate all OPSX agent files (skills, instructions, task commands). Use after config changes or plugin upgrades."
 ---
 
+<!-- openspec-gradle:0.33.0 -->
+
 Sync delta specs from a change to main specs.
 
 **Input**: Optionally specify a change name.

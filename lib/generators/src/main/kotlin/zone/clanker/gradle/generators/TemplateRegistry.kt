@@ -35,7 +35,7 @@ object TemplateRegistry {
 
     private fun opsxSkill() = SkillContent(
         dirName = "opsx-dashboard",
-        description = "List available OPSX tasks, active changes, and included builds. Use at session start, when switching context, or before exploring.",
+        description = "Show running agents, pending questions, and exec dashboards per proposal. Also lists available OPSX tasks and included builds. Use at session start, when monitoring agents, or when switching context.",
         instructions = loadResource("templates/skills/opsx.md")
     )
 
@@ -90,7 +90,7 @@ object TemplateRegistry {
     // ── Verify ───────────────────────────────────────────
 
     private fun verifySkill() = SkillContent(
-        dirName = "opsx-verify",
+        dirName = "srcx-verify",
         description = "Check architecture rules and constraints. Use when the user says 'verify', 'check the build', or wants to validate structure.",
         instructions = loadResource("templates/skills/verify.md")
     )
@@ -98,7 +98,7 @@ object TemplateRegistry {
     // ── Find ─────────────────────────────────────────────
 
     private fun findSkill() = SkillContent(
-        dirName = "opsx-find",
+        dirName = "srcx-find",
         description = "Find a symbol (class, function, property) by name. Use when searching for code, locating a definition, or asking 'where is X?'",
         argumentHint = "[symbol-name]",
         instructions = loadResource("templates/skills/find.md")
@@ -107,7 +107,7 @@ object TemplateRegistry {
     // ── Calls ────────────────────────────────────────────
 
     private fun callsSkill() = SkillContent(
-        dirName = "opsx-calls",
+        dirName = "srcx-calls",
         description = "Show the call graph for a symbol — what calls it and what it calls. Use when asking 'what uses this?' or tracing execution flow.",
         argumentHint = "[symbol-name]",
         instructions = loadResource("templates/skills/calls.md")
@@ -116,7 +116,7 @@ object TemplateRegistry {
     // ── Rename ───────────────────────────────────────────
 
     private fun renameSkill() = SkillContent(
-        dirName = "opsx-rename",
+        dirName = "srcx-rename",
         description = "Rename a symbol across the codebase safely. Use when the user says 'rename X to Y' or wants to refactor a name.",
         argumentHint = "[old-name new-name]",
         instructions = loadResource("templates/skills/rename.md")
@@ -133,7 +133,7 @@ object TemplateRegistry {
     // ── Move ─────────────────────────────────────────────
 
     private fun moveSkill() = SkillContent(
-        dirName = "opsx-move",
+        dirName = "srcx-move",
         description = "Move a class or file to a different package, updating imports. Use when the user says 'move X to Y' or wants to reorganize code.",
         argumentHint = "[symbol-name target-package]",
         instructions = loadResource("templates/skills/move.md")
@@ -142,7 +142,7 @@ object TemplateRegistry {
     // ── Usages ───────────────────────────────────────────
 
     private fun usagesSkill() = SkillContent(
-        dirName = "opsx-usages",
+        dirName = "srcx-usages",
         description = "Find all usages of a symbol with file:line locations. Use when asking 'where is X referenced?' or before renaming/removing.",
         argumentHint = "[symbol-name]",
         instructions = loadResource("templates/skills/usages.md")
@@ -151,7 +151,7 @@ object TemplateRegistry {
     // ── Extract ──────────────────────────────────────────
 
     private fun extractSkill() = SkillContent(
-        dirName = "opsx-extract",
+        dirName = "srcx-extract",
         description = "Extract code into a new function or class. Use when the user says 'extract this' or wants to refactor by pulling out code.",
         instructions = loadResource("templates/skills/extract.md")
     )
@@ -159,7 +159,7 @@ object TemplateRegistry {
     // ── Inline ───────────────────────────────────────────
 
     private fun inlineSkill() = SkillContent(
-        dirName = "opsx-inline",
+        dirName = "srcx-inline",
         description = "Inline a function — replace call sites with the body. Use when the user says 'inline this' or wants to undo an extraction.",
         instructions = loadResource("templates/skills/inline.md")
     )
@@ -167,7 +167,7 @@ object TemplateRegistry {
     // ── Deps ─────────────────────────────────────────────
 
     private fun depsSkill() = SkillContent(
-        dirName = "opsx-deps",
+        dirName = "srcx-deps",
         description = "Query project dependencies — versions, transitive deps, module relationships. Use when asking about libraries, versions, or 'what depends on X?'",
         instructions = loadResource("templates/skills/deps.md")
     )
@@ -175,7 +175,7 @@ object TemplateRegistry {
     // ── Remove ───────────────────────────────────────────
 
     private fun removeSkill() = SkillContent(
-        dirName = "opsx-remove",
+        dirName = "srcx-remove",
         description = "Remove a symbol or code block, cleaning up imports. Use when the user says 'delete this', 'remove X', or wants to clean dead code.",
         argumentHint = "[symbol-name]",
         instructions = loadResource("templates/skills/remove.md")

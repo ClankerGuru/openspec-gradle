@@ -8,7 +8,7 @@ Show the call graph for a symbol — what it calls and what calls it.
 
 1. Run the calls task:
    ```bash
-   ./gradlew opsx-calls -Psymbol=<name>
+   ./gradlew srcx-calls -Psymbol=<name>
    ```
 
 2. Read the output at `.opsx/calls.md`

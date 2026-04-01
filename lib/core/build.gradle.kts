@@ -4,6 +4,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+tasks.named<ProcessResources>("processResources") {
+    val props = mapOf("version" to project.version.toString())
+    inputs.properties(props)
+    filesMatching("openspec-gradle.properties") {
+        expand(props)
+    }
+}
+
 dependencies {
     compileOnly(gradleApi())
     implementation(libs.kotlinx.serialization.json)

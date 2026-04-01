@@ -8,7 +8,7 @@ Find a symbol (class, function, property) by name in the project.
 
 1. Run the find task:
    ```bash
-   ./gradlew opsx-find -Psymbol=<name>
+   ./gradlew srcx-find -Psymbol=<name>
    ```
 
 2. Read the output at `.opsx/find.md`

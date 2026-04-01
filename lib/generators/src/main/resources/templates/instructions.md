@@ -13,19 +13,19 @@ When the user asks you to do something, follow this order:
 | User intent | OPSX action |
 |---|---|
 | Explore, investigate, understand | `/opsx-explore` skill |
-| Find a symbol or file | `/opsx-find` skill |
+| Find a symbol or file | `/srcx-find` skill |
 | See what's in progress | `/opsx-status` skill |
 | Plan a new change | `/opsx-propose` skill |
 | Implement tasks from a change | `/opsx-apply` skill |
-| Find usages of a symbol | `/opsx-usages` skill |
-| Trace call graph | `/opsx-calls` skill |
-| Rename a symbol | `/opsx-rename` skill |
-| Move a file/class | `/opsx-move` skill |
-| Extract code to function | `/opsx-extract` skill |
-| Inline a function | `/opsx-inline` skill |
-| Remove dead code | `/opsx-remove` skill |
-| Check dependencies | `/opsx-deps` skill |
-| Verify architecture | `/opsx-verify` skill |
+| Find usages of a symbol | `/srcx-usages` skill |
+| Trace call graph | `/srcx-calls` skill |
+| Rename a symbol | `/srcx-rename` skill |
+| Move a file/class | `/srcx-move` skill |
+| Extract code to function | `/srcx-extract` skill |
+| Inline a function | `/srcx-inline` skill |
+| Remove dead code | `/srcx-remove` skill |
+| Check dependencies | `/srcx-deps` skill |
+| Verify architecture | `/srcx-verify` skill |
 | See all available tasks | `/opsx-dashboard` skill or `./gradlew opsx` |
 
 **Only if none of the above apply**, fall back to Read/Grep/Glob/Bash. If you already know the exact file path, Read is fine. But for discovery, search, and refactoring — always OPSX first.
@@ -36,10 +36,10 @@ This may be a **Gradle composite build**. All included builds are accessible fro
 
 | Don't do this | Do this instead |
 |---|---|
-| `ls ../other-project/` | `./gradlew :<build>:opsx-tree` |
-| `cd ../other-project && ./gradlew opsx-find` | `./gradlew :<build>:opsx-find -Pquery=Name` |
-| `cat ../other-project/src/.../File.kt` | `./gradlew :<build>:opsx-find -Pquery=File` then read `.opsx/find.md` |
-| Reading config files to find paths | `./gradlew opsx-modules` |
+| `ls ../other-project/` | `./gradlew :<build>:srcx-tree` |
+| `cd ../other-project && ./gradlew srcx-find` | `./gradlew :<build>:srcx-find -Pquery=Name` |
+| `cat ../other-project/src/.../File.kt` | `./gradlew :<build>:srcx-find -Pquery=File` then read `.opsx/find.md` |
+| Reading config files to find paths | `./gradlew srcx-modules` |
 
 When the user says "switch to X" or "work on X", that means **scope your OPSX tasks to that build** — not change directories.
 
@@ -51,31 +51,31 @@ Run `./gradlew opsx` for the full catalog. Use `./gradlew :<module>:<task>` for 
 
 | Task | Output | What it does |
 |------|--------|-------------|
-| `opsx-context` | `.opsx/context.md` | Project metadata, build stack, frameworks, git info |
-| `opsx-tree` | `.opsx/tree.md` | Source file tree with line counts |
-| `opsx-modules` | `.opsx/modules.md` | Module structure and dependency graph |
-| `opsx-deps` | `.opsx/deps.md` | Resolved dependency tree per configuration |
-| `opsx-devloop` | `.opsx/devloop.md` | Build commands, test framework, run commands |
-| `opsx-symbols` | `.opsx/symbols.md` | Symbol index — classes, functions, interfaces with locations |
+| `srcx-context` | `.opsx/context.md` | Project metadata, build stack, frameworks, git info |
+| `srcx-tree` | `.opsx/tree.md` | Source file tree with line counts |
+| `srcx-modules` | `.opsx/modules.md` | Module structure and dependency graph |
+| `srcx-deps` | `.opsx/deps.md` | Resolved dependency tree per configuration |
+| `srcx-devloop` | `.opsx/devloop.md` | Build commands, test framework, run commands |
+| `srcx-symbols` | `.opsx/symbols.md` | Symbol index — classes, functions, interfaces with locations |
 
 ### Code Intelligence
 
 | Task | Output | What it does |
 |------|--------|-------------|
-| `opsx-arch` | `.opsx/arch.md` | Architecture analysis — component graph, layers, data flow |
-| `opsx-find` | `.opsx/find.md` | Find symbol by name (`-Pquery=Name`) |
-| `opsx-calls` | `.opsx/calls.md` | Call graph for a symbol (`-Psymbol=Name`) |
-| `opsx-usages` | `.opsx/usages.md` | Find all usages of a symbol (`-Psymbol=Name`) |
-| `opsx-verify` | `.opsx/verify.md` | Enforce architecture rules, fail on violations |
+| `srcx-arch` | `.opsx/arch.md` | Architecture analysis — component graph, layers, data flow |
+| `srcx-find` | `.opsx/find.md` | Find symbol by name (`-Pquery=Name`) |
+| `srcx-calls` | `.opsx/calls.md` | Call graph for a symbol (`-Psymbol=Name`) |
+| `srcx-usages` | `.opsx/usages.md` | Find all usages of a symbol (`-Psymbol=Name`) |
+| `srcx-verify` | `.opsx/verify.md` | Enforce architecture rules, fail on violations |
 
 ### Refactoring (dry-run by default)
 
 | Task | Output | What it does |
 |------|--------|-------------|
-| `opsx-rename` | `.opsx/rename.md` | Rename symbol across codebase (`-Pfrom=Old -Pto=New`) |
-| `opsx-move` | `.opsx/move.md` | Move symbol to new package (`-Psymbol=Name -PtargetPackage=pkg`) |
-| `opsx-extract` | `.opsx/extract.md` | Extract lines to new function (`-PsourceFile=path -PstartLine=N -PendLine=M -PnewName=name`) |
-| `opsx-remove` | `.opsx/remove.md` | Remove symbol or code lines (`-Psymbol=Name` or `-Pfile=path -PstartLine=N -PendLine=M`) |
+| `srcx-rename` | `.opsx/rename.md` | Rename symbol across codebase (`-Pfrom=Old -Pto=New`) |
+| `srcx-move` | `.opsx/move.md` | Move symbol to new package (`-Psymbol=Name -PtargetPackage=pkg`) |
+| `srcx-extract` | `.opsx/extract.md` | Extract lines to new function (`-PsourceFile=path -PstartLine=N -PendLine=M -PnewName=name`) |
+| `srcx-remove` | `.opsx/remove.md` | Remove symbol or code lines (`-Psymbol=Name` or `-Pfile=path -PstartLine=N -PendLine=M`) |
 
 All refactoring tasks default to `-PdryRun=true`. Add `-PdryRun=false` to execute.
 
@@ -99,7 +99,7 @@ When writing `tasks.md` for a proposal:
 - Include **exact file paths**, **line ranges**, and **specific changes** (not vague descriptions)
 - List **every import** the new/modified file needs
 - Specify **visibility changes** (private → internal, etc.)
-- Add a **verification step** (compile check, `opsx-verify`, or test run)
+- Add a **verification step** (compile check, `srcx-verify`, or test run)
 - Set **dependencies** between tasks (`depends:nm-1`) when order matters
 - Tasks that don't depend on each other **can run in parallel**
 
@@ -108,15 +108,15 @@ A good task reads like a checklist — an agent should be able to execute it wit
 ## Workflow
 
 1. **Orient** — Read `.opsx/context.md`, `.opsx/tree.md`, `.opsx/modules.md` (already generated)
-2. **Understand** — Run `opsx-arch`, `opsx-symbols`, `opsx-find` as needed
+2. **Understand** — Run `srcx-arch`, `srcx-symbols`, `srcx-find` as needed
 3. **Plan** — Create a proposal with `opsx-propose`, then fill in detailed tasks following the Task Design Principle above
 4. **Implement** — Use refactoring tasks + `opsx-apply`
-5. **Verify** — Run `opsx-verify` to check architecture rules
+5. **Verify** — Run `srcx-verify` to check architecture rules
 
 ## Tips
 
-- **Chain tasks:** `./gradlew opsx-context opsx-tree opsx-arch` runs all three
+- **Chain tasks:** `./gradlew srcx-context srcx-tree srcx-arch` runs all three
 - **Read cached output first:** `.opsx/` files persist between runs — don't re-run if already fresh
 - **Multi-module:** Use `-Pmodule=:name` to scope any task to a specific module
-- **Composite builds:** Use `./gradlew :<included-build>:opsx-find` to query included builds
+- **Composite builds:** Use `./gradlew :<included-build>:srcx-find` to query included builds
 - **All builds use KTS** — `build.gradle.kts` and `settings.gradle.kts` only, no Groovy

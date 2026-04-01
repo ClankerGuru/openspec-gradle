@@ -210,9 +210,46 @@ abstract class CopilotHelpTask : CopilotBaseTask() {
 
 /** Settings plugin: zone.clanker.copilot — registers all tasks. */
 class CopilotPlugin : Plugin<Settings> {
+    companion object {
+        const val CLI_VERSION = "1.0.14"
+    }
+
     override fun apply(settings: Settings) {
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("copilot-run") != null) return@Action
+
+            // Catalog task
+            project.tasks.register("copilot").configure(object : org.gradle.api.Action<org.gradle.api.Task> {
+                override fun execute(task: org.gradle.api.Task) {
+                    task.group = "copilot"
+                    task.description = "List all GitHub Copilot tasks."
+                    task.doLast(object : org.gradle.api.Action<org.gradle.api.Task> {
+                        override fun execute(t: org.gradle.api.Task) {
+                            println()
+                            println("GitHub Copilot Tasks (copilot)")
+                            println("\u2500".repeat(40))
+                            println()
+                            println("Execution:")
+                            println("  copilot-run        Run Copilot in print mode (-Pprompt=...)")
+                            println("  copilot-resume     Resume a conversation (-PsessionId=...)")
+                            println()
+                            println("Management:")
+                            println("  copilot-login      Authenticate with GitHub Copilot")
+                            println("  copilot-init       Initialize Copilot instructions for a repo")
+                            println("  copilot-plugin     Manage plugins")
+                            println("  copilot-help       Display help information (-Ptopic=...)")
+                            println()
+                            println("Maintenance:")
+                            println("  copilot-version    Show CLI version")
+                            println("  copilot-update     Download latest CLI version")
+                            println()
+                            println("Run any task:  ./gradlew <task-name>")
+                            println("Full details:  ./gradlew help --task <task-name>")
+                            println()
+                        }
+                    })
+                }
+            })
 
             fun prop(name: String): String? =
                 if (project.hasProperty(name)) project.property(name).toString() else null

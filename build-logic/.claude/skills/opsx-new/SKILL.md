@@ -3,6 +3,8 @@ name: opsx-new
 description: "Start a new change with scaffolded directory. Use when beginning to track new work or creating a proposal from scratch."
 ---
 
+<!-- openspec-gradle:0.33.0 -->
+
 Start a new change using the artifact-driven approach.
 
 **Input**: The argument is the change name (kebab-case), OR a description of what the user wants to build.

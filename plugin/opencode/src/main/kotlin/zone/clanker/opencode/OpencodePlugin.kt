@@ -267,9 +267,65 @@ abstract class OpencodeVersionTask : OpencodeBaseTask() {
 
 /** Settings plugin: zone.clanker.opencode — registers all tasks. */
 class OpencodePlugin : Plugin<Settings> {
+    companion object {
+        const val CLI_VERSION = "1.3.13"
+    }
+
     override fun apply(settings: Settings) {
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("opencode-run") != null) return@Action
+
+            // Catalog task
+            project.tasks.register("opencode").configure(object : org.gradle.api.Action<org.gradle.api.Task> {
+                override fun execute(task: org.gradle.api.Task) {
+                    task.group = "opencode"
+                    task.description = "List all opencode tasks."
+                    task.doLast(object : org.gradle.api.Action<org.gradle.api.Task> {
+                        override fun execute(t: org.gradle.api.Task) {
+                            println()
+                            println("opencode Tasks (opencode)")
+                            println("\u2500".repeat(40))
+                            println()
+                            println("Execution:")
+                            println("  opencode-run         Run opencode with a message (-Pprompt=...)")
+                            println("  opencode-resume      Resume a conversation (-Psession=...)")
+                            println("  opencode-pr          Fetch and checkout a PR branch (-Ppr=...)")
+                            println("  opencode-attach      Attach to a running server (-Purl=...)")
+                            println()
+                            println("Server:")
+                            println("  opencode-serve       Start a headless server")
+                            println("  opencode-web         Start server and open web interface")
+                            println("  opencode-acp         Start ACP (Agent Client Protocol) server")
+                            println()
+                            println("Management:")
+                            println("  opencode-models      List available models (-Pprovider=...)")
+                            println("  opencode-providers   Manage AI providers and credentials")
+                            println("  opencode-agent       Manage agents")
+                            println("  opencode-mcp         Manage MCP servers")
+                            println("  opencode-plugin      Install plugin (-Pmodule=...)")
+                            println("  opencode-github      Manage GitHub agent")
+                            println()
+                            println("Sessions:")
+                            println("  opencode-session     Manage sessions")
+                            println("  opencode-export      Export session data (-PsessionId=...)")
+                            println("  opencode-import      Import session from JSON (-PimportFile=...)")
+                            println("  opencode-stats       Show token usage and cost statistics")
+                            println()
+                            println("Maintenance:")
+                            println("  opencode-version     Show CLI version")
+                            println("  opencode-upgrade     Upgrade to latest version (-Ptarget=...)")
+                            println("  opencode-completion  Generate shell completion script")
+                            println("  opencode-debug       Debugging and troubleshooting tools")
+                            println("  opencode-db          Database tools")
+                            println("  opencode-uninstall   Uninstall opencode")
+                            println()
+                            println("Run any task:  ./gradlew <task-name>")
+                            println("Full details:  ./gradlew help --task <task-name>")
+                            println()
+                        }
+                    })
+                }
+            })
 
             fun prop(name: String): String? =
                 if (project.hasProperty(name)) project.property(name).toString() else null

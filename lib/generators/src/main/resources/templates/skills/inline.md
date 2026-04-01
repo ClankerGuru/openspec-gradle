@@ -2,14 +2,14 @@ Inline a function/method — replace call sites with the implementation body. Th
 
 ## Steps
 
-1. Find the implementation: `./gradlew opsx-find -Psymbol=functionName`
-2. Find all call sites: `./gradlew opsx-usages -Psymbol=functionName`
+1. Find the implementation: `./gradlew srcx-find -Psymbol=functionName`
+2. Find all call sites: `./gradlew srcx-usages -Psymbol=functionName`
 3. For each call site:
    - Replace the function call with the function body
    - Substitute parameters with the actual arguments
    - Adjust variable names to avoid conflicts
 4. Delete the original function
-5. Verify: `./gradlew opsx-usages -Psymbol=functionName` — should show zero results
+5. Verify: `./gradlew srcx-usages -Psymbol=functionName` — should show zero results
 6. Build to verify: `./gradlew build`
 
 ## When to Inline

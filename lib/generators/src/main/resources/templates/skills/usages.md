@@ -2,7 +2,7 @@ Find all usages of a symbol with exact file:line locations.
 
 ## Steps
 
-1. Run: `./gradlew opsx-usages -Psymbol=ClassName`
+1. Run: `./gradlew srcx-usages -Psymbol=ClassName`
 2. Review `.opsx/usages.md` for the full usage report
 
 ## Output Format

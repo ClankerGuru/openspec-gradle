@@ -208,9 +208,55 @@ abstract class CodexVersionTask : CodexBaseTask() {
 
 /** Settings plugin: zone.clanker.codex — registers all tasks. */
 class CodexPlugin : Plugin<Settings> {
+    companion object {
+        const val CLI_VERSION = "0.117.0"
+    }
+
     override fun apply(settings: Settings) {
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("codex-exec") != null) return@Action
+
+            // Catalog task
+            project.tasks.register("codex").configure(object : org.gradle.api.Action<org.gradle.api.Task> {
+                override fun execute(task: org.gradle.api.Task) {
+                    task.group = "codex"
+                    task.description = "List all Codex tasks."
+                    task.doLast(object : org.gradle.api.Action<org.gradle.api.Task> {
+                        override fun execute(t: org.gradle.api.Task) {
+                            println()
+                            println("Codex Tasks (codex)")
+                            println("\u2500".repeat(40))
+                            println()
+                            println("Execution:")
+                            println("  codex-exec         Run Codex in exec mode (-Pprompt=...)")
+                            println("  codex-review       Run a code review non-interactively")
+                            println("  codex-resume       Resume a previous session (--last)")
+                            println("  codex-fork         Fork a previous session (--last)")
+                            println("  codex-apply        Apply latest diff as git apply")
+                            println()
+                            println("Management:")
+                            println("  codex-login        Manage login")
+                            println("  codex-logout       Remove stored credentials")
+                            println("  codex-mcp          Manage external MCP servers")
+                            println("  codex-mcp-server   Start Codex as an MCP server (stdio)")
+                            println()
+                            println("Tools:")
+                            println("  codex-app          Launch the desktop app")
+                            println("  codex-app-server   Run the app server")
+                            println("  codex-cloud        Browse Codex Cloud tasks")
+                            println("  codex-sandbox      Run commands in a sandbox")
+                            println("  codex-completion   Generate shell completions (-Pshell=...)")
+                            println("  codex-debug        Debugging tools")
+                            println("  codex-features     Inspect feature flags")
+                            println("  codex-version      Show CLI version")
+                            println()
+                            println("Run any task:  ./gradlew <task-name>")
+                            println("Full details:  ./gradlew help --task <task-name>")
+                            println()
+                        }
+                    })
+                }
+            })
 
             fun prop(name: String): String? =
                 if (project.hasProperty(name)) project.property(name).toString() else null

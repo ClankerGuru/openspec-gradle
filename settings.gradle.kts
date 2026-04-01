@@ -17,15 +17,15 @@ include(
     ":lib:adapters:codex",
     ":lib:adapters:opencode",
     // Tasks
-    ":task:code-intel",
-    ":task:openspec",
-    ":task:monolith",
+    ":task:srcx",
+    ":task:opsx",
+    ":task:wrkx",
     // Plugins
     ":plugin:claude",
-    ":plugin:code-intel",
+    ":plugin:srcx",
     ":plugin:codex",
     ":plugin:copilot",
     ":plugin:opencode",
-    ":plugin:openspec",
-    ":plugin:monolith",
+    ":plugin:opsx",
+    ":plugin:wrkx",
 )

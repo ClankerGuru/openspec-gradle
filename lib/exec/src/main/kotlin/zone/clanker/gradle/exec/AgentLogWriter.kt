@@ -19,11 +19,13 @@ object AgentLogWriter {
 
     /**
      * Create the log file with its initial header and first step entry.
+     * Files are organized per-proposal: `.opsx/exec/{proposal}/{taskCode}.md`.
      * Returns the created [File] for subsequent calls.
      */
-    fun create(execDir: File, taskCode: String, agent: String, description: String): File {
-        execDir.mkdirs()
-        val logFile = File(execDir, "$taskCode.md")
+    fun create(execDir: File, proposalName: String, taskCode: String, agent: String, description: String): File {
+        val proposalDir = File(execDir, proposalName)
+        proposalDir.mkdirs()
+        val logFile = File(proposalDir, "$taskCode.md")
         val now = LocalDateTime.now()
         val timestamp = now.format(isoFormatter)
         val time = now.format(readableFormatter)
@@ -100,8 +102,8 @@ object AgentLogWriter {
      * Returns the file content if present, then deletes the answer file.
      * Returns `null` if no answer exists.
      */
-    fun readAnswer(execDir: File, taskCode: String): String? {
-        val answerFile = File(execDir, "answers/$taskCode.md")
+    fun readAnswer(proposalDir: File, taskCode: String): String? {
+        val answerFile = File(proposalDir, "answers/$taskCode.md")
         if (!answerFile.exists()) return null
         val content = answerFile.readText().trim()
         answerFile.delete()
@@ -112,8 +114,8 @@ object AgentLogWriter {
      * Write an answer to `.opsx/exec/answers/{taskCode}.md`.
      * Called by the parent/dashboard when responding to an agent's question.
      */
-    fun writeAnswer(execDir: File, taskCode: String, answer: String) {
-        val answersDir = File(execDir, "answers")
+    fun writeAnswer(proposalDir: File, taskCode: String, answer: String) {
+        val answersDir = File(proposalDir, "answers")
         answersDir.mkdirs()
         File(answersDir, "$taskCode.md").writeText(answer)
     }
@@ -126,7 +128,7 @@ object AgentLogWriter {
      * When an answer is received, the question section is cleared from [logFile].
      */
     fun pollForAnswer(
-        execDir: File,
+        proposalDir: File,
         taskCode: String,
         logFile: File,
         intervalMs: Long = 10_000L,
@@ -135,7 +137,7 @@ object AgentLogWriter {
         val deadline = if (timeoutMs == Long.MAX_VALUE) Long.MAX_VALUE
             else System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
-            val answer = readAnswer(execDir, taskCode)
+            val answer = readAnswer(proposalDir, taskCode)
             if (answer != null) {
                 clearQuestion(logFile)
                 step(logFile, "Answer received")

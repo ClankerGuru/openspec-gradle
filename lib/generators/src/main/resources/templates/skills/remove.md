@@ -2,9 +2,9 @@ Remove a symbol or line range from the codebase safely. Handles import cleanup a
 
 ## Steps
 
-1. Always preview first: `./gradlew opsx-remove -Psymbol=ClassName` (dry-run is default)
+1. Always preview first: `./gradlew srcx-remove -Psymbol=ClassName` (dry-run is default)
 2. Review the output in `.opsx/remove.md` — check what will be removed and remaining references
-3. If correct, apply: `./gradlew opsx-remove -Psymbol=ClassName -PdryRun=false`
+3. If correct, apply: `./gradlew srcx-remove -Psymbol=ClassName -PdryRun=false`
 4. Fix any remaining references listed in the warnings
 5. Run the build to catch any compile errors
 
@@ -19,4 +19,4 @@ Remove a symbol or line range from the codebase safely. Handles import cleanup a
 - Dry-run is the default — you must pass `-PdryRun=false` to actually modify files
 - The task warns about remaining references that will break after removal
 - For multi-module projects, add `-Pmodule=:moduleName` to scope the search
-- Run `opsx-usages` first for a complete impact analysis before removing
+- Run `srcx-usages` first for a complete impact analysis before removing

@@ -3,6 +3,8 @@ name: opsx-archive
 description: "Archive a completed change. Use when implementation is done and the user wants to finalize."
 ---
 
+<!-- openspec-gradle:0.33.0 -->
+
 Archive a completed change in the experimental workflow.
 
 **Input**: The user's request should include a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.

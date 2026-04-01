@@ -2,7 +2,7 @@ Query project dependencies — resolved versions, transitive deps, and module re
 
 ## Steps
 
-1. Run: `./gradlew opsx-deps` for the full dependency report
+1. Run: `./gradlew srcx-deps` for the full dependency report
 2. Check `.opsx/deps.md` for auto-generated dependency tree
 
 ## Use Cases

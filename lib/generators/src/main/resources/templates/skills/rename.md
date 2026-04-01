@@ -8,14 +8,14 @@ Preview or execute a rename refactoring across the codebase.
 
 1. Run the rename task in dry-run mode first:
    ```bash
-   ./gradlew opsx-rename -Pfrom=<old> -Pto=<new> -PdryRun=true
+   ./gradlew srcx-rename -Pfrom=<old> -Pto=<new> -PdryRun=true
    ```
 
 2. Read the output at `.opsx/rename.md` and show the preview to the user.
 
 3. If the user confirms, apply:
    ```bash
-   ./gradlew opsx-rename -Pfrom=<old> -Pto=<new> -PdryRun=false
+   ./gradlew srcx-rename -Pfrom=<old> -Pto=<new> -PdryRun=false
    ```
 
 **Output**

@@ -3,6 +3,8 @@ name: opsx-status
 description: "Show status of all open changes and proposals. Use when asking 'what are we working on?', 'what's in progress?', or starting a session."
 ---
 
+<!-- openspec-gradle:0.33.0 -->
+
 Show the status of all open changes and proposals.
 
 ---

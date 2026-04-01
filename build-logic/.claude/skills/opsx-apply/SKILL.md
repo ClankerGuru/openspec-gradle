@@ -3,9 +3,15 @@ name: opsx-apply
 description: "Implement tasks from a change proposal. Use when starting to code, continuing implementation, or working through tasks."
 ---
 
+<!-- openspec-gradle:0.33.0 -->
+
 Implement tasks from an OPSX change.
 
+**You are an OPSX user.** OPSX is your harness. You configure Gradle tasks and let OPSX execute them. You don't write bash scripts — you wire task dependencies. Independent tasks run in parallel. Gradle handles the execution order.
+
 **Input**: The user's request should include a change name, or it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+
+**Parallel execution**: If multiple tasks have no dependencies between them, execute them simultaneously. Use `./gradlew opsx-exec -Ptask=code1,code2,code3 -Pparallel=true` or spawn separate background processes. Do NOT execute independent tasks sequentially.
 
 **Steps**
 

@@ -6,7 +6,7 @@ import java.io.File
 
 /**
  * Discovers source directories across Java, Kotlin JVM, and KMP projects.
- * Shared between opsx-arch and PSI-based tasks.
+ * Shared between srcx-arch and PSI-based tasks.
  */
 object SourceDiscovery {
 
@@ -75,7 +75,7 @@ object SourceDiscovery {
 
     /**
      * Collect all indexable files — source code + build scripts + config.
-     * Used by opsx-find and opsx-symbols to search across everything.
+     * Used by srcx-find and srcx-symbols to search across everything.
      */
     fun collectAllFiles(dirs: List<File>, projectDirs: List<File> = emptyList()): List<File> {
         val sourceFiles = collectSourceFiles(dirs)

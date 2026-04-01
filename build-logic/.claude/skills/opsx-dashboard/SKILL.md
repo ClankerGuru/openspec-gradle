@@ -1,7 +1,9 @@
 ---
 name: opsx-dashboard
-description: "List available OPSX tasks, active changes, and included builds. Use at session start, when switching context, or before exploring."
+description: "Show running agents, pending questions, and exec dashboards per proposal. Also lists available OPSX tasks and included builds. Use at session start, when monitoring agents, or when switching context."
 ---
+
+<!-- openspec-gradle:0.33.0 -->
 
 Show available OPSX tasks, active changes, and included builds for this project.
 

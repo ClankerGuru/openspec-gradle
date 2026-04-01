@@ -214,9 +214,51 @@ abstract class ClaudePluginsTask : Exec() {
 
 /** Settings plugin: zone.clanker.claude — registers all tasks. */
 class ClaudePlugin : Plugin<Settings> {
+    companion object {
+        const val CLI_VERSION = "2.1.81"
+    }
+
     override fun apply(settings: Settings) {
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("claude-run") != null) return@Action
+
+            // Catalog task
+            project.tasks.register("claude").configure(object : org.gradle.api.Action<org.gradle.api.Task> {
+                override fun execute(task: org.gradle.api.Task) {
+                    task.group = "claude"
+                    task.description = "List all Claude Code tasks."
+                    task.doLast(object : org.gradle.api.Action<org.gradle.api.Task> {
+                        override fun execute(t: org.gradle.api.Task) {
+                            println()
+                            println("Claude Code Tasks (claude)")
+                            println("\u2500".repeat(40))
+                            println()
+                            println("Execution:")
+                            println("  claude-run         Run Claude Code in print mode (-Pprompt=...)")
+                            println("  claude-resume      Resume a conversation (-PsessionId=...)")
+                            println("  claude-from-pr     Resume session linked to a PR (-Ppr=...)")
+                            println()
+                            println("Management:")
+                            println("  claude-auth        Manage authentication")
+                            println("  claude-setup-token Set up long-lived auth token")
+                            println("  claude-mcp         Configure MCP servers")
+                            println("  claude-agents      List configured agents")
+                            println("  claude-plugins     Manage plugins")
+                            println("  claude-auto-mode   Inspect auto mode classifier")
+                            println()
+                            println("Maintenance:")
+                            println("  claude-version     Show CLI version")
+                            println("  claude-update      Check for updates")
+                            println("  claude-doctor      Check auto-updater health")
+                            println("  claude-install     Install native build (-Ptarget=...)")
+                            println()
+                            println("Run any task:  ./gradlew <task-name>")
+                            println("Full details:  ./gradlew help --task <task-name>")
+                            println()
+                        }
+                    })
+                }
+            })
 
             fun prop(name: String): String? =
                 if (project.hasProperty(name)) project.property(name).toString() else null

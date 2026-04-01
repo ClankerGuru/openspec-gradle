@@ -17,6 +17,7 @@ data class AgentStatus(
     val hasQuestion: Boolean,
     val questionText: String?,
     val filePath: String,
+    val proposalName: String = "",
 )
 
 /**
@@ -44,17 +45,44 @@ object DashboardReader {
     private val STALE_THRESHOLD_MINUTES = 3L
 
     /**
-     * List all `.md` agent log files in [execDir], excluding the `answers/` subdirectory,
-     * and parse each one into an [AgentStatus].
+     * Scan all proposal subdirectories under [execDir].
+     * Returns a flat list of all agent statuses across all proposals.
+     * Each proposal lives in `.opsx/exec/{proposalName}/`.
      */
     fun scan(execDir: File): List<AgentStatus> {
         if (!execDir.exists() || !execDir.isDirectory) return emptyList()
 
         return execDir.listFiles()
-            ?.filter { it.isFile && it.extension == "md" }
-            ?.mapNotNull { file -> parseLogFile(file) }
+            ?.filter { it.isDirectory && it.name != "answers" }
+            ?.flatMap { proposalDir -> scanProposal(proposalDir) }
             ?.sortedBy { it.taskCode }
             ?: emptyList()
+    }
+
+    /**
+     * Scan a single proposal directory for agent log files.
+     */
+    fun scanProposal(proposalDir: File): List<AgentStatus> {
+        if (!proposalDir.exists() || !proposalDir.isDirectory) return emptyList()
+
+        return proposalDir.listFiles()
+            ?.filter { it.isFile && it.extension == "md" && it.name != "dashboard.md" }
+            ?.mapNotNull { file -> parseLogFile(file, proposalDir.name) }
+            ?.sortedBy { it.taskCode }
+            ?: emptyList()
+    }
+
+    /**
+     * Group agent statuses by proposal name.
+     */
+    fun scanGrouped(execDir: File): Map<String, List<AgentStatus>> {
+        if (!execDir.exists() || !execDir.isDirectory) return emptyMap()
+
+        return execDir.listFiles()
+            ?.filter { it.isDirectory && it.name != "answers" }
+            ?.associate { proposalDir -> proposalDir.name to scanProposal(proposalDir) }
+            ?.filterValues { it.isNotEmpty() }
+            ?: emptyMap()
     }
 
     /**
@@ -64,75 +92,121 @@ object DashboardReader {
         agents.filter { it.hasQuestion }
 
     /**
-     * Render a Markdown dashboard table from the agent status list.
+     * Render the top-level dashboard that links to per-proposal dashboards.
      */
-    fun renderDashboard(agents: List<AgentStatus>): String = buildString {
+    fun renderDashboard(grouped: Map<String, List<AgentStatus>>): String = buildString {
+        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+        val allAgents = grouped.values.flatten()
+        val running = allAgents.filter { it.status == "running" || it.status == "unknown" }
+        val questions = pendingQuestions(allAgents)
+
+        appendLine("# OPSX Exec Dashboard")
+        appendLine("Updated: $now")
+        appendLine()
+
+        if (questions.isNotEmpty()) {
+            appendLine("## Questions (${questions.size})")
+            appendLine()
+            for (q in questions) {
+                val text = q.questionText ?: "(no text)"
+                appendLine("- **[${q.proposalName}/${q.taskCode}]** $text [-> details](${q.filePath})")
+            }
+            appendLine()
+        }
+
+        appendLine("## Proposals (${grouped.size})")
+        appendLine()
+        appendLine("| Proposal | Running | Done | Failed | Dashboard |")
+        appendLine("|----------|---------|------|--------|-----------|")
+        for ((proposal, agents) in grouped.entries.sortedBy { it.key }) {
+            val r = agents.count { it.status == "running" || it.status == "unknown" }
+            val d = agents.count { it.status == "done" }
+            val f = agents.count { it.status == "failed" }
+            appendLine("| $proposal | $r | $d | $f | [-> dashboard](.opsx/exec/$proposal/dashboard.md) |")
+        }
+
+        if (running.isNotEmpty()) {
+            appendLine()
+            appendLine("## Active Agents (${running.size})")
+            appendLine()
+            appendLine("| Proposal | Task | Agent | Elapsed | Last Step |")
+            appendLine("|----------|------|-------|---------|-----------|")
+            for (a in running) {
+                val escapedStep = a.lastStep.replace("|", "\\|")
+                appendLine("| ${a.proposalName} | ${a.taskCode} | ${a.agent} | ${a.elapsed} | $escapedStep |")
+            }
+        }
+    }
+
+    /**
+     * Render a per-proposal dashboard with full agent details and log links.
+     */
+    fun renderProposalDashboard(proposalName: String, agents: List<AgentStatus>): String = buildString {
         val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
         val running = agents.filter { it.status == "running" || it.status == "unknown" }
         val completed = agents.filter { it.status == "done" || it.status == "failed" }
         val questions = pendingQuestions(agents)
 
-        appendLine("# OPSX Dashboard")
+        appendLine("# $proposalName — Exec Dashboard")
         appendLine("Updated: $now")
+        appendLine("[<- back to top-level dashboard](../dashboard.md)")
         appendLine()
 
-        // Running agents
-        appendLine("## Running Agents (${running.size}/${agents.size})")
-        appendLine()
         if (running.isNotEmpty()) {
+            appendLine("## Running (${running.size})")
+            appendLine()
             appendLine("| Task | Agent | Status | Elapsed | Last Step | Log |")
             appendLine("|------|-------|--------|---------|-----------|-----|")
             for (a in running) {
                 val statusLabel = if (a.status == "unknown") "unknown" else "running"
                 val escapedStep = a.lastStep.replace("|", "\\|")
-                appendLine("| ${a.taskCode} | ${a.agent} | $statusLabel | ${a.elapsed} | $escapedStep | [-> log](${a.filePath}) |")
+                appendLine("| ${a.taskCode} | ${a.agent} | $statusLabel | ${a.elapsed} | $escapedStep | [-> log](${a.taskCode}.md) |")
             }
-        } else {
-            appendLine("_No running agents._")
+            appendLine()
         }
-        appendLine()
 
-        // Questions
-        appendLine("## Questions (${questions.size})")
-        appendLine()
         if (questions.isNotEmpty()) {
+            appendLine("## Questions (${questions.size})")
+            appendLine()
             for (q in questions) {
                 val text = q.questionText ?: "(no text)"
-                appendLine("- **[${q.taskCode}]** $text [-> details](${q.filePath}#question)")
+                appendLine("- **[${q.taskCode}]** $text")
             }
-        } else {
-            appendLine("_No pending questions._")
+            appendLine()
         }
-        appendLine()
 
-        // Completed
-        appendLine("## Completed")
-        appendLine()
         if (completed.isNotEmpty()) {
+            appendLine("## Completed (${completed.size})")
+            appendLine()
             appendLine("| Task | Duration | Result | Log |")
             appendLine("|------|----------|--------|-----|")
             for (a in completed) {
                 val icon = if (a.status == "done") "done" else "FAILED"
-                appendLine("| ${a.taskCode} | ${a.elapsed} | $icon | [-> log](${a.filePath}) |")
+                appendLine("| ${a.taskCode} | ${a.elapsed} | $icon | [-> log](${a.taskCode}.md) |")
             }
-        } else {
-            appendLine("_No completed tasks._")
         }
     }
 
     /**
-     * Convenience: scan [execDir], render the dashboard, and write it to [dashboardFile].
+     * Scan [execDir], write top-level dashboard and per-proposal dashboards.
      */
-    fun writeDashboard(dashboardFile: File, execDir: File) {
-        val agents = scan(execDir)
-        val content = renderDashboard(agents)
-        dashboardFile.parentFile?.mkdirs()
-        dashboardFile.writeText(content)
+    fun writeDashboard(execDir: File) {
+        val grouped = scanGrouped(execDir)
+
+        // Top-level dashboard
+        val topLevel = File(execDir, "dashboard.md")
+        topLevel.writeText(renderDashboard(grouped))
+
+        // Per-proposal dashboards
+        for ((proposal, agents) in grouped) {
+            val proposalDashboard = File(execDir, "$proposal/dashboard.md")
+            proposalDashboard.writeText(renderProposalDashboard(proposal, agents))
+        }
     }
 
     // ---- internal parsing ----
 
-    private fun parseLogFile(file: File): AgentStatus? {
+    private fun parseLogFile(file: File, proposalName: String = ""): AgentStatus? {
         val lines = try {
             file.readLines()
         } catch (_: Exception) {
@@ -211,7 +285,11 @@ object DashboardReader {
         }
 
         val hasQuestion = questionText != null
-        val relativePath = ".opsx/exec/${file.name}"
+        val relativePath = if (proposalName.isNotEmpty()) {
+            ".opsx/exec/$proposalName/${file.name}"
+        } else {
+            ".opsx/exec/${file.name}"
+        }
 
         return AgentStatus(
             taskCode = taskCode,
@@ -222,6 +300,7 @@ object DashboardReader {
             hasQuestion = hasQuestion,
             questionText = questionText,
             filePath = relativePath,
+            proposalName = proposalName,
         )
     }
 
