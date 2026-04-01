@@ -216,9 +216,11 @@ abstract class ClaudePluginsTask : Exec() {
 class ClaudePlugin : Plugin<Settings> {
     companion object {
         const val CLI_VERSION = "2.1.81"
+        const val ENABLED_PROP = "zone.clanker.claude.enabled"
     }
 
     override fun apply(settings: Settings) {
+        if (settings.providers.gradleProperty(ENABLED_PROP).orNull?.lowercase() == "false") return
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("claude-run") != null) return@Action
 

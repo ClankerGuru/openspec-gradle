@@ -61,7 +61,10 @@ class OpsxPlugin : Plugin<Settings> {
                 .distinct()
         }
 
+        const val ENABLED_PROP = "zone.clanker.opsx.enabled"
+
         internal fun applyToProject(project: Project) {
+            if (project.findProperty(ENABLED_PROP)?.toString()?.lowercase() == "false") return
             if (project.extensions.findByName("openspec") != null) return
 
             val extension = project.extensions.create("openspec", OpenSpecExtension::class.java)

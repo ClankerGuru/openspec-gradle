@@ -16,6 +16,8 @@ import java.io.File
 abstract class WrkxPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
+        // Check if disabled via gradle.properties
+        if (settings.providers.gradleProperty("zone.clanker.wrkx.enabled").orNull?.lowercase() == "false") return
         // Guard against double-application (init script + settings.gradle.kts)
         if (settings.extensions.findByName("wrkx") != null ||
             settings.extensions.findByName("monolith") != null) return
@@ -83,6 +85,8 @@ abstract class WrkxPlugin : Plugin<Settings> {
     }
 
     companion object {
+        const val ENABLED_PROP = "zone.clanker.wrkx.enabled"
+
         internal fun applyToSettings(project: org.gradle.api.Project, extension: WrkxExtension) {
             if (project.tasks.findByName("wrkx-clone") != null) return
 
