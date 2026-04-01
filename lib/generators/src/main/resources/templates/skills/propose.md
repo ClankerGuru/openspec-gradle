@@ -1,24 +1,37 @@
-Propose a new change - create the change and generate all artifacts in one step.
+Propose a new change through a design conversation.
 
-I'll create a change with artifacts:
-- proposal.md (what & why)
-- design.md (how)
-- tasks.md (implementation steps with task codes)
+Before writing artifacts, have a conversation. The depth of the conversation should match the complexity of the change.
 
-When ready to implement, run the opsx-apply skill
+- **Simple change** (version bump, rename, config tweak) — no questions needed, go straight to artifacts.
+- **Medium change** (add a feature, fix a bug with clear scope) — a few clarifying questions, then write.
+- **Complex change** (architecture redesign, new plugin, multi-module refactor) — deep conversation. Explore alternatives, challenge assumptions, present tradeoffs. Take your time.
+
+**Read the room.** If the user gives you a clear, detailed description — don't ask obvious questions. If the description is vague, ambiguous, or you're not sure where things live in the codebase — ask. The conversation continues until you could write the proposal without guessing anything important.
 
 ---
 
-## Planning Philosophy
+## How to Converse
 
-**Spend more time planning.** A good proposal prevents rework. A bad proposal wastes tokens on failed execution.
+When questions are needed:
 
-Before writing artifacts:
-- **Ask questions** if the request is vague — don't assume
-- **Enumerate exhaustively** — if wrapping a CLI, list every flag; if modifying files, list every file
-- **Call out gotchas** — "This will be tricky because X", "Watch out for Y"
-- **Show key decisions** — "These are the 3 things that matter most"
-- **Warn about risks** — "If we do A, then B might break"
+- Ask **one question at a time**. Don't batch.
+- Use the **AskUserQuestion tool** with selectable options (2-4 choices with descriptions). Include previews when comparing approaches (code, directory structure, config).
+- **Follow the thread.** If an answer raises a new question, ask it before moving on.
+- **Push back respectfully.** "That could work, but X might be a problem because Y. What about Z?"
+- **Research first.** Before asking "where does X live?" — look. Read the code. Then ask informed questions: "I see X is in module A, but it's also referenced in B. Should we change both?"
+
+**What to explore** (when the change warrants it):
+- What are we changing and why?
+- What are the alternatives? Show 2-3 approaches with tradeoffs.
+- What could break? Dependencies? Consumers?
+- What's in scope vs out of scope?
+- Are there things the user hasn't considered?
+
+**When to stop:** When you can write the proposal without assuming anything important. If you'd have to guess — you haven't talked enough.
+
+## Writing Artifacts
+
+Once aligned, create proposal.md, design.md, tasks.md.
 
 The proposal IS the documentation. Future sessions read it to understand the domain. Write it for the next agent, not just for execution.
 
@@ -39,14 +52,16 @@ If the user provides reference material (CLI help, API docs, spec files), the ta
 
 **Steps**
 
-1. **If no input provided, ask what they want to build**
+1. **Start the design conversation**
 
-   Use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
+   Use the **AskUserQuestion tool** to ask:
    > "What change do you want to work on? Describe what you want to build or fix."
+
+   Then continue with follow-up questions ONE AT A TIME using AskUserQuestion with options. Do NOT proceed to creating files until the conversation has covered: what, why, where, how, risks, and scope.
 
    From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
 
-   **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
+   **IMPORTANT**: Do NOT create any files until the design conversation is complete.
 
 2. **Create the change via Gradle**
    ```bash
