@@ -174,7 +174,30 @@ class OpsxPlugin : Plugin<Settings> {
 
             // Hooks
             project.tasks.matching { it.name == "clean" }.configureEach { it.dependsOn("opsx-clean") }
-            // opsx-sync is NOT hooked into assemble — run explicitly or via verify
+
+            // Aggregate: wire root tasks to all included builds.
+            // This is opsx's job as the orchestrator — wrkx only does includeBuild().
+            project.afterEvaluate {
+                val aggregate = project.findProperty("zone.clanker.opsx.aggregate")?.toString() != "false"
+                if (!aggregate) return@afterEvaluate
+
+                val tasksToAggregate = listOf(
+                    "opsx-sync", "opsx-clean",
+                    "srcx-context", "srcx-tree", "srcx-modules", "srcx-deps",
+                    "srcx-devloop", "srcx-symbols", "srcx-arch",
+                )
+
+                for (taskName in tasksToAggregate) {
+                    val rootTask = project.tasks.findByName(taskName) ?: continue
+                    for (build in project.gradle.includedBuilds) {
+                        try {
+                            rootTask.dependsOn(build.task(":$taskName"))
+                        } catch (_: Exception) {
+                            // Included build may not have this task
+                        }
+                    }
+                }
+            }
         }
     }
 }
