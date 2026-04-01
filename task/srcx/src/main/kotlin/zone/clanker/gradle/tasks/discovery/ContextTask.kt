@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.discovery
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
@@ -21,7 +23,7 @@ abstract class ContextTask : DefaultTask() {
     abstract val contextFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Project context generator. " +
             "Output: .opsx/context.md. " +
             "Use when: You need project metadata, plugins, frameworks, dependencies, git info. " +

@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.workflow
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
@@ -47,7 +49,7 @@ abstract class TaskItemTask : DefaultTask() {
     abstract val force: Property<String>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         // Description is set dynamically during registration
     }
 

@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.refactoring
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -28,7 +30,7 @@ abstract class RenameTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Safe rename across the codebase. " +
             "Output: .opsx/rename.md. " +
             "Options: -Pfrom=OldName -Pto=NewName (required), -PdryRun=true (preview only). " +

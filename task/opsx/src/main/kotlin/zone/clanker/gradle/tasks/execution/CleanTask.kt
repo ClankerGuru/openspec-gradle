@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import zone.clanker.gradle.generators.AgentCleaner
 import zone.clanker.gradle.generators.ToolAdapterRegistry
 import org.gradle.api.DefaultTask
@@ -15,7 +17,7 @@ abstract class CleanTask : DefaultTask() {
     abstract val tools: ListProperty<String>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Remove all generated OpenSpec files. " +
             "Use when: Switching agents, uninstalling, or cleaning up."
     }

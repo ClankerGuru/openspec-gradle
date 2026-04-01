@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.workflow
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -16,7 +18,7 @@ abstract class ApplyTask : DefaultTask() {
     }
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Apply a proposed change. " +
             "Options: --name=<change-name>. " +
             "Use when: Ready to implement a proposal. " +

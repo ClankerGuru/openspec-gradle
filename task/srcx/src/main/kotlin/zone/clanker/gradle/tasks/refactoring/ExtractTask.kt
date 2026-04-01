@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.refactoring
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -30,7 +32,7 @@ abstract class ExtractTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Extract a block of code into a new function or class. " +
             "Output: .opsx/extract.md. " +
             "Options: -PsourceFile=path -PstartLine=N -PendLine=M -PnewName=Name (required), -PdryRun=true (preview only). " +

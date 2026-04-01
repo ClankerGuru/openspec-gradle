@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import zone.clanker.gradle.generators.GlobalGitignore
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
@@ -18,7 +20,7 @@ abstract class InstallGlobalTask : DefaultTask() {
     abstract val tools: ListProperty<String>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Install plugin globally via init script. " +
             "Use when: Setting up the plugin on a new machine or updating."
     }

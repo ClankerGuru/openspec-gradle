@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.discovery
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
@@ -17,7 +19,7 @@ abstract class DevloopTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Development workflow reference. " +
             "Output: .opsx/devloop.md. " +
             "Use when: You need to know how to build, test, run, and iterate on this project. " +

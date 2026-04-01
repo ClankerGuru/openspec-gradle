@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import zone.clanker.gradle.generators.AgentCleaner
 import zone.clanker.gradle.generators.GeneratedFile
 import zone.clanker.gradle.generators.GlobalGitignore
@@ -27,7 +29,7 @@ abstract class SyncTask : DefaultTask() {
     abstract val outputDir: Property<File>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Agent file generator. Generates skill files for configured AI agents. " +
             "Use when: After config change or plugin upgrade. " +
             "Chain: srcx-context for project metadata."

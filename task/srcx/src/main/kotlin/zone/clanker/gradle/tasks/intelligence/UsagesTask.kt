@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.intelligence
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -21,7 +23,7 @@ abstract class UsagesTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Show all usages of a symbol with file:line locations. " +
             "Output: .opsx/usages.md. " +
             "Options: -Psymbol=Name (required). " +

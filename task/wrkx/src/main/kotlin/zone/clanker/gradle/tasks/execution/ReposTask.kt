@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.WRKX_GROUP
+
 import zone.clanker.gradle.core.WrkxRepo
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
@@ -17,7 +19,7 @@ abstract class ReposTask : DefaultTask() {
     val extensionRepos: MutableList<WrkxRepo> = mutableListOf()
 
     init {
-        group = "opsx"
+        group = WRKX_GROUP
         description = "[tool] List all monolith repos with their config and disk status. " +
             "Output: .opsx/repos.md. " +
             "Use when: Setting up a workspace, reviewing which repos are enabled/cloned/substituted."

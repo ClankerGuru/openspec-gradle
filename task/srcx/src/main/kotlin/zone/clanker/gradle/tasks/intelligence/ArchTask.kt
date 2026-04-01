@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.intelligence
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
@@ -24,7 +26,7 @@ abstract class ArchTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Architecture analyzer. " +
             "Output: .opsx/arch.md. " +
             "Options: -Pmodule=name. " +

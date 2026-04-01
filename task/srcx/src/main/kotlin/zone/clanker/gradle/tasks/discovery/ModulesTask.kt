@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.discovery
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.file.ConfigurableFileCollection
@@ -19,7 +21,7 @@ abstract class ModulesTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Module graph generator. " +
             "Output: .opsx/modules.md. " +
             "Use when: You need to understand multi-project structure and inter-module dependencies. " +

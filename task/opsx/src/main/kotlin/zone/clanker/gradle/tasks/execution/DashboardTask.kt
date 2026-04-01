@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
@@ -10,7 +12,7 @@ import java.io.File
 abstract class DashboardTask : DefaultTask() {
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Live dashboard for running OPSX agents. " +
             "Shows active agents grouped by proposal, with links to per-proposal dashboards. " +
             "Output: .opsx/exec/dashboard.md + .opsx/exec/{proposal}/dashboard.md. " +
