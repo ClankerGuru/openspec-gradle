@@ -15,7 +15,7 @@ include(
     ":adapters:codex",
     ":adapters:opencode",
     ":tasks",
-    ":linting",
+    ":quality",
     ":plugin",
     // New split modules
     ":gradle-tasks",

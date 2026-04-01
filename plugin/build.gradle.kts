@@ -19,7 +19,7 @@ dependencies {
     api(project(":adapters:codex"))
     api(project(":adapters:opencode"))
     api(project(":tasks"))
-    api(project(":linting"))
+    api(project(":quality"))
 
     testImplementation(gradleTestKit())
     testImplementation(libs.junit.jupiter)

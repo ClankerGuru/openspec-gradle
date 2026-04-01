@@ -9,7 +9,7 @@ dependencies {
     api(project(":arch"))
     api(project(":exec"))
     api(project(":generators"))
-    api(project(":linting"))
+    api(project(":quality"))
     compileOnly(gradleApi())
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)

@@ -9,6 +9,7 @@ dependencies {
     api(project(":core"))
     api(project(":gradle-tasks"))
     api(project(":psi"))
+    api(project(":quality"))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(gradleTestKit())
