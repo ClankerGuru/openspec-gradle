@@ -11,3 +11,6 @@ config/detekt.yml
 .editorconfig
 .claude/CLAUDE.md
 opsx/changes/archive/
+
+.DS_Store
+*.hprof

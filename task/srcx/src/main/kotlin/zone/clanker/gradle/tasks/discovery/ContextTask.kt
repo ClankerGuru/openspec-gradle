@@ -1,0 +1,1174 @@
+package zone.clanker.gradle.tasks.discovery
+
+import org.gradle.api.DefaultTask
+import org.gradle.api.Project
+import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.plugins.PluginContainer
+import org.gradle.api.tasks.*
+import java.io.File
+
+@CacheableTask
+abstract class ContextTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val buildFiles: ConfigurableFileCollection
+
+    @get:OutputFile
+    abstract val contextFile: RegularFileProperty
+
+    init {
+        group = "opsx"
+        description = "[tool] Project context generator. " +
+            "Output: .opsx/context.md. " +
+            "Use when: You need project metadata, plugins, frameworks, dependencies, git info. " +
+            "Chain: Read output for project understanding."
+    }
+
+    @TaskAction
+    fun generate() {
+        val out = contextFile.get().asFile
+        out.parentFile.mkdirs()
+
+        val root = project.rootProject
+        val subprojects = root.subprojects
+        val isMultiModule = subprojects.isNotEmpty()
+
+        if (isMultiModule) {
+            generateMultiModule(out, root, subprojects)
+            return
+        }
+
+        val sb = StringBuilder()
+
+        sb.appendLine("# Project Context")
+        sb.appendLine()
+
+        // ── Overview ──
+        sb.appendLine("## Overview")
+        sb.appendLine("- **Name:** ${root.name}")
+        if (root.group.toString().isNotBlank()) sb.appendLine("- **Group:** ${root.group}")
+        if (root.version.toString() != "unspecified" && root.version.toString().isNotBlank())
+            sb.appendLine("- **Version:** ${root.version}")
+        sb.appendLine("- **Gradle:** ${project.gradle.gradleVersion}")
+        sb.appendLine("- **Build:** ${root.buildFile.name}")
+        appendLanguageInfo(sb, root)
+
+        // ── VCS ──
+        appendGitInfo(sb, root.projectDir)
+
+        // ── Module Tree Diagram ──
+        val includedBuilds = project.gradle.includedBuilds
+        if (subprojects.isNotEmpty() || includedBuilds.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Module Tree")
+            sb.appendLine()
+            sb.appendLine("```")
+            appendModuleTree(sb, root, subprojects, includedBuilds)
+            sb.appendLine("```")
+        }
+
+        // ── Modules (multi-project) ──
+        if (subprojects.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Modules (${subprojects.size})")
+            sb.appendLine()
+            for (sub in subprojects.sortedBy { it.path }) {
+                sb.appendLine("### ${sub.path}")
+                sb.appendLine("- **Path:** ${sub.projectDir.relativeTo(root.projectDir)}/")
+
+                // Applied plugins (just the interesting ones)
+                val subPluginIds = resolvePluginIds(sub.plugins)
+                val interestingPlugins = subPluginIds.filter { !it.startsWith("org.gradle.") }
+                if (interestingPlugins.isNotEmpty()) {
+                    sb.appendLine("- **Plugins:** ${interestingPlugins.joinToString(", ")}")
+                }
+
+                // Module dependencies
+                val projectDeps = mutableListOf<String>()
+                sub.configurations.forEach { config ->
+                    config.dependencies.filterIsInstance<ProjectDependency>().forEach { dep ->
+                        val match = root.subprojects.find { it.name == dep.name }
+                        projectDeps.add(match?.path ?: ":${dep.name}")
+                    }
+                }
+                if (projectDeps.isNotEmpty()) {
+                    sb.appendLine("- **Depends on:** ${projectDeps.distinct().sorted().joinToString(", ")}")
+                }
+
+                // Depended on by
+                val dependedOnBy = subprojects.filter { other ->
+                    other.configurations.any { config ->
+                        config.dependencies.filterIsInstance<ProjectDependency>().any { it.name == sub.name }
+                    }
+                }.map { it.path }.sorted()
+                if (dependedOnBy.isNotEmpty()) {
+                    sb.appendLine("- **Depended on by:** ${dependedOnBy.joinToString(", ")}")
+                }
+
+                sb.appendLine()
+            }
+        }
+
+        // ── Included Builds ──
+        if (includedBuilds.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Included Builds")
+            sb.appendLine()
+            for (ib in includedBuilds) {
+                sb.appendLine("### ${ib.name}")
+                sb.appendLine("- **Path:** ${ib.projectDir.relativeTo(root.projectDir)}/")
+                appendGitInfo(sb, ib.projectDir, prefix = "- ")
+                sb.appendLine("- **OPSX tasks:** `./gradlew :${ib.name}:srcx-find`, `:${ib.name}:srcx-rename`, etc.")
+                sb.appendLine()
+            }
+        }
+
+        // ── Frameworks & Plugins ──
+        val allPluginIds = mutableSetOf<String>()
+        val frameworks = mutableListOf<String>()
+        val allDeps = mutableListOf<String>() // for dep-based framework detection
+        val errors = mutableListOf<String>()
+
+        collectPluginsAndFrameworks(root, allPluginIds, frameworks)
+        subprojects.forEach { collectPluginsAndFrameworks(it, allPluginIds, frameworks) }
+
+        // Show only non-Gradle plugins
+        val userPlugins = allPluginIds.filter { !it.startsWith("org.gradle.") }.sorted()
+        if (userPlugins.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Plugins")
+            sb.appendLine()
+            for (p in userPlugins) {
+                sb.appendLine("- `$p`")
+            }
+        }
+
+        // ── Dependencies (with resolved versions) ──
+        appendDependencies(sb, root, errors, allDeps)
+        subprojects.sortedBy { it.path }.forEach { appendDependencies(sb, it, errors, allDeps) }
+
+        // Detect frameworks from dependencies too
+        detectFrameworksFromDeps(allDeps, frameworks)
+
+        // ── Frameworks ──
+        val distinctFrameworks = frameworks.distinct().sorted()
+        if (distinctFrameworks.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Frameworks Detected")
+            sb.appendLine()
+            for (f in distinctFrameworks) {
+                sb.appendLine("- $f")
+            }
+        }
+
+        // ── Architecture Patterns (from code structure) ──
+        val archPatterns = mutableListOf<String>()
+        detectArchitecturePatterns(root, archPatterns)
+        subprojects.sortedBy { it.path }.forEach { detectArchitecturePatterns(it, archPatterns) }
+        val distinctPatterns = archPatterns.distinct()
+        if (distinctPatterns.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Architecture Patterns")
+            sb.appendLine()
+            for (p in distinctPatterns) {
+                sb.appendLine("- $p")
+            }
+        }
+
+        // ── Package Structure ──
+        appendPackageStructure(sb, root)
+        subprojects.sortedBy { it.path }.forEach { appendPackageStructure(sb, it) }
+
+        // ── Architecture Hints ──
+        val hints = generateHints(distinctFrameworks)
+        if (hints.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Architecture Hints")
+            sb.appendLine()
+            for (h in hints) {
+                sb.appendLine("- $h")
+            }
+        }
+
+        // ── Source Sets ──
+        appendSourceSets(sb, root, root)
+        subprojects.sortedBy { it.path }.forEach { appendSourceSets(sb, it, root) }
+
+        // ── Errors ──
+        if (errors.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## ⚠️ Errors & Warnings")
+            sb.appendLine()
+            for (e in errors) {
+                sb.appendLine("- $e")
+            }
+        }
+
+        out.writeText(sb.toString())
+        logger.lifecycle("OpenSpec: Generated context at ${out.relativeTo(root.projectDir)}")
+    }
+
+    private fun generateMultiModule(out: File, root: Project, subprojects: Set<Project>) {
+        val subDir = out.parentFile.resolve("context")
+        subDir.mkdirs()
+
+        data class ModuleStats(val name: String, val displayName: String, val plugins: Int, val deps: Int)
+        val stats = mutableListOf<ModuleStats>()
+
+        val allProjects = listOf(root) + subprojects.sortedBy { it.path }
+        for (proj in allProjects) {
+            val moduleName = if (proj == root) "root" else proj.name
+            val displayName = if (proj == root) ":root" else proj.path
+
+            val sb = StringBuilder()
+            sb.appendLine("# Project Context — $displayName")
+            sb.appendLine()
+
+            val pluginIds = mutableSetOf<String>()
+            val frameworks = mutableListOf<String>()
+            val allDeps = mutableListOf<String>()
+            val errors = mutableListOf<String>()
+
+            collectPluginsAndFrameworks(proj, pluginIds, frameworks)
+            val userPlugins = pluginIds.filter { !it.startsWith("org.gradle.") }.sorted()
+            if (userPlugins.isNotEmpty()) {
+                sb.appendLine("## Plugins")
+                sb.appendLine()
+                for (p in userPlugins) sb.appendLine("- `$p`")
+            }
+
+            appendDependencies(sb, proj, errors, allDeps)
+            detectFrameworksFromDeps(allDeps, frameworks)
+
+            val distinctFrameworks = frameworks.distinct().sorted()
+            if (distinctFrameworks.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("## Frameworks Detected")
+                sb.appendLine()
+                for (f in distinctFrameworks) sb.appendLine("- $f")
+            }
+
+            val archPatterns = mutableListOf<String>()
+            detectArchitecturePatterns(proj, archPatterns)
+            if (archPatterns.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("## Architecture Patterns")
+                sb.appendLine()
+                for (p in archPatterns.distinct()) sb.appendLine("- $p")
+            }
+
+            appendPackageStructure(sb, proj)
+            appendSourceSets(sb, proj, root)
+
+            if (errors.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("## ⚠️ Errors & Warnings")
+                sb.appendLine()
+                for (e in errors) sb.appendLine("- $e")
+            }
+
+            File(subDir, "$moduleName.md").writeText(sb.toString())
+            stats.add(ModuleStats(moduleName, displayName, userPlugins.size, allDeps.size))
+        }
+
+        // Write index
+        val idx = StringBuilder()
+        idx.appendLine("# Project Context")
+        idx.appendLine()
+
+        idx.appendLine("## Overview")
+        idx.appendLine("- **Name:** ${root.name}")
+        if (root.group.toString().isNotBlank()) idx.appendLine("- **Group:** ${root.group}")
+        if (root.version.toString() != "unspecified" && root.version.toString().isNotBlank())
+            idx.appendLine("- **Version:** ${root.version}")
+        idx.appendLine("- **Gradle:** ${project.gradle.gradleVersion}")
+        idx.appendLine("- **Build:** ${root.buildFile.name}")
+        appendLanguageInfo(idx, root)
+        appendGitInfo(idx, root.projectDir)
+
+        val includedBuilds = project.gradle.includedBuilds
+        idx.appendLine()
+        idx.appendLine("## Module Tree")
+        idx.appendLine()
+        idx.appendLine("```")
+        appendModuleTree(idx, root, subprojects, includedBuilds)
+        idx.appendLine("```")
+
+        idx.appendLine()
+        idx.appendLine("## Modules (${subprojects.size})")
+        idx.appendLine()
+        idx.appendLine("| Module | Plugins | Dependencies |")
+        idx.appendLine("|--------|---------|-------------|")
+        for (s in stats) {
+            idx.appendLine("| [${s.displayName}](context/${s.name}.md) | ${s.plugins} | ${s.deps} |")
+        }
+        idx.appendLine()
+
+        // Global frameworks & hints
+        val allPluginIds = mutableSetOf<String>()
+        val allFrameworks = mutableListOf<String>()
+        val allDeps = mutableListOf<String>()
+        val errors = mutableListOf<String>()
+        collectPluginsAndFrameworks(root, allPluginIds, allFrameworks)
+        subprojects.forEach { collectPluginsAndFrameworks(it, allPluginIds, allFrameworks) }
+        appendDependencies(StringBuilder(), root, errors, allDeps)
+        subprojects.forEach { appendDependencies(StringBuilder(), it, errors, allDeps) }
+        detectFrameworksFromDeps(allDeps, allFrameworks)
+
+        val distinctFrameworks = allFrameworks.distinct().sorted()
+        if (distinctFrameworks.isNotEmpty()) {
+            idx.appendLine("## Frameworks Detected")
+            idx.appendLine()
+            for (f in distinctFrameworks) idx.appendLine("- $f")
+        }
+
+        val hints = generateHints(distinctFrameworks)
+        if (hints.isNotEmpty()) {
+            idx.appendLine()
+            idx.appendLine("## Architecture Hints")
+            idx.appendLine()
+            for (h in hints) idx.appendLine("- $h")
+        }
+
+        idx.appendLine()
+        out.writeText(idx.toString())
+        logger.lifecycle("OpenSpec: Generated context (${stats.size} modules) at ${out.relativeTo(root.projectDir)}")
+    }
+
+    // ── Language Info ──
+
+    private fun appendLanguageInfo(sb: StringBuilder, project: org.gradle.api.Project) {
+        try {
+            val javaExt = project.extensions.findByType(JavaPluginExtension::class.java)
+            if (javaExt != null) {
+                sb.appendLine("- **Java:** ${javaExt.sourceCompatibility}")
+                try {
+                    val toolchain = javaExt.toolchain
+                    val langVersion = toolchain.languageVersion.orNull
+                    if (langVersion != null) {
+                        sb.appendLine("- **Java toolchain:** $langVersion")
+                    }
+                } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+
+        // Kotlin version — check for the KotlinPluginVersion class or buildscript deps
+        try {
+            val kotlinVersion = project.extensions.findByName("kotlin")
+                ?.let { it.javaClass.getMethod("getCoreLibrariesVersion").invoke(it) as? String }
+            if (kotlinVersion != null) {
+                sb.appendLine("- **Kotlin:** $kotlinVersion")
+            }
+        } catch (_: Exception) {}
+    }
+
+    // ── Git Info ──
+
+    private fun appendGitInfo(sb: StringBuilder, projectDir: File, prefix: String = "- ") {
+        val gitDir = File(projectDir, ".git")
+        if (!gitDir.exists()) return
+
+        try {
+            val headFile = File(gitDir, "HEAD")
+            if (headFile.exists()) {
+                val head = headFile.readText().trim()
+                val branch = if (head.startsWith("ref: refs/heads/")) {
+                    head.removePrefix("ref: refs/heads/")
+                } else {
+                    "detached @ ${head.take(8)}"
+                }
+                sb.appendLine("${prefix}**Branch:** $branch")
+            }
+
+            val configFile = File(gitDir, "config")
+            if (configFile.exists()) {
+                val remoteUrl = parseGitRemoteUrl(configFile)
+                if (remoteUrl != null) {
+                    sb.appendLine("${prefix}**Remote:** $remoteUrl")
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun parseGitRemoteUrl(configFile: File): String? {
+        var inOrigin = false
+        for (line in configFile.readLines()) {
+            val trimmed = line.trim()
+            if (trimmed == "[remote \"origin\"]") {
+                inOrigin = true
+            } else if (trimmed.startsWith("[")) {
+                inOrigin = false
+            } else if (inOrigin && trimmed.startsWith("url = ")) {
+                return trimmed.removePrefix("url = ").trim()
+            }
+        }
+        return null
+    }
+
+    // ── Plugin Resolution ──
+
+    /** Map of known plugin implementation classes to their plugin IDs */
+    private val KNOWN_PLUGIN_IDS = mapOf(
+        "org.springframework.boot" to "org.springframework.boot",
+        "io.spring.dependency-management" to "io.spring.dependency-management",
+        "org.jetbrains.kotlin.jvm" to "org.jetbrains.kotlin.jvm",
+        "org.jetbrains.kotlin.android" to "org.jetbrains.kotlin.android",
+        "org.jetbrains.kotlin.plugin.serialization" to "org.jetbrains.kotlin.plugin.serialization",
+        "org.jetbrains.kotlin.plugin.spring" to "org.jetbrains.kotlin.plugin.spring",
+        "org.jetbrains.compose" to "org.jetbrains.compose",
+        "com.android.application" to "com.android.application",
+        "com.android.library" to "com.android.library",
+        "io.ktor" to "io.ktor",
+        "com.google.protobuf" to "com.google.protobuf",
+        "org.flywaydb.flyway" to "org.flywaydb.flyway",
+        "org.liquibase.gradle" to "org.liquibase.gradle",
+    )
+
+    private fun resolvePluginIds(plugins: PluginContainer): Set<String> {
+        val ids = mutableSetOf<String>()
+        plugins.forEach { plugin ->
+            val className = plugin.javaClass.name.removeSuffix("_Decorated")
+            // Try to map to a nice ID
+            val niceId = PLUGIN_CLASS_TO_ID[className]
+            if (niceId != null) {
+                ids.add(niceId)
+            } else {
+                // Skip internal sub-plugins and gradle infrastructure
+                val lower = className.lowercase()
+                if (lower.contains(".internal.") || lower.contains("subplugin") ||
+                    lower.contains("decorator") || lower.contains("$")) {
+                    // skip internal plugins
+                } else {
+                    ids.add(className)
+                }
+            }
+        }
+        // Also check known plugin IDs directly
+        for (pluginId in KNOWN_PLUGIN_IDS.keys) {
+            try {
+                if (plugins.hasPlugin(pluginId)) {
+                    ids.add(pluginId)
+                }
+            } catch (_: Exception) {}
+        }
+        return ids
+    }
+
+    private val PLUGIN_CLASS_TO_ID = mapOf(
+        // Gradle built-in
+        "org.gradle.api.plugins.JavaPlugin" to "java",
+        "org.gradle.api.plugins.JavaLibraryPlugin" to "java-library",
+        "org.gradle.api.plugins.ApplicationPlugin" to "application",
+        "org.gradle.api.plugins.GroovyPlugin" to "groovy",
+        "org.gradle.api.plugins.ScalaPlugin" to "scala",
+        "org.gradle.api.plugins.WarPlugin" to "war",
+        "org.gradle.api.plugins.EarPlugin" to "ear",
+        "org.gradle.api.plugins.BasePlugin" to "base",
+        "org.gradle.api.plugins.JavaBasePlugin" to "org.gradle.java-base",
+        "org.gradle.api.plugins.HelpTasksPlugin" to "org.gradle.help-tasks",
+        "org.gradle.api.plugins.JvmEcosystemPlugin" to "org.gradle.jvm-ecosystem",
+        "org.gradle.api.plugins.JvmTestSuitePlugin" to "org.gradle.jvm-test-suite",
+        "org.gradle.api.plugins.JvmToolchainsPlugin" to "org.gradle.jvm-toolchains",
+        "org.gradle.api.plugins.ReportingBasePlugin" to "org.gradle.reporting-base",
+        "org.gradle.api.plugins.SoftwareReportingTasksPlugin" to "org.gradle.software-reporting-tasks",
+        "org.gradle.api.plugins.MavenPublishPlugin" to "maven-publish",
+        "org.gradle.api.publish.ivy.plugins.IvyPublishPlugin" to "ivy-publish",
+        "org.gradle.language.base.plugins.LifecycleBasePlugin" to "org.gradle.lifecycle-base",
+        "org.gradle.testing.base.plugins.TestSuiteBasePlugin" to "org.gradle.test-suite-base",
+        "org.gradle.buildinit.plugins.BuildInitPlugin" to "org.gradle.build-init",
+        "org.gradle.buildinit.plugins.WrapperPlugin" to "org.gradle.wrapper",
+        "org.gradle.kotlin.dsl.provider.plugins.KotlinScriptBasePlugin" to "org.gradle.kotlin.kotlin-dsl-base",
+        "org.gradle.api.plugins.JavaPlatformPlugin" to "java-platform",
+        "org.gradle.plugins.signing.SigningPlugin" to "signing",
+        // Spring
+        "org.springframework.boot.gradle.plugin.SpringBootPlugin" to "org.springframework.boot",
+        "io.spring.gradle.dependencymanagement.DependencyManagementPlugin" to "io.spring.dependency-management",
+        // Kotlin
+        "org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper" to "org.jetbrains.kotlin.jvm",
+        "org.jetbrains.kotlin.gradle.plugin.KotlinAndroidPluginWrapper" to "org.jetbrains.kotlin.android",
+        "org.jetbrains.kotlin.allopen.gradle.SpringGradleSubplugin" to "org.jetbrains.kotlin.plugin.spring",
+        // Android
+        "com.android.build.gradle.AppPlugin" to "com.android.application",
+        "com.android.build.gradle.LibraryPlugin" to "com.android.library",
+        "com.android.build.gradle.DynamicFeaturePlugin" to "com.android.dynamic-feature",
+        "dagger.hilt.android.plugin.HiltGradlePlugin" to "com.google.dagger.hilt.android",
+        "com.google.devtools.ksp.gradle.KspGradleSubplugin" to "com.google.devtools.ksp",
+        "org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin" to "org.jetbrains.kotlin.kapt",
+        // Compose
+        "org.jetbrains.kotlin.compose.ComposeCompilerGradleSubplugin" to "org.jetbrains.kotlin.plugin.compose",
+        "org.jetbrains.compose.ComposePlugin" to "org.jetbrains.compose",
+        // KMP
+        "org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper" to "org.jetbrains.kotlin.multiplatform",
+    )
+
+    // ── Framework Detection ──
+
+    private val FRAMEWORK_MAP = mapOf(
+        // Android
+        "com.android.application" to "Android Application",
+        "com.android.library" to "Android Library",
+        "com.android.dynamic-feature" to "Android Dynamic Feature",
+        "com.google.dagger.hilt.android" to "Hilt (DI)",
+        "com.google.devtools.ksp" to "KSP (Kotlin Symbol Processing)",
+        "androidx.navigation.safeargs.kotlin" to "Navigation SafeArgs",
+        // Kotlin
+        "org.jetbrains.kotlin.jvm" to "Kotlin (JVM)",
+        "org.jetbrains.kotlin.android" to "Kotlin (Android)",
+        "org.jetbrains.kotlin.multiplatform" to "Kotlin Multiplatform (KMP)",
+        "org.jetbrains.kotlin.plugin.serialization" to "Kotlin Serialization",
+        "org.jetbrains.kotlin.plugin.compose" to "Kotlin Compose Compiler",
+        "org.jetbrains.kotlin.kapt" to "KAPT (annotation processing)",
+        "org.jetbrains.compose" to "Compose Multiplatform",
+        // Server
+        "org.springframework.boot" to "Spring Boot",
+        "io.ktor" to "Ktor",
+        "com.google.protobuf" to "Protobuf/gRPC",
+        "org.flywaydb.flyway" to "Flyway",
+        "org.liquibase.gradle" to "Liquibase",
+    )
+
+    private fun collectPluginsAndFrameworks(proj: org.gradle.api.Project, pluginIds: MutableSet<String>, frameworks: MutableList<String>) {
+        val resolved = resolvePluginIds(proj.plugins)
+        pluginIds.addAll(resolved)
+
+        for ((pluginId, frameworkName) in FRAMEWORK_MAP) {
+            if (pluginId in resolved || proj.plugins.hasPlugin(pluginId)) {
+                frameworks.add(frameworkName)
+                pluginIds.add(pluginId)
+            }
+        }
+    }
+
+    /** Detect frameworks from dependency coordinates */
+    private fun detectFrameworksFromDeps(allDeps: List<String>, frameworks: MutableList<String>) {
+        val depPatterns = mapOf(
+            // Android / UI
+            "androidx.compose.ui:ui" to "Jetpack Compose",
+            "androidx.compose.material3" to "Material 3",
+            "androidx.compose.material:" to "Material 2 (legacy)",
+            "androidx.navigation:navigation-compose" to "Navigation Compose",
+            "androidx.navigation:navigation-fragment" to "Navigation (Fragment, legacy)",
+            "androidx.hilt:hilt-navigation-compose" to "Hilt Navigation Compose",
+            "com.google.dagger:hilt-android" to "Hilt (DI)",
+            "com.google.dagger:dagger" to "Dagger (DI, legacy)",
+            "io.reactivex.rxjava3:rxjava" to "RxJava 3 (legacy reactive)",
+            "io.reactivex.rxjava2:rxjava" to "RxJava 2 (legacy reactive)",
+            "io.reactivex.rxjava3:rxandroid" to "RxAndroid (legacy reactive)",
+            "io.reactivex.rxjava2:rxandroid" to "RxAndroid (legacy reactive)",
+            "androidx.lifecycle:lifecycle-viewmodel-compose" to "ViewModel Compose",
+            "androidx.lifecycle:lifecycle-viewmodel-ktx" to "ViewModel KTX",
+            "androidx.lifecycle:lifecycle-livedata" to "LiveData (legacy, prefer Flow)",
+            "androidx.room:room-runtime" to "Room (local DB)",
+            "androidx.room:room-ktx" to "Room KTX",
+            "androidx.datastore:datastore" to "DataStore",
+            "androidx.work:work-runtime" to "WorkManager",
+            "com.squareup.retrofit2:retrofit" to "Retrofit (HTTP)",
+            "com.squareup.okhttp3:okhttp" to "OkHttp",
+            "com.squareup.moshi:moshi" to "Moshi (JSON)",
+            "com.google.code.gson:gson" to "Gson (JSON, legacy)",
+            "org.jetbrains.kotlinx:kotlinx-coroutines" to "Kotlin Coroutines",
+            "org.jetbrains.kotlinx:kotlinx-serialization" to "Kotlin Serialization",
+            "com.jakewharton.timber:timber" to "Timber (logging)",
+            "io.coil-kt:coil" to "Coil (image loading)",
+            "com.github.bumptech.glide:glide" to "Glide (image loading, legacy)",
+            "com.squareup.picasso:picasso" to "Picasso (image loading, legacy)",
+            // Kotlin Multiplatform
+            "org.jetbrains.kotlinx:kotlinx-coroutines-core" to "Kotlin Coroutines",
+            // Server
+            "org.flywaydb:flyway" to "Flyway",
+            "org.liquibase:liquibase" to "Liquibase",
+            "spring-boot-starter-web" to "Spring Web (REST)",
+            "spring-boot-starter-data-jpa" to "Spring Data JPA",
+            "spring-boot-starter-security" to "Spring Security",
+            "spring-boot-starter-webflux" to "Spring WebFlux (Reactive)",
+            "spring-boot-starter-data-mongodb" to "Spring Data MongoDB",
+            "spring-boot-starter-data-redis" to "Spring Data Redis",
+            "testcontainers" to "Testcontainers",
+            "io.ktor:ktor-client" to "Ktor Client",
+            "io.ktor:ktor-server" to "Ktor Server",
+            "io.grpc:grpc" to "gRPC",
+            "org.jooq:jooq" to "jOOQ",
+            "com.graphql-java" to "GraphQL",
+            // MVI / Unidirectional
+            "org.orbit-mvi:orbit-" to "Orbit MVI",
+            "com.arkivanov.mvikotlin:" to "MVIKotlin",
+            "com.slack.circuit:circuit-" to "Circuit (Slack)",
+            "com.freeletics.mad:" to "FlowRedux / MAD",
+            "org.reduxkotlin:" to "Redux Kotlin",
+            "com.arkivanov.decompose:" to "Decompose",
+            "cafe.adriel.voyager:" to "Voyager",
+            "pro.respawn.flowmvi:" to "FlowMVI",
+            // State Management
+            "app.cash.molecule:" to "Molecule (Compose + Flow)",
+            "app.cash.turbine:" to "Turbine (Flow testing)",
+            // DI
+            "org.koin:koin-" to "Koin",
+            "io.insert-koin:koin-" to "Koin",
+            "me.tatarka.inject:" to "kotlin-inject",
+            "software.amazon.lastmile.kotlin.inject.anvil:" to "kotlin-inject-anvil",
+            // Networking
+            "de.jensklingenberg.ktorfit:" to "Ktorfit",
+            "com.apollographql.apollo:" to "Apollo GraphQL",
+            "com.apollographql.apollo3:" to "Apollo GraphQL",
+            // Database
+            "app.cash.sqldelight:" to "SQLDelight",
+            "io.realm.kotlin:" to "Realm Kotlin",
+            // Image Loading
+            "io.coil-kt.coil3:" to "Coil 3",
+            "media.kamel:" to "Kamel (KMP image loading)",
+            // Testing
+            "io.kotest:" to "Kotest",
+            "io.mockk:" to "MockK",
+            "org.jetbrains.kotlinx:kotlinx-coroutines-test" to "Coroutines Test",
+        )
+        for ((pattern, name) in depPatterns) {
+            if (allDeps.any { it.contains(pattern) } && name !in frameworks) {
+                frameworks.add(name)
+            }
+        }
+    }
+
+    // ── Module Tree Diagram ──
+
+    private fun appendModuleTree(
+        sb: StringBuilder,
+        root: Project,
+        subprojects: Set<Project>,
+        includedBuilds: Collection<org.gradle.api.initialization.IncludedBuild>
+    ) {
+        sb.appendLine(root.name)
+
+        // Build a tree structure from project paths
+        data class TreeNode(val name: String, val path: String, val pluginLabel: String?, val children: MutableList<TreeNode> = mutableListOf())
+
+        val rootNode = TreeNode(root.name, ":", null)
+        val nodeMap = mutableMapOf(":" to rootNode)
+
+        for (sub in subprojects.sortedBy { it.path }) {
+            val parts = sub.path.removePrefix(":").split(":")
+            var parentPath = ":"
+            for (i in parts.indices) {
+                val currentPath = ":" + parts.subList(0, i + 1).joinToString(":")
+                if (currentPath !in nodeMap) {
+                    val pluginIds = resolvePluginIds(sub.plugins).filter { !it.startsWith("org.gradle.") }
+                    val label = if (i == parts.size - 1) {
+                        // Detect the "type" plugin for display
+                        val typePlugin = pluginIds.firstOrNull { it in setOf(
+                            "com.android.application", "com.android.library", "com.android.dynamic-feature",
+                            "org.jetbrains.kotlin.jvm", "org.jetbrains.kotlin.multiplatform",
+                            "java", "java-library", "application"
+                        ) }
+                        typePlugin
+                    } else null
+                    val node = TreeNode(parts[i], currentPath, label)
+                    nodeMap[parentPath]?.children?.add(node)
+                    nodeMap[currentPath] = node
+                }
+                parentPath = currentPath
+            }
+        }
+
+        // Render tree
+        fun renderTree(node: TreeNode, prefix: String, isLast: Boolean, isRoot: Boolean) {
+            if (!isRoot) {
+                val connector = if (isLast) "└── " else "├── "
+                val pluginSuffix = if (node.pluginLabel != null) " (${node.pluginLabel})" else ""
+                sb.appendLine("$prefix$connector${node.path}$pluginSuffix")
+            }
+            val childPrefix = if (isRoot) "" else prefix + (if (isLast) "    " else "│   ")
+            val allItems = node.children.toMutableList()
+            for ((i, child) in allItems.withIndex()) {
+                val lastChild = i == allItems.size - 1 && (isRoot || includedBuilds.isEmpty() || !isRoot)
+                renderTree(child, childPrefix, lastChild && !(isRoot && includedBuilds.isNotEmpty()), false)
+            }
+            if (isRoot) {
+                for ((i, ib) in includedBuilds.withIndex()) {
+                    val connector = if (i == includedBuilds.size - 1) "└── " else "├── "
+                    sb.appendLine("$connector[included] ${ib.name}/")
+                }
+            }
+        }
+
+        renderTree(rootNode, "", true, true)
+    }
+
+    // ── Source Sets ──
+
+    private fun appendSourceSets(sb: StringBuilder, proj: Project, root: Project) {
+        try {
+            val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java) ?: return
+            val sourceSets = javaExt.sourceSets
+            val label = if (proj == root && root.subprojects.isEmpty()) "Source Sets" else "Source Sets (${proj.path})"
+            val entries = mutableListOf<String>()
+            sourceSets.forEach { ss ->
+                val kotlinDirs = ss.allSource.srcDirs.filter { it.exists() && it.path.contains("kotlin") }
+                val javaDirs = ss.allSource.srcDirs.filter { it.exists() && it.path.contains("java") && !it.path.contains("kotlin") }
+                val resourceDirs = ss.resources.srcDirs.filter { it.exists() }
+                val allExistingDirs = ss.allSource.srcDirs.filter { it.exists() }
+
+                if (allExistingDirs.isNotEmpty() || resourceDirs.isNotEmpty()) {
+                    // Count files
+                    val ktCount = allExistingDirs.sumOf { dir -> dir.walkTopDown().count { it.extension == "kt" } }
+                    val javaCount = allExistingDirs.sumOf { dir -> dir.walkTopDown().count { it.extension == "java" } }
+                    val fileCountParts = mutableListOf<String>()
+                    if (ktCount > 0) fileCountParts.add("$ktCount .kt")
+                    if (javaCount > 0) fileCountParts.add("$javaCount .java")
+                    val fileCountStr = if (fileCountParts.isNotEmpty()) " (${fileCountParts.joinToString(", ")})" else ""
+
+                    entries.add("- **${ss.name}**$fileCountStr")
+                    if (kotlinDirs.isNotEmpty()) {
+                        entries.add("  - Kotlin: ${kotlinDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
+                    if (javaDirs.isNotEmpty()) {
+                        entries.add("  - Java: ${javaDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
+                    if (resourceDirs.isNotEmpty()) {
+                        entries.add("  - Resources: ${resourceDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
+                    // If dirs don't match kotlin/java patterns, list them generically
+                    val otherDirs = allExistingDirs.filter { it !in kotlinDirs && it !in javaDirs }
+                    if (otherDirs.isNotEmpty() && kotlinDirs.isEmpty() && javaDirs.isEmpty()) {
+                        entries.add("  - Sources: ${otherDirs.joinToString(", ") { it.relativeTo(root.projectDir).path }}")
+                    }
+                }
+            }
+            if (entries.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("## $label")
+                sb.appendLine()
+                entries.forEach { sb.appendLine(it) }
+            }
+        } catch (_: Exception) {}
+    }
+
+    // ── Package Structure Detection ──
+
+    private fun appendPackageStructure(sb: StringBuilder, proj: Project) {
+        try {
+            val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java) ?: return
+            val mainSS = javaExt.sourceSets.findByName("main") ?: return
+            val srcDirs = mainSS.allSource.srcDirs.filter { it.exists() }
+            if (srcDirs.isEmpty()) return
+
+            // Collect all package paths
+            val packages = mutableSetOf<String>()
+            for (srcDir in srcDirs) {
+                srcDir.walkTopDown()
+                    .filter { it.isFile && (it.extension == "kt" || it.extension == "java") }
+                    .forEach { file ->
+                        val rel = file.parentFile.relativeTo(srcDir).path.replace(File.separatorChar, '.')
+                        if (rel.isNotBlank() && rel != ".") {
+                            packages.add(rel)
+                        }
+                    }
+            }
+            if (packages.isEmpty()) return
+
+            // Find base package (longest common prefix by segments)
+            val allSegments = packages.map { it.split(".") }
+            val baseSegments = mutableListOf<String>()
+            if (allSegments.isNotEmpty()) {
+                val minLen = allSegments.minOf { it.size }
+                for (i in 0 until minLen) {
+                    val seg = allSegments[0][i]
+                    if (allSegments.all { it[i] == seg }) {
+                        baseSegments.add(seg)
+                    } else break
+                }
+            }
+            val basePackage = baseSegments.joinToString(".")
+
+            val label = if (proj == proj.rootProject && proj.rootProject.subprojects.isEmpty()) "Package Structure" else "Package Structure (${proj.path})"
+            sb.appendLine()
+            sb.appendLine("## $label")
+            sb.appendLine()
+            if (basePackage.isNotBlank()) {
+                sb.appendLine("- **Base package:** `$basePackage`")
+            }
+
+            // Detect patterns
+            val relPackages = packages.map {
+                if (basePackage.isNotBlank()) it.removePrefix("$basePackage.").ifBlank { it } else it
+            }.filter { it.isNotBlank() && it != basePackage }
+
+            val hasFeaturePattern = relPackages.any { it.startsWith("feature.") || it.startsWith("features.") }
+            val hasLayerPattern = relPackages.any { p ->
+                p.split(".").first() in setOf("data", "domain", "presentation", "ui")
+            }
+            if (hasFeaturePattern) sb.appendLine("- **Pattern:** Feature modules (`feature.*`)")
+            if (hasLayerPattern) sb.appendLine("- **Pattern:** Layer-based (`data`, `domain`, `presentation`, `ui`)")
+
+            // Package tree at depth 3
+            val treePackages = packages.map { pkg ->
+                val segments = pkg.split(".")
+                segments.take(baseSegments.size + 3).joinToString(".")
+            }.distinct().sorted()
+
+            if (treePackages.isNotEmpty()) {
+                sb.appendLine("- **Packages:**")
+                for (pkg in treePackages) {
+                    sb.appendLine("  - `$pkg`")
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    // ── Dependencies ──
+
+    private fun appendDependencies(sb: StringBuilder, proj: org.gradle.api.Project, errors: MutableList<String>, allDeps: MutableList<String>) {
+        val interestingConfigs = setOf("implementation", "api", "compileOnly", "runtimeOnly",
+            "testImplementation", "testCompileOnly", "testRuntimeOnly")
+        val label = if (proj == proj.rootProject && proj.rootProject.subprojects.isEmpty()) "Dependencies" else "Dependencies (${proj.path})"
+        val entries = mutableListOf<String>()
+
+        // Try to get resolved versions
+        val resolvedVersions = mutableMapOf<String, String>() // "group:name" → version
+        for (configName in listOf("compileClasspath", "runtimeClasspath", "testCompileClasspath")) {
+            val config = try { proj.configurations.findByName(configName) } catch (_: Exception) { null }
+            if (config == null || !config.isCanBeResolved) continue
+            try {
+                config.resolvedConfiguration.firstLevelModuleDependencies.forEach { dep ->
+                    resolvedVersions["${dep.moduleGroup}:${dep.moduleName}"] = dep.moduleVersion
+                    // Also capture transitive first-level for version lookup
+                    dep.children.forEach { child ->
+                        resolvedVersions["${child.moduleGroup}:${child.moduleName}"] = child.moduleVersion
+                    }
+                }
+            } catch (e: Exception) {
+                errors.add("Failed to resolve `$configName` in ${proj.path}: ${e.message?.take(120)}")
+            }
+        }
+
+        for (configName in interestingConfigs) {
+            val config = try { proj.configurations.findByName(configName) } catch (_: Exception) { null }
+            if (config == null) continue
+            val deps = config.dependencies.filter { it !is ProjectDependency }
+            if (deps.isEmpty()) continue
+            for (dep in deps) {
+                val group = dep.group ?: ""
+                val name = dep.name
+                val declaredVersion = dep.version ?: ""
+                val resolvedVersion = resolvedVersions["$group:$name"] ?: declaredVersion
+                val coord = "$group:$name:$resolvedVersion"
+                entries.add("- `$configName`: $coord")
+                allDeps.add(coord)
+            }
+        }
+
+        if (entries.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## $label")
+            sb.appendLine()
+            entries.forEach { sb.appendLine(it) }
+        }
+    }
+
+    // ── Architecture Pattern Detection (from code structure) ──
+
+    private fun detectArchitecturePatterns(proj: Project, patterns: MutableList<String>) {
+        try {
+            val javaExt = proj.extensions.findByType(JavaPluginExtension::class.java) ?: return
+            val srcDirs = mutableListOf<File>()
+            javaExt.sourceSets.forEach { ss ->
+                srcDirs.addAll(ss.allSource.srcDirs.filter { it.exists() })
+            }
+            if (srcDirs.isEmpty()) return
+
+            // Collect all .kt and .java filenames (without extension) and relative package paths
+            val fileNames = mutableListOf<String>()
+            val packagePaths = mutableSetOf<String>()
+            for (srcDir in srcDirs) {
+                srcDir.walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "java") }.forEach { file ->
+                    fileNames.add(file.nameWithoutExtension)
+                    val rel = file.parentFile.relativeTo(srcDir).path.replace(File.separatorChar, '/')
+                    if (rel.isNotBlank() && rel != ".") {
+                        packagePaths.add(rel)
+                    }
+                }
+            }
+            if (fileNames.isEmpty()) return
+
+            // Count suffix patterns
+            fun countSuffix(suffix: String) = fileNames.count { it.endsWith(suffix) }
+
+            val viewModels = countSuffix("ViewModel")
+            val states = countSuffix("State")
+            val uiStates = countSuffix("UiState")
+            val intents = countSuffix("Intent")
+            val events = countSuffix("Event")
+            val presenters = countSuffix("Presenter")
+            val views = countSuffix("View")
+            val screens = countSuffix("Screen")
+            val components = countSuffix("Component")
+            val repositories = countSuffix("Repository")
+            val useCases = countSuffix("UseCase")
+            val reducers = countSuffix("Reducer")
+            val actions = countSuffix("Action")
+            val stores = countSuffix("Store")
+            val middlewares = countSuffix("Middleware")
+            val sideEffects = countSuffix("SideEffect")
+            val interactors = countSuffix("Interactor")
+            val gateways = countSuffix("Gateway")
+            val dataSources = countSuffix("DataSource")
+            val mappers = countSuffix("Mapper")
+            val transformers = countSuffix("Transformer")
+
+            val label = if (proj == proj.rootProject && proj.rootProject.subprojects.isEmpty()) "" else " in ${proj.path}"
+
+            // ── Class naming pattern detection ──
+
+            // MVI: ViewModel + State + Intent/Event
+            if (viewModels > 0 && states > 0 && (intents > 0 || events > 0)) {
+                val intentLabel = if (intents > 0) "$intents *Intent" else "$events *Event"
+                patterns.add("Code structure suggests MVI pattern$label (found $viewModels *ViewModel + $states *State + $intentLabel files)")
+            }
+            // MVVM with state: ViewModel + UiState but no Intent
+            else if (viewModels > 0 && uiStates > 0 && intents == 0) {
+                patterns.add("Code structure suggests MVVM with state$label (found $viewModels *ViewModel + $uiStates *UiState files)")
+            }
+
+            // Redux/MVI: Reducer + Action/Store
+            if (reducers > 0 && (actions > 0 || stores > 0)) {
+                val extras = listOfNotNull(
+                    if (actions > 0) "$actions *Action" else null,
+                    if (stores > 0) "$stores *Store" else null
+                ).joinToString(" + ")
+                patterns.add("Code structure suggests Redux/MVI pattern$label (found $reducers *Reducer + $extras files)")
+            }
+
+            // MVP: Presenter + View
+            if (presenters > 0 && views > 0 && screens == 0) {
+                patterns.add("Code structure suggests MVP pattern$label (found $presenters *Presenter + $views *View files)")
+            }
+
+            // Circuit-style: Presenter + Screen
+            if (presenters > 0 && screens > 0) {
+                patterns.add("Code structure suggests Circuit-style pattern$label (found $presenters *Presenter + $screens *Screen files)")
+            }
+
+            // Component-based (Decompose-style): Component + Screen
+            if (components > 0 && screens > 0 && presenters == 0) {
+                patterns.add("Code structure suggests component-based architecture$label (found $components *Component + $screens *Screen files)")
+            }
+
+            // Clean Architecture: Repository + UseCase
+            if (repositories > 0 && useCases > 0) {
+                patterns.add("Code structure suggests Clean Architecture layers$label (found $repositories *Repository + $useCases *UseCase files)")
+            }
+
+            // Side effect handling
+            if (middlewares > 0 || sideEffects > 0) {
+                val count = middlewares + sideEffects
+                val types = listOfNotNull(
+                    if (middlewares > 0) "$middlewares *Middleware" else null,
+                    if (sideEffects > 0) "$sideEffects *SideEffect" else null
+                ).joinToString(" + ")
+                patterns.add("Side effect handling detected$label ($types files)")
+            }
+
+            // Interactor pattern
+            if (interactors > 0) {
+                patterns.add("Interactor pattern detected$label ($interactors *Interactor files)")
+            }
+
+            // Data layer abstractions
+            if (gateways > 0 || dataSources > 0) {
+                val types = listOfNotNull(
+                    if (gateways > 0) "$gateways *Gateway" else null,
+                    if (dataSources > 0) "$dataSources *DataSource" else null
+                ).joinToString(" + ")
+                patterns.add("Data layer abstraction detected$label ($types files)")
+            }
+
+            // Data mapping
+            if (mappers > 0 || transformers > 0) {
+                val count = mappers + transformers
+                val types = listOfNotNull(
+                    if (mappers > 0) "$mappers *Mapper" else null,
+                    if (transformers > 0) "$transformers *Transformer" else null
+                ).joinToString(" + ")
+                patterns.add("Data mapping layer detected$label ($types files)")
+            }
+
+            // ── Package structure pattern detection ──
+            val topLevelDirs = packagePaths.map { it.split("/").last() }.toSet()
+            val allPathSegments = packagePaths.flatMap { it.split("/") }.toSet()
+
+            val layerDirs = setOf("data", "domain", "presentation", "ui").filter { it in allPathSegments }
+            if (layerDirs.size >= 2) {
+                patterns.add("Package layout indicates layered architecture$label (${layerDirs.joinToString(", ")} packages found)")
+            }
+
+            // Feature modules
+            val featurePkgs = packagePaths.filter { it.startsWith("feature/") || it.startsWith("features/") || it.contains("/feature/") || it.contains("/features/") }
+            if (featurePkgs.isNotEmpty()) {
+                // Extract feature names
+                val featureNames = featurePkgs.mapNotNull { path ->
+                    val parts = path.split("/")
+                    val idx = parts.indexOfFirst { it == "feature" || it == "features" }
+                    if (idx >= 0 && idx + 1 < parts.size) parts[idx + 1] else null
+                }.distinct().sorted()
+                if (featureNames.isNotEmpty()) {
+                    patterns.add("Feature-based modules detected$label: ${featureNames.joinToString(", ")}")
+                }
+            }
+
+            // Shared/core/common modules
+            val sharedDirs = setOf("core", "common", "shared").filter { it in allPathSegments }
+            if (sharedDirs.isNotEmpty()) {
+                patterns.add("Shared module pattern detected$label (${sharedDirs.joinToString(", ")} packages found)")
+            }
+
+            // DI module
+            if ("di" in allPathSegments || "inject" in allPathSegments) {
+                patterns.add("Dependency injection module detected$label")
+            }
+
+            // Navigation layer
+            if ("navigation" in allPathSegments || "routing" in allPathSegments) {
+                patterns.add("Navigation layer detected$label")
+            }
+        } catch (_: Exception) {}
+    }
+
+    // ── Architecture Hints ──
+
+    private fun generateHints(frameworks: List<String>): List<String> {
+        val hints = mutableListOf<String>()
+        val isAndroid = frameworks.any { it.startsWith("Android") }
+        val hasCompose = "Jetpack Compose" in frameworks || "Compose Multiplatform" in frameworks
+        val hasRxJava = frameworks.any { it.contains("RxJava") || it.contains("RxAndroid") }
+        val hasCoroutines = "Kotlin Coroutines" in frameworks
+        val hasHilt = frameworks.any { it.contains("Hilt") }
+        val hasDagger = frameworks.any { it.contains("Dagger") } && !hasHilt
+        val hasNavCompose = "Navigation Compose" in frameworks
+        val hasNavFragment = frameworks.any { it.contains("Navigation") && it.contains("Fragment") }
+        val hasLiveData = frameworks.any { it.contains("LiveData") }
+        val hasRoom = frameworks.any { it.contains("Room") }
+        val hasKMP = "Kotlin Multiplatform (KMP)" in frameworks
+
+        // ── Architecture Pattern Detection ──
+        val hasMVI = frameworks.any { it in setOf("Orbit MVI", "MVIKotlin", "FlowMVI", "FlowRedux / MAD", "Redux Kotlin") }
+        val hasCircuit = "Circuit (Slack)" in frameworks
+        val hasDecompose = "Decompose" in frameworks
+
+        if (hasCircuit) {
+            hints.add("Circuit → Presenter + UI split, Navigator for routing, Screen as unit of composition")
+        } else if (hasDecompose) {
+            hints.add("Decompose → Component-based lifecycle, ChildStack for navigation, platform-agnostic")
+        }
+
+        if (hasMVI) {
+            hints.add("Unidirectional architecture → State, Event/Intent, SideEffect pattern")
+            hints.add("Screen = pure function of State. Actions dispatch Intents. Side effects are isolated.")
+        } else if (hasCompose && hasCoroutines && !hasCircuit) {
+            hints.add("Compose + Flow → likely MVI/UDA pattern with StateFlow in ViewModel")
+        }
+
+        // ── Android ──
+        if (isAndroid) {
+            if (hasCompose) {
+                hints.add("Jetpack Compose UI → @Composable functions, unidirectional data flow, State hoisting")
+            } else {
+                hints.add("Android View system → XML layouts, Activities/Fragments, View Binding or DataBinding")
+            }
+
+            if (hasRxJava) {
+                hints.add("RxJava → Observable/Single/Completable reactive patterns")
+            }
+
+            if (hasHilt) {
+                hints.add("Hilt DI → @HiltAndroidApp, @AndroidEntryPoint, @Inject, @HiltViewModel")
+            } else if (hasDagger) {
+                hints.add("Dagger DI → @Component, @Module, @Inject")
+            }
+
+            if (hasNavCompose) {
+                hints.add("Navigation Compose → NavHost, composable() routes, type-safe navigation")
+            } else if (hasNavFragment) {
+                hints.add("Navigation Component → nav_graph.xml, Fragment destinations")
+            }
+
+            if (hasLiveData) {
+                hints.add("LiveData → observable data holder for UI state")
+            }
+
+            if (hasRoom) {
+                hints.add("Room DB → @Entity, @Dao, @Database. Migrations via Migration class or auto-migration")
+            }
+
+            hints.add("Android source layout: src/main/java (or kotlin), src/main/res (layouts, drawables, values)")
+        }
+
+        // ── Kotlin Multiplatform ──
+        if (hasKMP) {
+            hints.add("Kotlin Multiplatform → shared code in commonMain, platform-specific in androidMain/iosMain etc.")
+            hints.add("KMP: expect/actual declarations for platform-specific implementations")
+            if ("Ktor Client" in frameworks) {
+                hints.add("Ktor Client in KMP → shared HTTP layer across platforms")
+            }
+            if ("Kotlin Serialization" in frameworks) {
+                hints.add("KMP + Kotlin Serialization → shared data models across platforms")
+            }
+        }
+
+        // ── Compose Multiplatform ──
+        if ("Compose Multiplatform" in frameworks) {
+            hints.add("Compose Multiplatform → shared UI in commonMain, platform-specific in androidMain/desktopMain/iosMain")
+        }
+
+        // ── Ktor ──
+        if ("Ktor Server" in frameworks) {
+            hints.add("Ktor Server → routing DSL, application modules, install() for features")
+        }
+        if ("Ktor Client" in frameworks && !hasKMP) {
+            hints.add("Ktor Client → HTTP client, can replace Retrofit")
+        }
+
+        // ── Spring ──
+        if ("Spring Boot" in frameworks) {
+            hints.add("Spring Boot → controller/service/repository pattern")
+        }
+        if ("Spring Web (REST)" in frameworks) {
+            hints.add("Spring Web → REST controllers with @RequestMapping/@GetMapping")
+        }
+        if ("Spring Data JPA" in frameworks) {
+            hints.add("Spring Data JPA → @Entity classes, Spring Data repositories")
+        }
+        if ("Spring Security" in frameworks) {
+            hints.add("Spring Security → new endpoints may need auth rules, check SecurityConfig")
+        }
+        if ("Spring WebFlux (Reactive)" in frameworks) {
+            hints.add("Spring WebFlux → reactive, use Mono/Flux not blocking calls")
+        }
+        if ("Flyway" in frameworks || "Liquibase" in frameworks) {
+            hints.add("Database migrations → schema changes REQUIRE migration files")
+        }
+        if ("Spring Data JPA" in frameworks && ("Flyway" in frameworks || "Liquibase" in frameworks)) {
+            hints.add("JPA + migrations → entity changes need: 1) migration 2) entity update 3) test")
+        }
+
+        // ── General ──
+        if ("Protobuf/gRPC" in frameworks || "gRPC" in frameworks) {
+            hints.add("Protobuf/gRPC → .proto files generate code, never edit generated sources")
+        }
+        if ("Kotlin Serialization" in frameworks && !hasKMP) {
+            hints.add("Kotlin Serialization → @Serializable data classes, not Jackson/Gson")
+        }
+        if ("Testcontainers" in frameworks) {
+            hints.add("Testcontainers → integration tests need Docker running")
+        }
+        if ("jOOQ" in frameworks) {
+            hints.add("jOOQ → type-safe SQL from generated code, regenerate after schema changes")
+        }
+        if ("GraphQL" in frameworks) {
+            hints.add("GraphQL → check for .graphql schema files")
+        }
+
+        return hints
+    }
+}
