@@ -33,7 +33,7 @@ abstract class ClaudeRunTask : DefaultTask() {
         val promptValue = prompt.orNull
             ?: throw GradleException("Required property 'prompt' is missing. Pass -Pprompt=\"your prompt\"")
 
-        val cmd = mutableListOf("claude", "-p", promptValue, "--dangerously-skip-permissions")
+        val cmd = mutableListOf("claude", "-p", promptValue, "--permission-mode", "bypassPermissions")
 
         model.orNull?.let { cmd.addAll(listOf("--model", it)) }
 
