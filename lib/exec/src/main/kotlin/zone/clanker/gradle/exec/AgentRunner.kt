@@ -26,9 +26,8 @@ object AgentRunner {
             "copilot", "-p", prompt, "--yolo", "-s", "--no-ask-user"
         )
         "claude" -> listOf(
-            "claude", "--bare", "-p", prompt,
-            "--permission-mode", "bypassPermissions",
-            "--output-format", "text"
+            "claude", "-p", prompt,
+            "--dangerously-skip-permissions"
         )
         "codex" -> listOf(
             "codex", "exec", prompt, "--full-auto"
