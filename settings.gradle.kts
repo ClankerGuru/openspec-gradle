@@ -21,7 +21,11 @@ include(
     ":task:openspec",
     ":task:monolith",
     // Plugins
+    ":plugin:claude",
     ":plugin:code-intel",
+    ":plugin:codex",
+    ":plugin:copilot",
+    ":plugin:opencode",
     ":plugin:openspec",
     ":plugin:monolith",
 )
