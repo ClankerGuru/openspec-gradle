@@ -173,7 +173,7 @@ class OpenSpecPlugin : Plugin<Settings> {
 
             // Hooks
             project.tasks.matching { it.name == "clean" }.configureEach { dependsOn("opsx-clean") }
-            project.tasks.matching { it.name == "assemble" }.configureEach { dependsOn("opsx-sync") }
+            // opsx-sync is NOT hooked into assemble — run explicitly or via verify
         }
     }
 }
