@@ -2,13 +2,15 @@
 # OpenSpec Gradle — one-line installer
 #
 # Usage:
-#   Interactive:     bash install.sh
-#   Positional args: bash install.sh copilot claude srcx opsx
-#   Env var (piped):  OPENSPEC_COMPONENTS=copilot,claude curl ... | bash
-#   Install all:     bash install.sh all
+#   bash install.sh                              Interactive (default)
+#   bash install.sh --agents copilot,claude       Install specific agents
+#   bash install.sh --all                         Install everything
+#   bash install.sh --core                        Core only (srcx + opsx + wrkx)
+#   bash install.sh --core --agents copilot       Core + specific agents
+#   OPENSPEC_COMPONENTS=copilot curl ... | bash   Env var (piped, non-interactive)
 #
-# Components: wrkx, srcx, opsx, quality, claude, copilot, codex, opencode, all
-# To uninstall: rm ~/.gradle/init.d/{00-wrkx,01-srcx,02-opsx,02-quality,03-claude,03-copilot,03-codex,03-opencode}.init.gradle.kts
+# To uninstall:
+#   bash install.sh --uninstall
 
 set -euo pipefail
 
@@ -169,35 +171,90 @@ normalize_selection() {
     esac
 }
 
+# ── Parse CLI args ──
+CLI_CORE=false
+CLI_ALL=false
+CLI_AGENTS=""
+CLI_UNINSTALL=false
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --all)        CLI_ALL=true ;;
+        --core)       CLI_CORE=true ;;
+        --uninstall)  CLI_UNINSTALL=true ;;
+        --agents)     shift; CLI_AGENTS="$1" ;;
+        --agents=*)   CLI_AGENTS="${1#--agents=}" ;;
+        --help|-h)
+            echo "Usage:"
+            echo "  bash install.sh                        Interactive (default)"
+            echo "  bash install.sh --agents copilot       Install core + specific agents"
+            echo "  bash install.sh --all                  Install everything"
+            echo "  bash install.sh --core                 Core only (srcx + opsx + wrkx)"
+            echo "  bash install.sh --core --agents claude Core + Claude"
+            echo "  bash install.sh --uninstall            Remove all init scripts"
+            exit 0 ;;
+        *)
+            # Treat bare args as agent names: bash install.sh copilot claude
+            CLI_AGENTS="${CLI_AGENTS:+$CLI_AGENTS,}$1" ;;
+    esac
+    shift
+done
+
+if [ "$CLI_UNINSTALL" = true ]; then
+    echo "  Removing OpenSpec init scripts..."
+    for f in "$INIT_DIR"/00-wrkx.init.gradle.kts \
+             "$INIT_DIR"/01-srcx.init.gradle.kts \
+             "$INIT_DIR"/02-opsx.init.gradle.kts \
+             "$INIT_DIR"/02-quality.init.gradle.kts \
+             "$INIT_DIR"/03-claude.init.gradle.kts \
+             "$INIT_DIR"/03-copilot.init.gradle.kts \
+             "$INIT_DIR"/03-codex.init.gradle.kts \
+             "$INIT_DIR"/03-opencode.init.gradle.kts; do
+        [ -f "$f" ] && rm -f "$f" && echo "  Removed $(basename "$f")"
+    done
+    echo "  Done."
+    exit 0
+fi
+
 # ── Selection ──
-if [ $# -gt 0 ]; then
-    # Positional args: bash install.sh copilot claude
-    SELECTED=$(normalize_selection "$(IFS=,; echo "$*")")
+if [ "$CLI_ALL" = true ]; then
+    SELECTED="wrkx,srcx,opsx,quality,claude,copilot,codex,opencode"
+elif [ "$CLI_CORE" = true ] || [ -n "$CLI_AGENTS" ]; then
+    SELECTED="wrkx,srcx,opsx"
+    if [ -n "$CLI_AGENTS" ]; then
+        SELECTED="$SELECTED,$CLI_AGENTS"
+    fi
 elif [ -n "${OPENSPEC_COMPONENTS:-}" ]; then
     SELECTED=$(normalize_selection "$OPENSPEC_COMPONENTS")
 elif [ -t 0 ]; then
-    echo "  Select components to install (comma-separated numbers, names, or 'all'):"
+    echo "  What would you like to install?"
     echo ""
-    echo "  Core:"
-    echo "    1) srcx      — source intelligence (discovery, analysis, refactoring)"
-    echo "    2) opsx      — workflow engine (proposals, exec, agent sync)"
-    echo "    3) wrkx      — workspace management (multi-repo, composite builds)"
-    echo "    4) quality   — linting (detekt + ktlint for Kotlin projects)"
+    echo "  Core plugins (recommended):"
+    echo "    srcx      Source intelligence — discovery, analysis, refactoring"
+    echo "    opsx      Workflow engine — proposals, exec, agent sync"
+    echo "    wrkx      Workspace — multi-repo composite builds"
+    echo "    quality   Linting — detekt + ktlint for Kotlin projects"
     echo ""
-    echo "  Agents:"
-    echo "    5) claude    — Claude Code CLI wrapper"
-    echo "    6) copilot   — GitHub Copilot CLI wrapper"
-    echo "    7) codex     — OpenAI Codex CLI wrapper"
-    echo "    8) opencode  — OpenCode CLI wrapper"
+    echo "  Agent wrappers (install the ones you use):"
+    echo "    claude    Claude Code CLI"
+    echo "    copilot   GitHub Copilot CLI"
+    echo "    codex     OpenAI Codex CLI"
+    echo "    opencode  OpenCode CLI"
     echo ""
-    echo "    9) all       — Install everything"
+    echo "  Shortcuts:"
+    echo "    all       Install everything"
+    echo "    core      Just srcx + opsx + wrkx (no agents)"
     echo ""
-    printf "  Select: "
+    printf "  Enter components (comma-separated): "
     read -r CHOICE
-    SELECTED=$(normalize_selection "$CHOICE")
+    case "$CHOICE" in
+        all)  SELECTED="wrkx,srcx,opsx,quality,claude,copilot,codex,opencode" ;;
+        core) SELECTED="wrkx,srcx,opsx" ;;
+        *)    SELECTED="$CHOICE" ;;
+    esac
 else
-    echo "  Non-interactive mode — installing all."
-    SELECTED="wrkx,srcx,opsx,quality,claude"
+    # Piped non-interactive — install core + claude by default
+    SELECTED="wrkx,srcx,opsx,claude"
 fi
 
 if [ "$SELECTED" = "none" ]; then
