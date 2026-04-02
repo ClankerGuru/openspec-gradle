@@ -1,9 +1,5 @@
-Query project dependencies — resolved versions, transitive deps, and module relationships.
+!`cat .opsx/deps.md 2>/dev/null || (./gradlew srcx-deps 2>/dev/null && cat .opsx/deps.md 2>/dev/null) || echo "FAILED: Run manually: ./gradlew srcx-deps"`
 
-```bash
-./gradlew srcx-deps
-```
+Present the dependency tree above. Dependencies are resolved (actual versions after conflict resolution) and grouped by Gradle configuration.
 
-Read `.opsx/deps.md` for the full dependency tree. Dependencies are resolved (actual versions after conflict resolution) and grouped by Gradle configuration. For multi-module projects, each module's deps are shown separately.
-
-For module relationships, also check `.opsx/modules.md`.
+For module relationships, also check `.opsx/modules.md`. For a specific module: `./gradlew :moduleName:srcx-deps`.

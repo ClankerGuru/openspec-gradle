@@ -11,13 +11,12 @@ Run GitHub Copilot headlessly via Gradle wrapper tasks.
 
 | Flag | Description |
 |------|-------------|
-| `-Pprompt="..."` | **Required** for `copilot-run`. The prompt to send. |
+| `-Pprompt="..."` | **Required** for `copilot-run` |
 | `-PcopilotModel=model` | Override the model |
 | `-Pagent=name` | Use a specific agent |
 | `-Peffort=high` | Set effort level |
-| `-Pautopilot=true` | Run without user interaction |
-| `-PsessionId=id` | Resume a specific session (`copilot-resume`) |
-| `-PmaxAutopilotContinues=10` | Max continuation rounds in autopilot |
+| `-Pautopilot=true` | Run without interaction |
+| `-PsessionId=id` | Resume a specific session |
 | `-Pyolo=true` | Skip all confirmations |
 
 ## Examples

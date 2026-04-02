@@ -1,9 +1,8 @@
-Find a symbol (class, function, property) by name in the project.
+!`./gradlew srcx-find -Psymbol=$ARGUMENTS 2>/dev/null && cat .opsx/find.md 2>/dev/null || echo "FAILED: Run manually: ./gradlew srcx-find -Psymbol=YourSymbol"`
 
-**Input**: The argument is the symbol name to search for.
+Present the results above. Show file paths with line numbers.
 
-```bash
-./gradlew srcx-find -Psymbol=<name>
-```
-
-Read `.opsx/find.md` and present matching symbols with file paths and line numbers.
+If no results, suggest:
+- Check spelling and case sensitivity
+- Scope to a module: `./gradlew :moduleName:srcx-find -Psymbol=Name`
+- Try a partial name or superclass name

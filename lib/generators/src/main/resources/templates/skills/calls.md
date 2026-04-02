@@ -1,9 +1,5 @@
-Show the call graph for a symbol — what it calls and what calls it.
+!`./gradlew srcx-calls -Psymbol=$ARGUMENTS 2>/dev/null && cat .opsx/calls.md 2>/dev/null || echo "FAILED: Run manually: ./gradlew srcx-calls -Psymbol=YourSymbol"`
 
-**Input**: The argument is the symbol name to analyze.
+Present the call graph above. Organize into **callers** (what calls this) and **callees** (what this calls).
 
-```bash
-./gradlew srcx-calls -Psymbol=<name>
-```
-
-Read `.opsx/calls.md` and present the call graph with callers and callees clearly organized.
+If the symbol is not found, run `./gradlew srcx-find -Psymbol=$ARGUMENTS` first to locate it. For multi-module projects: `./gradlew :moduleName:srcx-calls -Psymbol=Name`.

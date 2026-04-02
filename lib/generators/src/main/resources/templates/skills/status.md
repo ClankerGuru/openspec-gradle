@@ -1,18 +1,3 @@
-Show the status of all open changes and proposals.
+!`./gradlew opsx-status 2>/dev/null && cat .opsx/status.md 2>/dev/null || echo "No status available. Run: ./gradlew opsx-status"`
 
----
-
-**Steps**
-
-1. Run the status task:
-   ```bash
-   ./gradlew opsx-status
-   ```
-
-2. Read the output at `.opsx/status.md`
-
-3. Present the status dashboard to the user.
-
-**Output**
-
-Show all active changes with their current status, progress, and next steps.
+Present the status above. Show each active change with progress, next steps, and any blocked tasks.

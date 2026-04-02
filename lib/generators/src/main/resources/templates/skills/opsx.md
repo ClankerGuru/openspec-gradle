@@ -1,12 +1,9 @@
-Show available OPSX tasks, active changes, and included builds for this project.
+!`./gradlew opsx 2>/dev/null | head -60 || echo "Run ./gradlew opsx to see available tasks"`
 
-**Input**: Optional build name to scope to (e.g., `gort`, `openspec-gradle`).
+## Cached Context
 
-1. Run: `./gradlew opsx`
-2. If a build name was given, also run: `./gradlew :<build>:opsx`
-3. Read cached context if available: `.opsx/context.md`, `.opsx/modules.md`, `.opsx/status.md`
+!`cat .opsx/context.md 2>/dev/null | head -20`
 
-Present a concise summary:
-- Available tool categories with key tasks
-- Active changes with progress
-- Included builds with their access pattern
+!`cat .opsx/status.md 2>/dev/null | head -20 || echo "No active changes"`
+
+Present a concise summary: available task categories, active changes with progress, and included builds. For a specific build: `./gradlew :<build>:opsx`.

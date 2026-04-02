@@ -14,14 +14,13 @@ Run Claude Code headlessly via Gradle wrapper tasks.
 
 | Flag | Description |
 |------|-------------|
-| `-Pprompt="..."` | **Required** for `claude-run`. The prompt to send. |
-| `-PclaudeModel=model` | Override the model (e.g., `claude-sonnet-4-20250514`) |
-| `-PmaxBudgetUsd=5.00` | Set a spending cap for the session |
-| `-PsessionId=id` | Resume a specific session (`claude-resume`) |
-| `-PpermissionMode=plan` | Permission mode: `plan`, `auto`, `default` |
-| `-PsystemPrompt="..."` | Override the system prompt |
-| `-PappendSystemPrompt="..."` | Append to the default system prompt |
-| `-Pverbose=true` | Enable verbose output |
+| `-Pprompt="..."` | **Required** for `claude-run` |
+| `-PclaudeModel=model` | Override the model |
+| `-PmaxBudgetUsd=5.00` | Spending cap |
+| `-PsessionId=id` | Resume a specific session |
+| `-PpermissionMode=plan` | `plan`, `auto`, `default` |
+| `-PsystemPrompt="..."` | Override system prompt |
+| `-PappendSystemPrompt="..."` | Append to system prompt |
 
 ## Examples
 
@@ -29,5 +28,4 @@ Run Claude Code headlessly via Gradle wrapper tasks.
 ./gradlew claude-run -Pprompt="Fix the failing test in UserService"
 ./gradlew claude-run -Pprompt="Refactor auth module" -PmaxBudgetUsd=2.00
 ./gradlew claude-resume -PsessionId=abc123
-./gradlew claude-auth
 ```

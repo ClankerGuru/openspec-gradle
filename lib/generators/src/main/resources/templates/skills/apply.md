@@ -1,42 +1,27 @@
-Implement tasks from an OPSX change.
+## Available Changes
 
-**You are an OPSX user.** You configure Gradle tasks and let OPSX execute them. Independent tasks run in parallel.
+!`ls opsx/changes/ 2>/dev/null || echo "No changes found"`
 
-**Input**: Change name, or infer from context. If ambiguous, prompt for selection.
+## Current Status
 
-**Parallel execution**: If multiple tasks have no dependencies, execute simultaneously with `./gradlew opsx-exec -Ptask=code1,code2,code3 -Pparallel=true` or separate background processes.
+!`./gradlew opsx-status 2>/dev/null && cat .opsx/status.md 2>/dev/null | head -40 || echo "Status not available"`
 
-**Steps**
+---
 
-1. **Select the change**
-   - If provided, use it. Otherwise run `./gradlew opsx-status`
-   - Auto-select if only one active change exists
-   - Announce: "Using change: <name>"
+**You are an OPSX user.** Configure Gradle tasks and let OPSX execute them.
 
-2. **Read context**
-   - `opsx/changes/<name>/.opsx.yaml` — schema and artifact status
-   - `opsx/changes/<name>/proposal.md`, `design.md`, `tasks.md`
-   - `.opsx/context.md`, `.opsx/tree.md`, `.opsx/modules.md`, `.opsx/devloop.md`
+## Workflow
 
-3. **Show progress**: schema, "N/M tasks complete", remaining tasks with codes
-
+1. **Select change** -- from the list above, or auto-select if only one active
+2. **Read context** -- `opsx/changes/<name>/proposal.md`, `design.md`, `tasks.md`, plus `.opsx/context.md`, `.opsx/tree.md`, `.opsx/devloop.md`
+3. **Show progress** -- "N/M tasks complete", remaining tasks with codes
 4. **Implement tasks** (loop until done or blocked):
-   - Check dependencies — skip tasks with incomplete deps
-   - Before claiming a task with `--set=progress`, check if it is already IN_PROGRESS (🔄). If it is, another agent may be working on it — skip to the next available task. If all tasks are blocked or in-progress, report the situation and wait.
-   - **Before starting**: `./gradlew opsx-<code> --set=progress -Pagent=claude`
-   - Make the code changes
-   - **After completing**: `./gradlew opsx-<code> --set=done`
-   - `--set=done` runs verify assertions. If they fail, task stays IN_PROGRESS — fix and retry
-   - Only use `--force` when the user explicitly asks to skip verification
+   - Check dependencies -- skip tasks with incomplete deps
+   - Check if task is already IN_PROGRESS -- skip if another agent has it
+   - Start: `./gradlew opsx-<code> --set=progress -Pagent=claude`
+   - Make changes
+   - Complete: `./gradlew opsx-<code> --set=done` (runs verify assertions)
+   - If verify fails, task stays IN_PROGRESS -- fix and retry
+5. **On completion**: `./gradlew opsx-status --proposal=<name>`. If all done, suggest archiving.
 
-   **Never manually edit checkboxes in tasks.md.** Use Gradle commands only.
-
-   **Pause if**: task is unclear, blocked by deps, reveals design issues, or errors occur
-
-5. **On completion**: run `./gradlew opsx-status --proposal=<name>`. If all done, suggest archiving.
-
-**Guardrails**
-- Keep going through tasks until done or blocked
-- Respect task dependencies
-- Keep changes minimal and scoped to each task
-- Pause on errors or unclear requirements — don't guess
+**Never manually edit checkboxes in tasks.md.** Use Gradle commands only. Pause on errors or unclear requirements.

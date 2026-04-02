@@ -1,14 +1,7 @@
-Sync delta specs from a change to main specs.
+Run: `./gradlew opsx-sync`
 
-**Input**: Optionally specify a change name.
+This regenerates skills, instructions, and context files. If `~/.clkx/` exists, creates symlinks instead of per-project files.
 
-1. If no change name, select from: `./gradlew opsx-status`
-2. Find delta specs in `opsx/changes/<name>/specs/*/spec.md`
-3. For each delta spec, apply to main specs at `opsx/specs/<capability>/spec.md`:
-   - ADDED requirements -> add to main spec
-   - MODIFIED requirements -> merge into main spec
-   - REMOVED requirements -> remove from main spec
-   - RENAMED requirements -> rename in main spec
-4. Show summary of what was synced
+For global refresh: `./gradlew opsx-sync -Pglobal=true`
 
-**Key principle**: Intelligent merging — apply partial updates, not wholesale replacement. Read both delta and main specs before changes. Preserve existing content not mentioned in delta.
+After sync, verify with `ls .claude/skills/` or `ls .opsx/`.

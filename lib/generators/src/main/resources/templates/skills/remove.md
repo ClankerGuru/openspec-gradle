@@ -1,13 +1,11 @@
-Remove a symbol or line range from the codebase. Handles import cleanup.
+!`./gradlew srcx-remove -Psymbol=$ARGUMENTS 2>/dev/null && cat .opsx/remove.md 2>/dev/null || echo "Usage: /srcx-remove ClassName or /srcx-remove ClassName.methodName"`
 
-1. Preview first: `./gradlew srcx-remove -Psymbol=ClassName` (dry-run is default)
-2. Review `.opsx/remove.md` — check what will be removed and remaining references
-3. Apply: `./gradlew srcx-remove -Psymbol=ClassName -PdryRun=false`
-4. Fix any remaining references listed in warnings, then build
+## Dry-run Preview
 
-**Modes**:
-- **Remove class:** `-Psymbol=ClassName`
-- **Remove member:** `-Psymbol=ClassName.methodName`
-- **Remove lines:** `-Pfile=relative/path -PstartLine=N -PendLine=M` (no import cleanup)
+The above shows what would be removed and any remaining references.
 
-For multi-module: add `-Pmodule=:moduleName`. Run `srcx-usages` first for full impact analysis.
+To apply: `./gradlew srcx-remove -Psymbol=$ARGUMENTS -PdryRun=false`
+
+**Modes**: `-Psymbol=ClassName` (whole class), `-Psymbol=ClassName.methodName` (member), or `-Pfile=path -PstartLine=N -PendLine=M` (line range, no import cleanup).
+
+Run `srcx-usages` first for full impact analysis. Fix remaining references after applying, then build.

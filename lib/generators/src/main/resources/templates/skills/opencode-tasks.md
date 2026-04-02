@@ -11,14 +11,11 @@ Run opencode headlessly via Gradle wrapper tasks.
 
 | Flag | Description |
 |------|-------------|
-| `-Pprompt="..."` | **Required** for `opencode-run`. The message to send. |
+| `-Pprompt="..."` | **Required** for `opencode-run` |
 | `-PopencodeModel=model` | Override the model |
 | `-Pagent=name` | Use a specific agent |
-| `-Psession=id` | Resume a specific session |
-| `-PcontinueSession=true` | Continue the most recent session |
-| `-Pfork=true` | Fork a session instead of continuing it |
+| `-PcontinueSession=true` | Continue most recent session |
 | `-Pport=8080` | Port for `opencode-serve` |
-| `-Phostname=0.0.0.0` | Hostname for `opencode-serve` |
 
 ## Examples
 

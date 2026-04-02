@@ -1,12 +1,8 @@
-Verify that implementation matches the specs and tasks for a change.
+!`./gradlew srcx-verify 2>/dev/null && cat .opsx/verify.md 2>/dev/null || echo "FAILED: Run manually: ./gradlew srcx-verify"`
 
-**Input**: Optionally specify a change name.
+Present the verification results above.
 
-1. Select the change (auto-select if only one active): `./gradlew opsx-status`
-2. Read project context: `.opsx/context.md`, `.opsx/tree.md`, `.opsx/modules.md`, `.opsx/devloop.md`
-3. Read all change artifacts (proposal, design, specs, tasks)
-4. Check all tasks are marked `[x]`
-5. Verify code changes match specs
-6. Report: tasks complete and matching, issues found, or missing implementation
+- **PASS**: All architecture rules satisfied. Report cleanly.
+- **FAIL**: Show each violation with file path, line, and the rule it broke. Suggest fixes.
 
-Flag real issues, not style preferences. Note ambiguity rather than failing.
+To verify a specific module: `./gradlew :moduleName:srcx-verify`.

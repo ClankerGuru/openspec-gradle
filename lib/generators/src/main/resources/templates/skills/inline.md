@@ -1,10 +1,15 @@
-Inline a function — replace call sites with the implementation body.
+## Implementation
 
-1. Find the implementation: `./gradlew srcx-find -Psymbol=functionName`
-2. Find all call sites: `./gradlew srcx-usages -Psymbol=functionName`
-3. For each call site: replace the call with the body, substitute parameters with actual arguments, adjust variable names to avoid conflicts
-4. Delete the original function
-5. Verify: `./gradlew srcx-usages -Psymbol=functionName` should show zero results
-6. Build to verify: `./gradlew build`
+!`./gradlew srcx-find -Psymbol=$ARGUMENTS 2>/dev/null && cat .opsx/find.md 2>/dev/null || echo "Symbol not found"`
 
-Don't inline functions with side effects called from multiple sites. Don't inline virtual/overridden methods.
+!`./gradlew srcx-usages -Psymbol=$ARGUMENTS 2>/dev/null && cat .opsx/usages.md 2>/dev/null || echo "No usages found"`
+
+Using the definition and call sites above:
+
+1. For each call site: replace the call with the body, substituting parameters with actual arguments
+2. Adjust variable names to avoid conflicts at each site
+3. Delete the original function
+4. Verify: `./gradlew srcx-usages -Psymbol=$ARGUMENTS` should show zero results
+5. Build: `./gradlew build`
+
+Do NOT inline functions with side effects called from multiple sites. Do NOT inline virtual/overridden methods.

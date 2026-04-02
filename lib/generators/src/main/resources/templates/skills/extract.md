@@ -1,8 +1,7 @@
-Extract a block of code into a new function or class.
+!`./gradlew srcx-extract -PsourceFile=$(echo $ARGUMENTS | awk '{print $1}') -PstartLine=$(echo $ARGUMENTS | awk '{print $2}') -PendLine=$(echo $ARGUMENTS | awk '{print $3}') -PnewName=$(echo $ARGUMENTS | awk '{print $4}') 2>/dev/null && cat .opsx/extract.md 2>/dev/null || echo "Usage: /srcx-extract path/File.kt 10 25 newFunctionName"`
 
-1. Run: `./gradlew srcx-extract -PsourceFile=path/File.kt -PstartLine=10 -PendLine=25 -PnewName=doSomething`
-2. Review `.opsx/extract.md` — shows extracted code, detected free variables, suggested signature, and call site replacement
-3. Adjust parameter types, return type, visibility as needed
-4. Apply the refactoring manually based on the suggestion
+## Extraction Preview
 
-The task suggests but does NOT auto-apply. Free variable detection is heuristic — review the parameter list.
+The above shows: extracted code, detected free variables, suggested signature, and call site replacement.
+
+The task suggests but does NOT auto-apply. Free variable detection is heuristic -- review the parameter list and adjust types, return type, and visibility as needed.

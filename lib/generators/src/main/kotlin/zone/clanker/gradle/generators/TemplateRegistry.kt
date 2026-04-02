@@ -3,7 +3,7 @@ package zone.clanker.gradle.generators
 
 /**
  * Registry of all embedded skill templates.
- * Templates reference filesystem operations instead of CLI commands.
+ * Templates use shell injection (`!` lines) to pre-load context for the agent.
  */
 object TemplateRegistry {
 
@@ -60,7 +60,9 @@ object TemplateRegistry {
     private fun opsxSkill() = SkillContent(
         dirName = "opsx-dashboard",
         description = "Show running agents, pending questions, and exec dashboards per proposal. Also lists available OPSX tasks and included builds. Use at session start, when monitoring agents, or when switching context.",
-        instructions = loadResource("templates/skills/opsx.md")
+        instructions = loadResource("templates/skills/opsx.md"),
+        effort = "low",
+        allowedTools = "Read, Bash(./gradlew *)"
     )
 
     // ── Propose ──────────────────────────────────────────
@@ -78,7 +80,7 @@ object TemplateRegistry {
         dirName = "opsx-apply",
         description = "Implement tasks from a change proposal. Use when starting to code, continuing implementation, or working through tasks.",
         instructions = loadResource("templates/skills/apply.md"),
-        disableModelInvocation = true
+        allowedTools = "Read, Edit, Write, Grep, Glob, Bash, Agent"
     )
 
     // ── Archive ──────────────────────────────────────────
@@ -87,14 +89,15 @@ object TemplateRegistry {
         dirName = "opsx-archive",
         description = "Archive a completed change. Use when implementation is done and the user wants to finalize.",
         instructions = loadResource("templates/skills/archive.md"),
-        disableModelInvocation = true
+        effort = "low",
+        allowedTools = "Read, Bash(./gradlew *), Bash(mkdir *), Bash(mv *)"
     )
 
     // ── Explore ──────────────────────────────────────────
 
     private fun exploreSkill() = SkillContent(
         dirName = "opsx-explore",
-        description = "Enter explore mode — a thinking partner. Use when investigating, brainstorming, asking 'how does X work?', or clarifying requirements.",
+        description = "Enter explore mode -- a thinking partner. Use when investigating, brainstorming, asking 'how does X work?', or clarifying requirements.",
         instructions = loadResource("templates/skills/explore.md"),
         context = "fork",
         agent = "Explore",
@@ -107,7 +110,9 @@ object TemplateRegistry {
         dirName = "opsx-new",
         description = "Start a new change with scaffolded directory. Use when beginning to track new work or creating a proposal from scratch.",
         instructions = loadResource("templates/skills/new.md"),
-        disableModelInvocation = true
+        disableModelInvocation = true,
+        effort = "low",
+        allowedTools = "Read, Bash(./gradlew *), Bash(ls *)"
     )
 
     // ── Sync ─────────────────────────────────────────────
@@ -116,7 +121,9 @@ object TemplateRegistry {
         dirName = "opsx-sync",
         description = "Regenerate all OPSX agent files (skills, instructions, task commands). Use after config changes or plugin upgrades.",
         instructions = loadResource("templates/skills/sync.md"),
-        disableModelInvocation = true
+        disableModelInvocation = true,
+        effort = "low",
+        allowedTools = "Bash(./gradlew *)"
     )
 
     // ── Verify ───────────────────────────────────────────
@@ -125,7 +132,9 @@ object TemplateRegistry {
         dirName = "srcx-verify",
         description = "Check architecture rules and constraints. Use when the user says 'verify', 'check the build', or wants to validate structure.",
         instructions = loadResource("templates/skills/verify.md"),
-        paths = "*.kt,*.java"
+        effort = "low",
+        paths = "*.kt,*.java",
+        allowedTools = "Read, Bash(./gradlew srcx-verify*)"
     )
 
     // ── Find ─────────────────────────────────────────────
@@ -143,7 +152,7 @@ object TemplateRegistry {
 
     private fun callsSkill() = SkillContent(
         dirName = "srcx-calls",
-        description = "Show the call graph for a symbol — what calls it and what it calls. Use when asking 'what uses this?' or tracing execution flow.",
+        description = "Show the call graph for a symbol -- what calls it and what it calls. Use when asking 'what uses this?' or tracing execution flow.",
         argumentHint = "[symbol-name]",
         instructions = loadResource("templates/skills/calls.md"),
         effort = "low",
@@ -156,7 +165,9 @@ object TemplateRegistry {
         dirName = "srcx-rename",
         description = "Rename a symbol across the codebase safely. Use when the user says 'rename X to Y' or wants to refactor a name.",
         argumentHint = "[old-name new-name]",
-        instructions = loadResource("templates/skills/rename.md")
+        instructions = loadResource("templates/skills/rename.md"),
+        effort = "medium",
+        allowedTools = "Read, Bash(./gradlew srcx-rename*)"
     )
 
     // ── Status ───────────────────────────────────────────
@@ -165,6 +176,7 @@ object TemplateRegistry {
         dirName = "opsx-status",
         description = "Show status of all open changes and proposals. Use when asking 'what are we working on?', 'what's in progress?', or starting a session.",
         instructions = loadResource("templates/skills/status.md"),
+        effort = "low",
         allowedTools = "Read, Bash(./gradlew opsx-status*)"
     )
 
@@ -174,7 +186,9 @@ object TemplateRegistry {
         dirName = "srcx-move",
         description = "Move a class or file to a different package, updating imports. Use when the user says 'move X to Y' or wants to reorganize code.",
         argumentHint = "[symbol-name target-package]",
-        instructions = loadResource("templates/skills/move.md")
+        instructions = loadResource("templates/skills/move.md"),
+        effort = "medium",
+        allowedTools = "Read, Bash(./gradlew srcx-move*)"
     )
 
     // ── Usages ───────────────────────────────────────────
@@ -193,22 +207,26 @@ object TemplateRegistry {
     private fun extractSkill() = SkillContent(
         dirName = "srcx-extract",
         description = "Extract code into a new function or class. Use when the user says 'extract this' or wants to refactor by pulling out code.",
-        instructions = loadResource("templates/skills/extract.md")
+        instructions = loadResource("templates/skills/extract.md"),
+        effort = "medium",
+        allowedTools = "Read, Edit, Bash(./gradlew srcx-extract*)"
     )
 
     // ── Inline ───────────────────────────────────────────
 
     private fun inlineSkill() = SkillContent(
         dirName = "srcx-inline",
-        description = "Inline a function — replace call sites with the body. Use when the user says 'inline this' or wants to undo an extraction.",
-        instructions = loadResource("templates/skills/inline.md")
+        description = "Inline a function -- replace call sites with the body. Use when the user says 'inline this' or wants to undo an extraction.",
+        instructions = loadResource("templates/skills/inline.md"),
+        effort = "medium",
+        allowedTools = "Read, Edit, Grep, Bash(./gradlew *)"
     )
 
     // ── Deps ─────────────────────────────────────────────
 
     private fun depsSkill() = SkillContent(
         dirName = "srcx-deps",
-        description = "Query project dependencies — versions, transitive deps, module relationships. Use when asking about libraries, versions, or 'what depends on X?'",
+        description = "Query project dependencies -- versions, transitive deps, module relationships. Use when asking about libraries, versions, or 'what depends on X?'",
         instructions = loadResource("templates/skills/deps.md"),
         effort = "low",
         allowedTools = "Read, Bash(./gradlew srcx-deps*)"
@@ -220,15 +238,19 @@ object TemplateRegistry {
         dirName = "srcx-remove",
         description = "Remove a symbol or code block, cleaning up imports. Use when the user says 'delete this', 'remove X', or wants to clean dead code.",
         argumentHint = "[symbol-name]",
-        instructions = loadResource("templates/skills/remove.md")
+        instructions = loadResource("templates/skills/remove.md"),
+        effort = "medium",
+        allowedTools = "Read, Bash(./gradlew srcx-remove*)"
     )
 
     // ── Workspace Workflow ─────────────────────────────────
 
     private fun wrkxWorkflowSkill() = SkillContent(
         dirName = "wrkx-workflow",
-        description = "Workspace management — pull repos, switch branches, check status, and work with included builds. Use when managing multi-repo workspaces.",
-        instructions = loadResource("templates/skills/wrkx-workflow.md")
+        description = "Workspace management -- pull repos, switch branches, check status, and work with included builds. Use when managing multi-repo workspaces.",
+        instructions = loadResource("templates/skills/wrkx-workflow.md"),
+        effort = "low",
+        allowedTools = "Read, Bash(./gradlew wrkx-*)"
     )
 
     // ── Diagram ────────────────────────────────────────────
@@ -243,25 +265,29 @@ object TemplateRegistry {
 
     private fun claudeTasksSkill() = SkillContent(
         dirName = "clkx-claude",
-        description = "Run Claude Code headlessly via Gradle — claude-run, claude-resume, claude-auth. Use when dispatching work to Claude or managing Claude sessions.",
-        instructions = loadResource("templates/skills/claude-tasks.md")
+        description = "Run Claude Code headlessly via Gradle -- claude-run, claude-resume, claude-auth. Use when dispatching work to Claude or managing Claude sessions.",
+        instructions = loadResource("templates/skills/claude-tasks.md"),
+        allowedTools = "Bash(./gradlew claude-*)"
     )
 
     private fun copilotTasksSkill() = SkillContent(
         dirName = "clkx-copilot",
-        description = "Run GitHub Copilot headlessly via Gradle — copilot-run, copilot-resume. Use when dispatching work to Copilot or managing Copilot sessions.",
-        instructions = loadResource("templates/skills/copilot-tasks.md")
+        description = "Run GitHub Copilot headlessly via Gradle -- copilot-run, copilot-resume. Use when dispatching work to Copilot or managing Copilot sessions.",
+        instructions = loadResource("templates/skills/copilot-tasks.md"),
+        allowedTools = "Bash(./gradlew copilot-*)"
     )
 
     private fun codexTasksSkill() = SkillContent(
         dirName = "clkx-codex",
-        description = "Run OpenAI Codex headlessly via Gradle — codex-exec, codex-review. Use when dispatching work to Codex or running code reviews.",
-        instructions = loadResource("templates/skills/codex-tasks.md")
+        description = "Run OpenAI Codex headlessly via Gradle -- codex-exec, codex-review. Use when dispatching work to Codex or running code reviews.",
+        instructions = loadResource("templates/skills/codex-tasks.md"),
+        allowedTools = "Bash(./gradlew codex-*)"
     )
 
     private fun opencodeTasksSkill() = SkillContent(
         dirName = "clkx-opencode",
-        description = "Run opencode headlessly via Gradle — opencode-run, opencode-serve. Use when dispatching work to opencode or starting a headless server.",
-        instructions = loadResource("templates/skills/opencode-tasks.md")
+        description = "Run opencode headlessly via Gradle -- opencode-run, opencode-serve. Use when dispatching work to opencode or starting a headless server.",
+        instructions = loadResource("templates/skills/opencode-tasks.md"),
+        allowedTools = "Bash(./gradlew opencode-*)"
     )
 }

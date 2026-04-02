@@ -11,13 +11,11 @@ Run OpenAI Codex headlessly via Gradle wrapper tasks.
 
 | Flag | Description |
 |------|-------------|
-| `-Pprompt="..."` | **Required** for `codex-exec`. The prompt to send. |
+| `-Pprompt="..."` | **Required** for `codex-exec` |
 | `-PcodexModel=model` | Override the model |
 | `-PfullAuto=true` | Run without approval prompts |
 | `-Psandbox=docker` | Sandbox mode: `docker`, `none` |
-| `-PaskForApproval=always` | Approval mode: `always`, `never`, `auto` |
-| `-Pprofile=name` | Use a named configuration profile |
-| `-Poss=true` | Use open-source models only |
+| `-Pprofile=name` | Configuration profile |
 
 ## Examples
 
