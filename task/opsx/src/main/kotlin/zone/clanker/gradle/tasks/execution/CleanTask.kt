@@ -5,6 +5,7 @@ import zone.clanker.gradle.tasks.OPSX_GROUP
 import zone.clanker.gradle.generators.AgentCleaner
 import zone.clanker.gradle.generators.ClkxWriter
 import zone.clanker.gradle.generators.MarkerAppender
+import zone.clanker.gradle.generators.SymlinkManager
 import zone.clanker.gradle.generators.ToolAdapterRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
@@ -52,11 +53,11 @@ abstract class CleanTask : DefaultTask() {
             }
         }
 
-        // Remove symlinks to ~/.clkx/ from this project
-        val clkxDir = ClkxWriter.clkxDir()
-        if (clkxDir.exists()) {
-            count += removeClkxSymlinks(project.projectDir, clkxDir.toPath())
-        }
+        // Remove per-skill symlinks to ~/.clkx/ from this project (all agents)
+        count += SymlinkManager.removeSymlinks(
+            project.projectDir,
+            SymlinkManager.supportedAgents().toList(),
+        )
 
         // Remove marker sections from instruction files in this project
         for (toolId in ToolAdapterRegistry.supportedTools()) {
