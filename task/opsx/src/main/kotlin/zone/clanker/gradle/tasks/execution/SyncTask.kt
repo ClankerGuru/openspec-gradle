@@ -135,6 +135,34 @@ abstract class SyncTask : DefaultTask() {
                 }
             }
             logger.lifecycle("OpenSpec: Symlinks — $created created, $skipped up-to-date, $real real files (marker-appended)${if (failed > 0) ", $failed failed" else ""}")
+
+            // Clean up disabled agents — remove symlinks and marker sections for agents not in toolList
+            val enabledSet = toolList.toSet()
+            val disabledAgents = SymlinkManager.supportedAgents().filter { it !in enabledSet }
+            if (disabledAgents.isNotEmpty()) {
+                var cleaned = 0
+                // Remove symlinks pointing to ~/.clkx/ for disabled agents
+                cleaned += SymlinkManager.removeSymlinks(project.projectDir, disabledAgents)
+                // Remove marker sections from instruction files for disabled agents
+                // and clean any remaining per-project files
+                val selectedInstrPaths = toolList.mapNotNull { ToolAdapterRegistry.get(it) }
+                    .map { it.getInstructionsFilePath() }.toSet()
+                for (agentId in disabledAgents) {
+                    val adapter = ToolAdapterRegistry.get(agentId) ?: continue
+                    val instrPath = adapter.getInstructionsFilePath()
+                    val instrFile = java.io.File(project.projectDir, instrPath)
+                    // Only remove markers if the instructions file is not shared with an enabled agent
+                    if (instrPath !in selectedInstrPaths && instrFile.exists()) {
+                        MarkerAppender.remove(instrFile)
+                    }
+                    // Clean any remaining per-project skill files
+                    val agentCleaned = AgentCleaner.cleanAgent(project.projectDir, adapter)
+                    cleaned += agentCleaned
+                }
+                if (cleaned > 0) {
+                    logger.lifecycle("OpenSpec: Cleaned $cleaned files/symlinks from disabled agents: ${disabledAgents.joinToString(", ")}")
+                }
+            }
             return
         }
 

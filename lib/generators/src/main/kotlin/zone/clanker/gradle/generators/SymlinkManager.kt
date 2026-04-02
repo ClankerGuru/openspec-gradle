@@ -86,6 +86,54 @@ object SymlinkManager {
     }
 
     /**
+     * Returns the set of all supported agent IDs known to the symlink manager.
+     */
+    fun supportedAgents(): Set<String> = AGENT_LINKS.keys
+
+    /**
+     * Remove symlinks (or copies) for the given agents that point into ~/.clkx/.
+     * Only removes paths that are symlinks pointing into [clkxDir] or empty directories
+     * that were created as copies from clkx. Real files committed by the team are left untouched.
+     *
+     * @param projectDir the project root directory
+     * @param agents list of agent IDs to clean (e.g., "claude", "github-copilot")
+     * @param clkxDir the shared clkx directory (defaults to ~/.clkx/)
+     * @return number of symlinks/copies removed
+     */
+    fun removeSymlinks(
+        projectDir: File,
+        agents: List<String>,
+        clkxDir: File = ClkxWriter.clkxDir(),
+    ): Int {
+        var removed = 0
+        for (agent in agents) {
+            val specs = AGENT_LINKS[agent] ?: continue
+            for (spec in specs) {
+                val linkPath = projectDir.toPath().resolve(spec.projectRelative)
+                if (Files.isSymbolicLink(linkPath)) {
+                    // Only remove if it points into clkx
+                    val target = try {
+                        Files.readSymbolicLink(linkPath)
+                    } catch (_: Exception) {
+                        continue
+                    }
+                    val resolvedTarget = linkPath.parent.resolve(target).normalize()
+                    val clkxPath = clkxDir.toPath().normalize()
+                    if (resolvedTarget.startsWith(clkxPath)) {
+                        Files.delete(linkPath)
+                        removed++
+                        // Prune empty parent directories
+                        AgentCleaner.pruneEmptyParents(linkPath.parent?.toFile(), projectDir)
+                    }
+                }
+                // If it was a copy (not a symlink), we don't remove real files —
+                // AgentCleaner.cleanAgent handles that via the adapter.
+            }
+        }
+        return removed
+    }
+
+    /**
      * Create a single symlink from [linkPath] pointing to [targetPath].
      */
     private fun createLink(linkPath: Path, targetPath: Path): LinkResult {

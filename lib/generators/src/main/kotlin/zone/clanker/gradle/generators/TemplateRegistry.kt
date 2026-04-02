@@ -68,7 +68,8 @@ object TemplateRegistry {
     private fun proposeSkill() = SkillContent(
         dirName = "opsx-propose",
         description = "Create a change proposal with design, specs, and tasks. Use when planning work, building a feature, or fixing a bug.",
-        instructions = loadResource("templates/skills/propose.md")
+        instructions = loadResource("templates/skills/propose.md"),
+        effort = "high"
     )
 
     // ── Apply ────────────────────────────────────────────
@@ -76,7 +77,8 @@ object TemplateRegistry {
     private fun applySkill() = SkillContent(
         dirName = "opsx-apply",
         description = "Implement tasks from a change proposal. Use when starting to code, continuing implementation, or working through tasks.",
-        instructions = loadResource("templates/skills/apply.md")
+        instructions = loadResource("templates/skills/apply.md"),
+        disableModelInvocation = true
     )
 
     // ── Archive ──────────────────────────────────────────
@@ -84,7 +86,8 @@ object TemplateRegistry {
     private fun archiveSkill() = SkillContent(
         dirName = "opsx-archive",
         description = "Archive a completed change. Use when implementation is done and the user wants to finalize.",
-        instructions = loadResource("templates/skills/archive.md")
+        instructions = loadResource("templates/skills/archive.md"),
+        disableModelInvocation = true
     )
 
     // ── Explore ──────────────────────────────────────────
@@ -92,7 +95,10 @@ object TemplateRegistry {
     private fun exploreSkill() = SkillContent(
         dirName = "opsx-explore",
         description = "Enter explore mode — a thinking partner. Use when investigating, brainstorming, asking 'how does X work?', or clarifying requirements.",
-        instructions = loadResource("templates/skills/explore.md")
+        instructions = loadResource("templates/skills/explore.md"),
+        context = "fork",
+        agent = "Explore",
+        effort = "high"
     )
 
     // ── New ──────────────────────────────────────────────
@@ -100,7 +106,8 @@ object TemplateRegistry {
     private fun newSkill() = SkillContent(
         dirName = "opsx-new",
         description = "Start a new change with scaffolded directory. Use when beginning to track new work or creating a proposal from scratch.",
-        instructions = loadResource("templates/skills/new.md")
+        instructions = loadResource("templates/skills/new.md"),
+        disableModelInvocation = true
     )
 
     // ── Sync ─────────────────────────────────────────────
@@ -108,7 +115,8 @@ object TemplateRegistry {
     private fun syncSkill() = SkillContent(
         dirName = "opsx-sync",
         description = "Regenerate all OPSX agent files (skills, instructions, task commands). Use after config changes or plugin upgrades.",
-        instructions = loadResource("templates/skills/sync.md")
+        instructions = loadResource("templates/skills/sync.md"),
+        disableModelInvocation = true
     )
 
     // ── Verify ───────────────────────────────────────────
@@ -116,7 +124,8 @@ object TemplateRegistry {
     private fun verifySkill() = SkillContent(
         dirName = "srcx-verify",
         description = "Check architecture rules and constraints. Use when the user says 'verify', 'check the build', or wants to validate structure.",
-        instructions = loadResource("templates/skills/verify.md")
+        instructions = loadResource("templates/skills/verify.md"),
+        paths = "*.kt,*.java"
     )
 
     // ── Find ─────────────────────────────────────────────
@@ -125,7 +134,9 @@ object TemplateRegistry {
         dirName = "srcx-find",
         description = "Find a symbol (class, function, property) by name. Use when searching for code, locating a definition, or asking 'where is X?'",
         argumentHint = "[symbol-name]",
-        instructions = loadResource("templates/skills/find.md")
+        instructions = loadResource("templates/skills/find.md"),
+        effort = "low",
+        allowedTools = "Read, Grep, Glob, Bash(./gradlew srcx-find*)"
     )
 
     // ── Calls ────────────────────────────────────────────
@@ -134,7 +145,9 @@ object TemplateRegistry {
         dirName = "srcx-calls",
         description = "Show the call graph for a symbol — what calls it and what it calls. Use when asking 'what uses this?' or tracing execution flow.",
         argumentHint = "[symbol-name]",
-        instructions = loadResource("templates/skills/calls.md")
+        instructions = loadResource("templates/skills/calls.md"),
+        effort = "low",
+        allowedTools = "Read, Grep, Glob, Bash(./gradlew srcx-calls*)"
     )
 
     // ── Rename ───────────────────────────────────────────
@@ -151,7 +164,8 @@ object TemplateRegistry {
     private fun statusSkill() = SkillContent(
         dirName = "opsx-status",
         description = "Show status of all open changes and proposals. Use when asking 'what are we working on?', 'what's in progress?', or starting a session.",
-        instructions = loadResource("templates/skills/status.md")
+        instructions = loadResource("templates/skills/status.md"),
+        allowedTools = "Read, Bash(./gradlew opsx-status*)"
     )
 
     // ── Move ─────────────────────────────────────────────
@@ -169,7 +183,9 @@ object TemplateRegistry {
         dirName = "srcx-usages",
         description = "Find all usages of a symbol with file:line locations. Use when asking 'where is X referenced?' or before renaming/removing.",
         argumentHint = "[symbol-name]",
-        instructions = loadResource("templates/skills/usages.md")
+        instructions = loadResource("templates/skills/usages.md"),
+        effort = "low",
+        allowedTools = "Read, Grep, Glob, Bash(./gradlew srcx-usages*)"
     )
 
     // ── Extract ──────────────────────────────────────────
@@ -193,7 +209,9 @@ object TemplateRegistry {
     private fun depsSkill() = SkillContent(
         dirName = "srcx-deps",
         description = "Query project dependencies — versions, transitive deps, module relationships. Use when asking about libraries, versions, or 'what depends on X?'",
-        instructions = loadResource("templates/skills/deps.md")
+        instructions = loadResource("templates/skills/deps.md"),
+        effort = "low",
+        allowedTools = "Read, Bash(./gradlew srcx-deps*)"
     )
 
     // ── Remove ───────────────────────────────────────────

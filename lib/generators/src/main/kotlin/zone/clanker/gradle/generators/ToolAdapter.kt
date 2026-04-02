@@ -17,7 +17,17 @@ data class SkillContent(
     /** Claude Code: glob patterns for auto-activation (e.g., "*.kt,*.kts") */
     val paths: String? = null,
     /** Claude Code: set false to hide from user menu but keep visible to model */
-    val userInvocable: Boolean? = null
+    val userInvocable: Boolean? = null,
+    /** Claude Code: when true, prevents the model from auto-invoking this skill */
+    val disableModelInvocation: Boolean? = null,
+    /** Claude Code: execution context — e.g., "fork" to run in a subagent */
+    val context: String? = null,
+    /** Claude Code: agent name for forked context (e.g., "Explore") */
+    val agent: String? = null,
+    /** Claude Code: effort level hint — "high" or "low" */
+    val effort: String? = null,
+    /** Claude Code: restrict which tools the skill can use (e.g., "Read, Grep, Glob, Bash(./gradlew srcx-find*)") */
+    val allowedTools: String? = null
 )
 
 /**
@@ -66,6 +76,11 @@ fun formatSkillForClaude(content: SkillContent): String {
     content.argumentHint?.let { sb.appendLine("argument-hint: ${escapeYaml(it)}") }
     content.paths?.let { sb.appendLine("paths: ${escapeYaml(it)}") }
     content.userInvocable?.let { sb.appendLine("user-invocable: $it") }
+    content.disableModelInvocation?.let { sb.appendLine("disable-model-invocation: $it") }
+    content.context?.let { sb.appendLine("context: ${escapeYaml(it)}") }
+    content.agent?.let { sb.appendLine("agent: ${escapeYaml(it)}") }
+    content.effort?.let { sb.appendLine("effort: ${escapeYaml(it)}") }
+    content.allowedTools?.let { sb.appendLine("allowed-tools: ${escapeYaml(it)}") }
     sb.appendLine("---")
     sb.appendLine()
     sb.appendLine("<!-- openspec-gradle:$version -->")
