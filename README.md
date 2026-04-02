@@ -67,11 +67,29 @@ settings.gradle.kts
 
 ## Quick Start
 
-### One-line install (recommended)
+### Install
+
+![Install with Claude](art/install-claude-2026-04-02.gif)
 
 ```bash
+# Interactive
+bash install.sh
+
+# Specific agents
+bash install.sh claude copilot
+
+# With flags
+bash install.sh --core --agents claude
+
+# Piped (auto-detect latest version)
 curl -fsSL https://raw.githubusercontent.com/ClankerGuru/openspec-gradle/main/install.sh | bash
 ```
+
+![Multi-agent install](art/install-multi-agent-2026-04-02.gif)
+
+### Workspace setup
+
+![Workspace sync](art/workspace-sync-2026-04-02.gif)
 
 This installs separate init scripts to `~/.gradle/init.d/`:
 
@@ -148,8 +166,10 @@ Each workspace is just a directory with a `workspace.json`. The plugin reads the
 
 ### Uninstall
 
+![Uninstall](art/uninstall-2026-04-02.gif)
+
 ```bash
-rm ~/.gradle/init.d/0*-*.init.gradle.kts
+bash install.sh --uninstall
 ```
 
 ### Manual init script
