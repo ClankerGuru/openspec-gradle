@@ -253,8 +253,8 @@ elif [ -t 0 ]; then
         *)    SELECTED="$CHOICE" ;;
     esac
 else
-    # Piped non-interactive — install core + claude by default
-    SELECTED="wrkx,srcx,opsx,claude"
+    # Piped non-interactive — install core + claude + copilot by default
+    SELECTED="wrkx,srcx,opsx,claude,copilot"
 fi
 
 if [ "$SELECTED" = "none" ]; then

@@ -10,7 +10,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 
-@org.gradle.api.tasks.UntrackedTask(because = "Installs init script to user Gradle home")
+@org.gradle.api.tasks.UntrackedTask(because = "Installs init scripts to user Gradle home")
 abstract class InstallGlobalTask : DefaultTask() {
 
     @get:Input
@@ -21,7 +21,7 @@ abstract class InstallGlobalTask : DefaultTask() {
 
     init {
         group = OPSX_GROUP
-        description = "[tool] Install plugin globally via init script. " +
+        description = "[tool] Install plugin globally via init scripts. " +
             "Use when: Setting up the plugin on a new machine or updating."
     }
 
@@ -31,50 +31,93 @@ abstract class InstallGlobalTask : DefaultTask() {
         val initDir = File(gradleHome, "init.d")
         initDir.mkdirs()
 
-        val initScript = File(initDir, "openspec.init.gradle.kts")
         val version = pluginVersion.get()
+        val agents = tools.getOrElse(listOf("claude", "copilot"))
 
-        initScript.writeText(generateInitScript(version))
+        // Remove legacy single init script
+        val legacyScript = File(initDir, "openspec.init.gradle.kts")
+        if (legacyScript.exists()) {
+            legacyScript.delete()
+            logger.lifecycle("OpenSpec: Removed legacy init script")
+        }
+
+        // Write numbered init scripts
+        File(initDir, "00-wrkx.init.gradle.kts").writeText(generateWrkxInitScript(version))
+        logger.lifecycle("  [00] wrkx — workspace management")
+
+        File(initDir, "01-srcx.init.gradle.kts").writeText(generateSrcxInitScript(version))
+        logger.lifecycle("  [01] srcx — source intelligence")
+
+        File(initDir, "02-opsx.init.gradle.kts").writeText(generateOpsxInitScript(version))
+        logger.lifecycle("  [02] opsx — workflow engine")
+
+        for (agent in agents) {
+            val (artifactId, pluginClass, fileName) = when (agent.lowercase().trim()) {
+                "claude" -> Triple("plugin-claude", "zone.clanker.claude.ClaudePlugin", "03-claude.init.gradle.kts")
+                "copilot", "github", "github-copilot" -> Triple("plugin-copilot", "zone.clanker.copilot.CopilotPlugin", "03-copilot.init.gradle.kts")
+                "codex" -> Triple("plugin-codex", "zone.clanker.codex.CodexPlugin", "03-codex.init.gradle.kts")
+                "opencode" -> Triple("plugin-opencode", "zone.clanker.opencode.OpencodePlugin", "03-opencode.init.gradle.kts")
+                else -> { logger.warn("  Unknown agent: $agent (skipping)"); continue }
+            }
+            File(initDir, fileName).writeText(generateAgentInitScript(version, artifactId, pluginClass))
+            logger.lifecycle("  [03] $agent")
+        }
 
         // Ensure OpenSpec patterns in global gitignore
         GlobalGitignore.ensurePatterns(logger)
 
-        // Ensure default property exists in gradle.properties
+        // Set agent config in gradle.properties
         val gradleProps = File(gradleHome, "gradle.properties")
+        val agentsValue = agents.joinToString(",") { it.lowercase().trim() }
         val propsText = if (gradleProps.exists()) gradleProps.readText() else ""
-        if (!propsText.contains("zone.clanker.opsx.agents")) {
-            gradleProps.appendText("\n# OpenSpec: comma-separated agents (github, claude, none)\nzone.clanker.opsx.agents=github\n")
-            logger.lifecycle("OpenSpec: Added zone.clanker.opsx.agents=github to ${gradleProps.absolutePath}")
+        if (propsText.contains("zone.clanker.opsx.agents")) {
+            gradleProps.writeText(
+                propsText.replace(
+                    Regex("zone\\.clanker\\.opsx\\.agents=.*"),
+                    "zone.clanker.opsx.agents=$agentsValue"
+                )
+            )
+        } else if (gradleProps.exists()) {
+            gradleProps.appendText("\nzone.clanker.opsx.agents=$agentsValue\n")
+        } else {
+            gradleProps.writeText("zone.clanker.opsx.agents=$agentsValue\n")
+        }
+        logger.lifecycle("  Set zone.clanker.opsx.agents=$agentsValue in ${gradleProps.absolutePath}")
+
+        // Create ~/.clkx/ directory structure
+        val clkxDir = File(System.getProperty("user.home"), ".clkx")
+        listOf("skills/claude", "skills/copilot", "skills/codex", "skills/opencode", "instructions").forEach {
+            File(clkxDir, it).mkdirs()
         }
 
         logger.lifecycle("")
-        logger.lifecycle("OpenSpec: Installed global init script")
-        logger.lifecycle("  Location: ${initScript.absolutePath}")
-        logger.lifecycle("  Configure: zone.clanker.opsx.agents=github,claude in ~/.gradle/gradle.properties")
-        logger.lifecycle("  Values: github, claude, none (comma-separated)")
-        logger.lifecycle("  Default: github")
+        logger.lifecycle("OpenSpec: Installed ${3 + agents.size} init scripts to $initDir")
         logger.lifecycle("")
-        logger.lifecycle("  All Gradle projects now have openspec tasks available.")
-        logger.lifecycle("  To uninstall, delete: ${initScript.absolutePath}")
+        logger.lifecycle("  Next: run './gradlew opsx-sync' in any project to populate ~/.clkx/ with skills.")
+        logger.lifecycle("  To uninstall: bash install.sh --uninstall")
     }
 
     companion object {
-        fun generateInitScript(version: String): String = """
-            |// OpenSpec Gradle Init Script
-            |// Installed by: ./gradlew opsx-install
-            |// To uninstall, delete this file.
-            |//
-            |// Configure agents in ~/.gradle/gradle.properties:
-            |//   zone.clanker.opsx.agents=github          (default)
-            |//   zone.clanker.opsx.agents=github,claude
-            |//   zone.clanker.opsx.agents=none            (disables, cleans files)
-            |//
-            |// Linting (detekt + ktlint) - enabled by default for Kotlin projects
-            |// Disable via system property:
-            |//   -Dopenspec.linting.enabled=false   (disable both)
-            |//   -Dopenspec.detekt.enabled=false    (disable detekt only)
-            |//   -Dopenspec.ktlint.enabled=false    (disable ktlint only)
+        fun generateWrkxInitScript(version: String): String = """
+            |initscript {
+            |    repositories {
+            |        mavenLocal()
+            |        mavenCentral()
+            |        gradlePluginPortal()
+            |    }
+            |    dependencies {
+            |        classpath("zone.clanker:plugin-wrkx:$version")
+            |        classpath("zone.clanker:wrkx-tasks:$version")
+            |        classpath("zone.clanker:openspec-core:$version")
+            |    }
+            |}
             |
+            |beforeSettings {
+            |    apply<zone.clanker.wrkx.WrkxPlugin>()
+            |}
+            |""".trimMargin() + "\n"
+
+        fun generateSrcxInitScript(version: String): String = """
             |initscript {
             |    repositories {
             |        mavenLocal()
@@ -83,101 +126,59 @@ abstract class InstallGlobalTask : DefaultTask() {
             |    }
             |    dependencies {
             |        classpath("zone.clanker:plugin-srcx:$version")
-            |        classpath("zone.clanker:plugin-opsx:$version")
-            |        classpath("zone.clanker:plugin-wrkx:$version")
             |        classpath("zone.clanker:srcx-tasks:$version")
-            |        classpath("zone.clanker:opsx-tasks:$version")
-            |        classpath("zone.clanker:wrkx-tasks:$version")
-            |        classpath("zone.clanker:plugin-claude:$version")
+            |        classpath("zone.clanker:openspec-core:$version")
+            |        classpath("zone.clanker:openspec-psi:$version")
+            |        classpath("zone.clanker:openspec-arch:$version")
             |        classpath("zone.clanker:quality:$version")
             |    }
             |}
             |
             |beforeSettings {
             |    apply<zone.clanker.srcx.SrcxPlugin>()
-            |    apply<zone.clanker.opsx.OpsxPlugin>()
-            |    apply<zone.clanker.wrkx.WrkxPlugin>()
-            |    apply<zone.clanker.claude.ClaudePlugin>()
+            |}
+            |""".trimMargin() + "\n"
+
+        fun generateOpsxInitScript(version: String): String = """
+            |initscript {
+            |    repositories {
+            |        mavenLocal()
+            |        mavenCentral()
+            |        gradlePluginPortal()
+            |    }
+            |    dependencies {
+            |        classpath("zone.clanker:plugin-opsx:$version")
+            |        classpath("zone.clanker:opsx-tasks:$version")
+            |        classpath("zone.clanker:openspec-core:$version")
+            |        classpath("zone.clanker:openspec-generators:$version")
+            |        classpath("zone.clanker:openspec-psi:$version")
+            |        classpath("zone.clanker:openspec-exec:$version")
+            |        classpath("zone.clanker:openspec-adapter-claude:$version")
+            |        classpath("zone.clanker:openspec-adapter-copilot:$version")
+            |        classpath("zone.clanker:openspec-adapter-codex:$version")
+            |        classpath("zone.clanker:openspec-adapter-opencode:$version")
+            |    }
             |}
             |
-            |allprojects {
-            |    // Inject detekt/ktlint onto the project's buildscript classpath so they share
-            |    // the classloader with the Kotlin Gradle plugin (needed for KMP support classes)
-            |    buildscript {
-            |        repositories {
-            |            mavenCentral()
-            |            gradlePluginPortal()
-            |        }
-            |        dependencies {
-            |            classpath("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7")
-            |            classpath("org.jlleitschuh.gradle:ktlint-gradle:12.1.2")
-            |        }
+            |beforeSettings {
+            |    apply<zone.clanker.opsx.OpsxPlugin>()
+            |}
+            |""".trimMargin() + "\n"
+
+        fun generateAgentInitScript(version: String, artifactId: String, pluginClass: String): String = """
+            |initscript {
+            |    repositories {
+            |        mavenLocal()
+            |        mavenCentral()
+            |        gradlePluginPortal()
             |    }
-            |    afterEvaluate {
-            |        val disabled = System.getProperty("zone.clanker.quality.enabled")?.lowercase() == "false" ||
-            |            findProperty("zone.clanker.quality.enabled")?.toString()?.lowercase() == "false" ||
-            |            System.getProperty("openspec.linting.enabled")?.lowercase() == "false" ||
-            |            findProperty("openspec.linting.enabled")?.toString()?.lowercase() == "false"
-            |        if (disabled) return@afterEvaluate
-            |
-            |        val isKotlinProject = plugins.hasPlugin("org.jetbrains.kotlin.jvm") ||
-            |            plugins.hasPlugin("org.jetbrains.kotlin.android") ||
-            |            plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
-            |
-            |        if (isKotlinProject) {
-            |            apply<zone.clanker.gradle.linting.OpenSpecLintingPlugin>()
-            |        }
+            |    dependencies {
+            |        classpath("zone.clanker:$artifactId:$version")
             |    }
+            |}
             |
-            |    // Auto-create symlinks from project agent dirs to ~/.clkx/
-            |    afterEvaluate {
-            |        val clkxDir = java.io.File(System.getProperty("user.home"), ".clkx")
-            |        if (!clkxDir.isDirectory) return@afterEvaluate
-            |
-            |        // Agent → list of (project-relative link path, clkx-relative target path)
-            |        data class LinkSpec(val projectRel: String, val clkxRel: String)
-            |        val agentLinks = mapOf(
-            |            "claude-run" to listOf(
-            |                LinkSpec(".claude/skills", "skills/claude"),
-            |                LinkSpec(".claude/CLAUDE.md", "instructions/CLAUDE.md"),
-            |            ),
-            |            "copilot-run" to listOf(
-            |                LinkSpec(".github/skills", "skills/copilot"),
-            |                LinkSpec(".github/copilot-instructions.md", "instructions/copilot-instructions.md"),
-            |            ),
-            |            "codex-run" to listOf(
-            |                LinkSpec(".agents/skills", "skills/codex"),
-            |                LinkSpec("AGENTS.md", "instructions/AGENTS.md"),
-            |            ),
-            |            "opencode-run" to listOf(
-            |                LinkSpec(".opencode/skills", "skills/opencode"),
-            |            ),
-            |        )
-            |
-            |        for ((taskName, specs) in agentLinks) {
-            |            if (tasks.findByName(taskName) == null) continue
-            |            for (spec in specs) {
-            |                val linkPath = projectDir.toPath().resolve(spec.projectRel)
-            |                val targetPath = clkxDir.toPath().resolve(spec.clkxRel)
-            |                if (java.nio.file.Files.isSymbolicLink(linkPath)) {
-            |                    val existing = java.nio.file.Files.readSymbolicLink(linkPath)
-            |                    if (existing == targetPath ||
-            |                        linkPath.parent.resolve(existing).normalize() == targetPath.normalize()) {
-            |                        continue // already correct
-            |                    }
-            |                    java.nio.file.Files.delete(linkPath) // stale — remove and recreate
-            |                } else if (linkPath.toFile().exists()) {
-            |                    continue // real file/directory — don't overwrite
-            |                }
-            |                linkPath.parent?.toFile()?.mkdirs()
-            |                try {
-            |                    java.nio.file.Files.createSymbolicLink(linkPath, targetPath)
-            |                } catch (_: Exception) {
-            |                    // symlink failed (e.g. Windows without dev mode) — skip silently
-            |                }
-            |            }
-            |        }
-            |    }
+            |beforeSettings {
+            |    apply<$pluginClass>()
             |}
             |""".trimMargin() + "\n"
     }
