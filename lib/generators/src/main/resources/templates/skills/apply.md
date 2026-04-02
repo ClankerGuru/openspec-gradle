@@ -22,7 +22,8 @@ Implement tasks from an OPSX change.
 
 4. **Implement tasks** (loop until done or blocked):
    - Check dependencies — skip tasks with incomplete deps
-   - **Before starting**: `./gradlew opsx-<code> --set=progress`
+   - Before claiming a task with `--set=progress`, check if it is already IN_PROGRESS (🔄). If it is, another agent may be working on it — skip to the next available task. If all tasks are blocked or in-progress, report the situation and wait.
+   - **Before starting**: `./gradlew opsx-<code> --set=progress -Pagent=claude`
    - Make the code changes
    - **After completing**: `./gradlew opsx-<code> --set=done`
    - `--set=done` runs verify assertions. If they fail, task stays IN_PROGRESS — fix and retry

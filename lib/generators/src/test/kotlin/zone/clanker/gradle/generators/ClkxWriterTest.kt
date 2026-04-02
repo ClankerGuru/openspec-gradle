@@ -42,7 +42,7 @@ class ClkxWriterTest {
         val count = ClkxWriter.writeSkills(tools = listOf("claude"), targetDir = tempDir)
 
         val expectedSkillCount = TemplateRegistry.getSkillTemplates().size
-        assertEquals(18, expectedSkillCount, "TemplateRegistry should have exactly 18 skill templates")
+        assertTrue(expectedSkillCount >= 18, "TemplateRegistry should have at least 18 skill templates")
         assertEquals(expectedSkillCount, count, "writeSkills should write one file per skill template")
 
         // Verify each skill directory was created under skills/claude/

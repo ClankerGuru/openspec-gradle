@@ -415,6 +415,13 @@ abstract class ExecTask : DefaultTask() {
                 verifyModeStr = verifyModeStr)
             return
         }
+        if (freshTask?.status == TaskStatus.IN_PROGRESS) {
+            logger.lifecycle("\n⏭ Skipping $code (already in progress)")
+            taskStatusMap[code] = TaskExecStatus(status = TaskExecStatus.RUNNING, level = levelIdx)
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                verifyModeStr = verifyModeStr)
+            return
+        }
 
         val taskLog = TaskLogger(code) { msg -> logger.lifecycle(msg) }
         taskLog.lifecycle("${taskItem.description}")
