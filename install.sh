@@ -226,7 +226,8 @@ elif [ "$CLI_CORE" = true ] || [ -n "$CLI_AGENTS" ]; then
     fi
 elif [ -n "${OPENSPEC_COMPONENTS:-}" ]; then
     SELECTED=$(normalize_selection "$OPENSPEC_COMPONENTS")
-elif [ -t 0 ]; then
+elif [ -t 0 ] || [ -e /dev/tty ]; then
+    # Interactive prompt — works both directly and via curl | bash (reads from /dev/tty)
     echo "  What would you like to install?"
     echo ""
     echo "  Core plugins (recommended):"
@@ -246,14 +247,14 @@ elif [ -t 0 ]; then
     echo "    core      Just srcx + opsx + wrkx (no agents)"
     echo ""
     printf "  Enter components (comma-separated): "
-    read -r CHOICE
+    read -r CHOICE < /dev/tty
     case "$CHOICE" in
         all)  SELECTED="wrkx,srcx,opsx,quality,claude,copilot,codex,opencode" ;;
         core) SELECTED="wrkx,srcx,opsx" ;;
         *)    SELECTED="$CHOICE" ;;
     esac
 else
-    # Piped non-interactive — install core + claude + copilot by default
+    # No terminal at all (CI, Docker, etc.) — install core + claude + copilot
     SELECTED="wrkx,srcx,opsx,claude,copilot"
 fi
 
