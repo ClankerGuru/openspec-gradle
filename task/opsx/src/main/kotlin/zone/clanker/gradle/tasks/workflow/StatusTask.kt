@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.workflow
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -24,7 +26,7 @@ abstract class StatusTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Proposal dashboard. " +
             "Output: .opsx/status.md. " +
             "Options: --proposal=<name>. " +

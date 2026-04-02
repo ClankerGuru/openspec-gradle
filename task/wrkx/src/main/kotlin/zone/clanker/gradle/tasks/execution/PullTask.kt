@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.WRKX_GROUP
+
 import zone.clanker.gradle.core.WrkxRepo
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Internal
@@ -16,7 +18,7 @@ abstract class PullTask : DefaultTask() {
     val extensionRepos: MutableList<WrkxRepo> = mutableListOf()
 
     init {
-        group = "opsx"
+        group = WRKX_GROUP
         description = "[tool] Stash, checkout main, pull for all enabled monolith repos. " +
             "Use when: Syncing all repos to latest main."
     }

@@ -1,23 +1,12 @@
-Preview or execute a rename refactoring across the codebase.
+!`./gradlew srcx-rename -Pfrom=$(echo $ARGUMENTS | awk '{print $1}') -Pto=$(echo $ARGUMENTS | awk '{print $2}') 2>/dev/null && cat .opsx/rename.md 2>/dev/null || echo "Usage: /srcx-rename OldName NewName"`
 
----
+## Dry-run Preview
 
-**Input**: The old name and new name for the symbol to rename.
+The above shows what **would** change. Review the affected files.
 
-**Steps**
+To apply the rename:
+```bash
+./gradlew srcx-rename -Pfrom=OldName -Pto=NewName -PdryRun=false
+```
 
-1. Run the rename task in dry-run mode first:
-   ```bash
-   ./gradlew srcx-rename -Pfrom=<old> -Pto=<new> -PdryRun=true
-   ```
-
-2. Read the output at `.opsx/rename.md` and show the preview to the user.
-
-3. If the user confirms, apply:
-   ```bash
-   ./gradlew srcx-rename -Pfrom=<old> -Pto=<new> -PdryRun=false
-   ```
-
-**Output**
-
-Show affected files and the changes that will be (or were) made.
+For multi-module: add `-Pmodule=:moduleName`.

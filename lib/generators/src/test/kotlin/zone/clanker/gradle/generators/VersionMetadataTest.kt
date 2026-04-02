@@ -32,35 +32,20 @@ class VersionMetadataTest {
     }
 
     @Test
-    fun `formatSkillWithFrontmatter contains generatedBy with version`() {
+    fun `formatSkillWithFrontmatter contains only name and description`() {
         val output = formatSkillWithFrontmatter(sampleSkillContent())
-        val version = VersionInfo.PLUGIN_VERSION
-        // escapeYaml quotes values containing colons, so match the escaped form
-        val expected = "generatedBy: ${escapeYaml("openspec-gradle:$version")}"
-        assertTrue(
-            output.contains(expected),
-            "Expected '$expected' in frontmatter, got:\n$output"
-        )
+        assertTrue(output.contains("name:"), "Expected name field in frontmatter")
+        assertTrue(output.contains("description:"), "Expected description field in frontmatter")
+        assertFalse(output.contains("license:"), "Should not contain license field")
+        assertFalse(output.contains("compatibility:"), "Should not contain compatibility field")
+        assertFalse(output.contains("metadata:"), "Should not contain metadata block")
+        assertFalse(output.contains("generatedBy:"), "Should not contain generatedBy field")
     }
 
     @Test
-    fun `formatSkillWithFrontmatter generatedBy contains VersionInfo PLUGIN_VERSION`() {
-        val output = formatSkillWithFrontmatter(sampleSkillContent())
-        val version = VersionInfo.PLUGIN_VERSION
-        // The generatedBy value is YAML-escaped, so verify the version string
-        // appears somewhere in the generatedBy line regardless of quoting
-        val generatedByLine = output.lines().firstOrNull { it.trim().startsWith("generatedBy:") }
-        assertNotNull(generatedByLine, "Expected a generatedBy line in frontmatter, got:\n$output")
-        assertTrue(
-            generatedByLine!!.contains(version),
-            "Expected version '$version' in generatedBy line '$generatedByLine'"
-        )
-    }
-
-    @Test
-    fun `SkillContent default metadata includes version from VersionInfo`() {
+    fun `SkillContent default version matches VersionInfo`() {
         val content = sampleSkillContent()
-        assertEquals(VersionInfo.PLUGIN_VERSION, content.metadata["version"])
+        assertEquals(VersionInfo.PLUGIN_VERSION, content.version)
     }
 
     @Test
@@ -96,17 +81,13 @@ class VersionMetadataTest {
     }
 
     @Test
-    fun `formatSkillWithFrontmatter version is not 0_0_0 when properties resource is present`() {
+    fun `formatSkillWithFrontmatter produces clean minimal output`() {
         val output = formatSkillWithFrontmatter(sampleSkillContent())
-        val propsAvailable = VersionInfo::class.java.classLoader
-            .getResourceAsStream("openspec-gradle.properties") != null
-        if (propsAvailable) {
-            val generatedByLine = output.lines().firstOrNull { it.trim().startsWith("generatedBy:") }
-            assertNotNull(generatedByLine, "Expected a generatedBy line in frontmatter")
-            assertFalse(
-                generatedByLine!!.contains("0.0.0"),
-                "Generated skill frontmatter should not contain fallback version 0.0.0, got: $generatedByLine"
-            )
-        }
+        // Should start with --- and contain only name + description before closing ---
+        val lines = output.lines()
+        assertEquals("---", lines[0], "Should start with frontmatter delimiter")
+        assertTrue(lines[1].startsWith("name:"), "Second line should be name")
+        assertTrue(lines[2].startsWith("description:"), "Third line should be description")
+        assertEquals("---", lines[3], "Fourth line should close frontmatter")
     }
 }

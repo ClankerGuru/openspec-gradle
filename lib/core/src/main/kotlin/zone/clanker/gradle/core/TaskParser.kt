@@ -14,9 +14,9 @@ import java.io.File
  */
 object TaskParser {
 
-    // Matches: optional whitespace, dash, space, checkbox, space, optional emoji, optional code, description
+    // Matches: optional whitespace, dash, space, checkbox, space, optional emoji (with optional agent), optional code, description
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*)-\s+\[([ xX~/])]\s+(?:([⬜🔄✅⛔])\s+)?(?:`([^`]+)`\s+)?(.+)$"""
+        """^(\s*)-\s+\[([ xX~/])]\s+(?:([⬜🔄✅⛔])\s+(?:\(([\w-]+)\)\s+)?)?(?:`([^`]+)`\s+)?(.+)$"""
     )
 
     private val METADATA_REGEX = Regex("""(agent|retries|cooldown):(\S+)""")
@@ -53,8 +53,9 @@ object TaskParser {
             val indent = match.groupValues[1].length
             val checkChar = match.groupValues[2]
             val emojiMarker = match.groupValues[3]
-            val code = match.groupValues[4] // empty string if no code
-            val rawDescription = match.groupValues[5]
+            // group 4 is the optional agent name in parens (e.g., "claude")
+            val code = match.groupValues[5] // empty string if no code
+            val rawDescription = match.groupValues[6]
 
             // Status: emoji markers take priority, then checkbox chars
             val status = when {

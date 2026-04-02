@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.WRKX_GROUP
+
 import zone.clanker.gradle.core.WrkxRepo
 import zone.clanker.gradle.core.RepoEntry
 import org.gradle.api.DefaultTask
@@ -30,7 +32,7 @@ abstract class CloneTask : DefaultTask() {
     val extensionRepos: MutableList<WrkxRepo> = mutableListOf()
 
     init {
-        group = "opsx"
+        group = WRKX_GROUP
         description = "[tool] Clone repositories from workspace.json via gh. " +
             "Use when: Setting up a workspace or syncing missing repos. " +
             "Params: -PdryRun=false to clone, -PreposDir=path."

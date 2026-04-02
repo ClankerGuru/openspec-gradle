@@ -12,19 +12,21 @@ import java.io.File
  */
 object GlobalGitignore {
 
-    // Directory patterns that cover all generated files for each adapter
+    // Only ignore directories/files that are 100% ours.
+    // We do NOT ignore .github/skills or .github/copilot-instructions.md
+    // because teams may commit their own content there.
+    // Shared files (CLAUDE.md, copilot-instructions.md, AGENTS.md) use
+    // marker sections — the file itself may be team-owned.
     private val IGNORE_PATTERNS = listOf(
-        "# OpenSpec generated files (managed by openspec-gradle plugin)",
-        "# These are per-developer — different devs use different AI agents.",
+        "# OpenSpec: generated context (per-developer, always regenerated)",
         ".opsx/",
-        "# Claude Code",
-        ".claude/skills/opsx-*",
-        "# GitHub Copilot",
-        ".github/skills/opsx-*",
-        "# Codex",
+        "# OpenSpec: generated agent directories (only if fully ours)",
         ".agents/skills/opsx-*",
-        "# OpenCode",
+        ".agents/skills/srcx-*",
         ".opencode/skills/opsx-*",
+        ".opencode/skills/srcx-*",
+        ".claude/skills/opsx-*",
+        ".claude/skills/srcx-*",
     )
 
     /**

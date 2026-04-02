@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.WRKX_GROUP
+
 import zone.clanker.gradle.core.WrkxRepo
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Internal
@@ -16,7 +18,7 @@ abstract class CheckoutTask : DefaultTask() {
     val extensionRepos: MutableList<WrkxRepo> = mutableListOf()
 
     init {
-        group = "opsx"
+        group = WRKX_GROUP
         description = "[tool] Checkout configured ref (branch/tag) in all enabled monolith repos. " +
             "Use when: Switching all repos to a feature branch or syncing to tags."
     }

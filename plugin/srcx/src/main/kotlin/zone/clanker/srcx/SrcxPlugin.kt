@@ -23,7 +23,10 @@ class SrcxPlugin : Plugin<Settings> {
     }
 
     companion object {
+        const val ENABLED_PROP = "zone.clanker.srcx.enabled"
+
         internal fun applyToProject(project: Project) {
+            if (project.findProperty(ENABLED_PROP)?.toString()?.lowercase() == "false") return
             if (project.tasks.findByName("srcx-context") != null) return
 
             // Catalog task

@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.workflow
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
@@ -47,7 +49,7 @@ abstract class TaskItemTask : DefaultTask() {
     abstract val force: Property<String>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         // Description is set dynamically during registration
     }
 
@@ -92,6 +94,13 @@ abstract class TaskItemTask : DefaultTask() {
                 )
             }
 
+            // Detect agent name for status tracking (used with IN_PROGRESS)
+            val agentName: String? = when {
+                project.hasProperty("agent") -> project.property("agent").toString()
+                System.getenv("CLAUDE_CODE") == "1" -> "claude"
+                else -> null
+            }
+
             // Check for cycles and deps before marking done or in-progress
             if (newStatus != TaskStatus.TODO) {
                 val graph = DependencyGraph(tasks)
@@ -127,12 +136,13 @@ abstract class TaskItemTask : DefaultTask() {
                     project, tasksFile, code, taskItem, skipGate, verifyCommand, logger
                 )
             } else {
-                val updated = TaskWriter.updateStatus(tasksFile, code, newStatus)
+                val updated = TaskWriter.updateStatus(tasksFile, code, newStatus, agent = agentName)
                 if (!updated) {
                     throw GradleException("Failed to update task '$code' in tasks.md")
                 }
                 val icon = newStatus.icon
-                logger.lifecycle("$icon $code → ${newStatus.name}: ${taskItem.description}")
+                val agentInfo = if (agentName != null && newStatus == TaskStatus.IN_PROGRESS) " (agent: $agentName)" else ""
+                logger.lifecycle("$icon $code → ${newStatus.name}: ${taskItem.description}$agentInfo")
             }
         } else {
             // Print current status

@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.intelligence
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -21,7 +23,7 @@ abstract class FindTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Find all usages of a symbol across the codebase. " +
             "Output: .opsx/find.md. " +
             "Options: -Psymbol=Name (required). " +

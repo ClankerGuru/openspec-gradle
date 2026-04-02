@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.discovery
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
@@ -30,7 +32,7 @@ abstract class SymbolsTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Symbol index — declarations and usages from PSI analysis. " +
             "Output: .opsx/symbols.md. " +
             "Options: -Psymbol=Name (filter to symbol), -Pfile=path (filter to file), -Pmodule=name. " +

@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
@@ -59,7 +61,7 @@ abstract class ExecTask : DefaultTask() {
     abstract val parallelThreads: Property<Int>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Execute an AI agent with a prompt, verify output, retry on failure. " +
             "Output: .opsx/exec/<timestamp>.md. " +
             "Options: -Pprompt=\"...\" (inline prompt), -Pspec=path/to/task.md (task spec file), " +
@@ -409,6 +411,13 @@ abstract class ExecTask : DefaultTask() {
         if (freshTask?.status == TaskStatus.DONE) {
             logger.lifecycle("\n⏭ $code — already DONE, skipping")
             taskStatusMap[code] = TaskExecStatus(status = TaskExecStatus.DONE, level = levelIdx)
+            writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
+                verifyModeStr = verifyModeStr)
+            return
+        }
+        if (freshTask?.status == TaskStatus.IN_PROGRESS) {
+            logger.lifecycle("\n⏭ Skipping $code (already in progress)")
+            taskStatusMap[code] = TaskExecStatus(status = TaskExecStatus.RUNNING, level = levelIdx)
             writeExecStatus(statusFile, proposalName, startedAt, levelIdx, taskStatusMap,
                 verifyModeStr = verifyModeStr)
             return

@@ -8,9 +8,7 @@ import zone.clanker.gradle.core.TaskParser
 import zone.clanker.gradle.core.TaskStatus
 import zone.clanker.gradle.core.TaskWriter
 import zone.clanker.gradle.core.VerifyAssertion
-import zone.clanker.gradle.generators.TaskCommandGenerator
 import zone.clanker.gradle.generators.TaskReconciler
-import zone.clanker.gradle.generators.ToolAdapterRegistry
 import java.io.File
 
 /**
@@ -41,8 +39,8 @@ object TaskLifecycle {
         verifyCommand: String,
         logger: Logger,
     ) {
-        // 1. Run verify assertions (unless force-skipped)
-        if (!skipGate) {
+        // 1. Run verify assertions (unless force-skipped or verify=off)
+        if (!skipGate && verifyCommand.lowercase() != "off") {
             val assertions = taskItem.verifyAssertions.ifEmpty {
                 // Default: just check build passes
                 listOf(VerifyAssertion("build-passes", ""))
@@ -81,33 +79,13 @@ object TaskLifecycle {
     }
 
     /**
-     * Lightweight sync after task completion: regenerate task command skill files
-     * so status icons reflect the updated state. Skips full context regeneration
-     * (that happens on `./gradlew build` via lifecycle hooks).
+     * Post-completion hook placeholder. Task-code skill files are no longer generated
+     * (skills are now global via ~/.clkx/), so this is a no-op.
+     * Kept for future use (e.g., updating status in a dashboard file).
      */
     private fun runPostCompletionSync(project: Project, logger: Logger) {
-        try {
-            val toolList = resolveTools(project)
-            if (toolList.isEmpty()) return
-
-            val buildDir = File(project.layout.buildDirectory.asFile.get(), "opsx")
-            buildDir.mkdirs()
-
-            val taskSkills = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList)
-
-            // Install updated task skill files
-            for (generated in taskSkills) {
-                val target = File(project.projectDir, generated.relativePath)
-                target.parentFile.mkdirs()
-                generated.file.copyTo(target, overwrite = true)
-            }
-
-            if (taskSkills.isNotEmpty()) {
-                logger.lifecycle("Synced ${taskSkills.size} task skill files.")
-            }
-        } catch (e: Exception) {
-            logger.debug("Post-completion sync skipped: ${e.message}")
-        }
+        // Task-code skills (opsx-T1, opsx-auth-2, etc.) are no longer generated as skill files.
+        // Status updates are reflected through tasks.md directly.
     }
 
     /**
@@ -172,12 +150,4 @@ object TaskLifecycle {
             ?: "assemble"
     }
 
-    /**
-     * Resolve configured agent tools from project properties.
-     */
-    private fun resolveTools(project: Project): List<String> {
-        val raw = project.findProperty("zone.clanker.opsx.agents")?.toString()
-            ?: return emptyList()
-        return raw.split(",").map { it.trim() }.filter { it.isNotBlank() && it != "none" }
-    }
 }

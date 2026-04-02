@@ -1,16 +1,9 @@
-Move a class or file to a different package safely. Handles package declaration updates and all import rewrites.
+!`./gradlew srcx-move -Psymbol=$(echo $ARGUMENTS | awk '{print $1}') -PtargetPackage=$(echo $ARGUMENTS | awk '{print $2}') 2>/dev/null && cat .opsx/move.md 2>/dev/null || echo "Usage: /srcx-move ClassName new.package.name"`
 
-## Steps
+## Dry-run Preview
 
-1. Always preview first: `./gradlew srcx-move -Psymbol=ClassName -PtargetPackage=new.pkg -PdryRun=true`
-2. Review the output in `.opsx/move.md` — check file move path and import updates
-3. If correct, apply: `./gradlew srcx-move -Psymbol=ClassName -PtargetPackage=new.pkg`
-4. Verify with: `./gradlew srcx-usages -Psymbol=ClassName` to confirm no broken references
-5. Run the build to catch any compile errors
+The above shows the planned file move and import rewrites. Review carefully.
 
-## Notes
+To apply: `./gradlew srcx-move -Psymbol=Name -PtargetPackage=new.pkg -PdryRun=false`
 
-- The task handles: file relocation, package declaration update, import rewrites
-- It does NOT handle: wildcard imports that might mask the symbol, re-exports, reflection-based references
-- For multi-module projects, add `-Pmodule=:moduleName` to scope the search
-- After moving, check for any `import old.package.*` that might need updating manually
+After applying, verify with `./gradlew srcx-usages -Psymbol=Name` to confirm no broken references. Check for wildcard imports (`import old.package.*`) manually.

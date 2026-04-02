@@ -18,17 +18,14 @@ class OpenSpecDetektPlugin : Plugin<Project> {
 
     companion object {
         private const val DETEKT_PLUGIN_ID = "io.gitlab.arturbosch.detekt"
-        private const val ENABLED_PROP = "openspec.detekt.enabled"
-        private const val CONFIG_PROP = "openspec.detekt.config"
+        private const val ENABLED_PROP = "zone.clanker.quality.detekt"
+        private const val LEGACY_ENABLED_PROP = "openspec.detekt.enabled"
+        private const val CONFIG_PROP = "zone.clanker.quality.detekt.config"
+        private const val LEGACY_CONFIG_PROP = "openspec.detekt.config"
     }
 
     override fun apply(project: Project) {
-        val enabled = isEnabled(project)
-
-        if (!enabled) {
-            project.logger.lifecycle("🔍 [OpenSpec] detekt disabled via system property — skipping")
-            return
-        }
+        if (!isEnabled(project)) return
 
         project.afterEvaluate {
             if (project.plugins.hasPlugin(DETEKT_PLUGIN_ID)) {
@@ -45,14 +42,10 @@ class OpenSpecDetektPlugin : Plugin<Project> {
     }
 
     private fun isEnabled(project: Project): Boolean {
-        // System property takes precedence
-        System.getProperty(ENABLED_PROP)?.let {
-            return it.lowercase() != "false"
-        }
-        // Fall back to project property
-        project.findProperty(ENABLED_PROP)?.let {
-            return it.toString().lowercase() != "false"
-        }
+        System.getProperty(ENABLED_PROP)?.let { return it.lowercase() != "false" }
+        project.findProperty(ENABLED_PROP)?.let { return it.toString().lowercase() != "false" }
+        System.getProperty(LEGACY_ENABLED_PROP)?.let { return it.lowercase() != "false" }
+        project.findProperty(LEGACY_ENABLED_PROP)?.let { return it.toString().lowercase() != "false" }
         return true
     }
 
@@ -74,6 +67,8 @@ class OpenSpecDetektPlugin : Plugin<Project> {
             // Look for config file
             val configPath = System.getProperty(CONFIG_PROP)
                 ?: project.findProperty(CONFIG_PROP)?.toString()
+                ?: System.getProperty(LEGACY_CONFIG_PROP)
+                ?: project.findProperty(LEGACY_CONFIG_PROP)?.toString()
 
             val configFile = when {
                 configPath != null -> File(configPath)

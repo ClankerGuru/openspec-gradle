@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.intelligence
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -22,7 +24,7 @@ abstract class CallsTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Method-level call graph with Mermaid diagrams. " +
             "Output: .opsx/calls.md. " +
             "Options: -Psymbol=ClassName (filter), -Pmodule=name. " +

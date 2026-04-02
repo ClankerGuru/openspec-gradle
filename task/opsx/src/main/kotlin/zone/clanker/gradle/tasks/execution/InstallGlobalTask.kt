@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import zone.clanker.gradle.generators.GlobalGitignore
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
@@ -18,7 +20,7 @@ abstract class InstallGlobalTask : DefaultTask() {
     abstract val tools: ListProperty<String>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Install plugin globally via init script. " +
             "Use when: Setting up the plugin on a new machine or updating."
     }
@@ -112,8 +114,11 @@ abstract class InstallGlobalTask : DefaultTask() {
             |        }
             |    }
             |    afterEvaluate {
-            |        val lintingEnabled = System.getProperty("openspec.linting.enabled") != "false"
-            |        if (!lintingEnabled) return@afterEvaluate
+            |        val disabled = System.getProperty("zone.clanker.quality.enabled")?.lowercase() == "false" ||
+            |            findProperty("zone.clanker.quality.enabled")?.toString()?.lowercase() == "false" ||
+            |            System.getProperty("openspec.linting.enabled")?.lowercase() == "false" ||
+            |            findProperty("openspec.linting.enabled")?.toString()?.lowercase() == "false"
+            |        if (disabled) return@afterEvaluate
             |
             |        val isKotlinProject = plugins.hasPlugin("org.jetbrains.kotlin.jvm") ||
             |            plugins.hasPlugin("org.jetbrains.kotlin.android") ||
@@ -121,6 +126,56 @@ abstract class InstallGlobalTask : DefaultTask() {
             |
             |        if (isKotlinProject) {
             |            apply<zone.clanker.gradle.linting.OpenSpecLintingPlugin>()
+            |        }
+            |    }
+            |
+            |    // Auto-create symlinks from project agent dirs to ~/.clkx/
+            |    afterEvaluate {
+            |        val clkxDir = java.io.File(System.getProperty("user.home"), ".clkx")
+            |        if (!clkxDir.isDirectory) return@afterEvaluate
+            |
+            |        // Agent → list of (project-relative link path, clkx-relative target path)
+            |        data class LinkSpec(val projectRel: String, val clkxRel: String)
+            |        val agentLinks = mapOf(
+            |            "claude-run" to listOf(
+            |                LinkSpec(".claude/skills", "skills/claude"),
+            |                LinkSpec(".claude/CLAUDE.md", "instructions/CLAUDE.md"),
+            |            ),
+            |            "copilot-run" to listOf(
+            |                LinkSpec(".github/skills", "skills/copilot"),
+            |                LinkSpec(".github/copilot-instructions.md", "instructions/copilot-instructions.md"),
+            |            ),
+            |            "codex-run" to listOf(
+            |                LinkSpec(".agents/skills", "skills/codex"),
+            |                LinkSpec("AGENTS.md", "instructions/AGENTS.md"),
+            |            ),
+            |            "opencode-run" to listOf(
+            |                LinkSpec(".opencode/skills", "skills/opencode"),
+            |            ),
+            |        )
+            |
+            |        for ((taskName, specs) in agentLinks) {
+            |            if (tasks.findByName(taskName) == null) continue
+            |            for (spec in specs) {
+            |                val linkPath = projectDir.toPath().resolve(spec.projectRel)
+            |                val targetPath = clkxDir.toPath().resolve(spec.clkxRel)
+            |                if (java.nio.file.Files.isSymbolicLink(linkPath)) {
+            |                    val existing = java.nio.file.Files.readSymbolicLink(linkPath)
+            |                    if (existing == targetPath ||
+            |                        linkPath.parent.resolve(existing).normalize() == targetPath.normalize()) {
+            |                        continue // already correct
+            |                    }
+            |                    java.nio.file.Files.delete(linkPath) // stale — remove and recreate
+            |                } else if (linkPath.toFile().exists()) {
+            |                    continue // real file/directory — don't overwrite
+            |                }
+            |                linkPath.parent?.toFile()?.mkdirs()
+            |                try {
+            |                    java.nio.file.Files.createSymbolicLink(linkPath, targetPath)
+            |                } catch (_: Exception) {
+            |                    // symlink failed (e.g. Windows without dev mode) — skip silently
+            |                }
+            |            }
             |        }
             |    }
             |}

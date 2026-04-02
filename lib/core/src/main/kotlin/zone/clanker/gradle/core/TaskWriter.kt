@@ -8,9 +8,9 @@ import java.io.File
  */
 object TaskWriter {
 
-    // Matches checkbox + optional emoji + code + rest
+    // Matches checkbox + optional emoji (with optional agent) + code + rest
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*-\s+)\[([ xX~/])]\s+(?:[⬜🔄✅⛔]\s+)?(`[^`]+`\s+.+)$"""
+        """^(\s*-\s+)\[([ xX~/])]\s+(?:[⬜🔄✅⛔]\s+(?:\([\w-]+\)\s+)?)?(`[^`]+`\s+.+)$"""
     )
 
     /**
@@ -20,11 +20,12 @@ object TaskWriter {
      * @param code The task code to find (e.g., "ttd-3.1")
      * @param newStatus The new status to set
      * @param verified Whether the task was verified (false = force-completed, adds ⚠️ unverified marker)
+     * @param agent Optional agent name to include after the status marker (e.g., "claude")
      * @return true if the task was found and updated
      */
-    fun updateStatus(file: File, code: String, newStatus: TaskStatus, verified: Boolean = true): Boolean {
+    fun updateStatus(file: File, code: String, newStatus: TaskStatus, verified: Boolean = true, agent: String? = null): Boolean {
         val lines = file.readLines().toMutableList()
-        val updated = updateStatusInLines(lines, code, newStatus, verified)
+        val updated = updateStatusInLines(lines, code, newStatus, verified, agent)
         if (updated) {
             file.writeText(lines.joinToString("\n") + "\n")
         }
@@ -40,6 +41,7 @@ object TaskWriter {
         code: String,
         newStatus: TaskStatus,
         verified: Boolean = true,
+        agent: String? = null,
     ): Boolean {
         val codePattern = "`$code`"
         for (i in lines.indices) {
@@ -53,7 +55,9 @@ object TaskWriter {
             // Strip any existing unverified marker before rebuilding
             val cleanRest = rest.replace(" ⚠️ unverified", "")
             val marker = if (newStatus == TaskStatus.DONE && !verified) " ⚠️ unverified" else ""
-            lines[i] = "${prefix}${newStatus.checkbox} ${newStatus.emoji}$cleanRest$marker"
+            // Include agent name after emoji for IN_PROGRESS status if provided
+            val agentSuffix = if (agent != null && newStatus == TaskStatus.IN_PROGRESS) "($agent) " else ""
+            lines[i] = "${prefix}${newStatus.checkbox} ${newStatus.emoji}$agentSuffix$cleanRest$marker"
             return true
         }
         return false

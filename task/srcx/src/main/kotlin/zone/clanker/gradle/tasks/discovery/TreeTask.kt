@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.discovery
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
@@ -27,7 +29,7 @@ abstract class TreeTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Source tree generator. " +
             "Output: .opsx/tree.md. " +
             "Options: -Pmodule=name -Pscope=main|test. " +

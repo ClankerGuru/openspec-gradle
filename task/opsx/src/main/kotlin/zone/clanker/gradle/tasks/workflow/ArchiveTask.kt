@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.workflow
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -17,7 +19,7 @@ abstract class ArchiveTask : DefaultTask() {
     }
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Archive a completed change to opsx/changes/archive/. " +
             "Options: --name=<change-name>. " +
             "Use when: A proposal is fully implemented."

@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.workflow
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -18,7 +20,7 @@ abstract class ProposeTask : DefaultTask() {
     }
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Create a new spec-driven change proposal. " +
             "Output: opsx/changes/<name>/ with proposal.md, design.md, tasks.md. " +
             "Options: --name=<kebab-case-name>. " +

@@ -213,6 +213,9 @@ class CodexPlugin : Plugin<Settings> {
     }
 
     override fun apply(settings: Settings) {
+        val agents = settings.providers.gradleProperty("zone.clanker.opsx.agents")
+            .orNull?.lowercase()?.split(",")?.map { it.trim() } ?: listOf("claude")
+        if (agents.none { it in listOf("codex") }) return
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("codex-exec") != null) return@Action
 

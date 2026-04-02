@@ -39,7 +39,7 @@ class OpsxPlugin : Plugin<Settings> {
             ToolAdapterRegistry.register(OpenCodeAdapter)
         }
 
-        private val AGENT_ALIASES = mapOf("github" to "github-copilot")
+        private val AGENT_ALIASES = mapOf("github" to "github-copilot", "copilot" to "github-copilot")
 
         private fun readGradleProperty(propsFile: File, key: String): String? {
             if (!propsFile.exists()) return null
@@ -61,7 +61,10 @@ class OpsxPlugin : Plugin<Settings> {
                 .distinct()
         }
 
+        const val ENABLED_PROP = "zone.clanker.opsx.enabled"
+
         internal fun applyToProject(project: Project) {
+            if (project.findProperty(ENABLED_PROP)?.toString()?.lowercase() == "false") return
             if (project.extensions.findByName("openspec") != null) return
 
             val extension = project.extensions.create("openspec", OpenSpecExtension::class.java)
@@ -102,6 +105,9 @@ class OpsxPlugin : Plugin<Settings> {
                 override fun execute(task: SyncTask) {
                     task.tools.set(extension.tools)
                     task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
+                    task.global.set(project.provider {
+                        project.findProperty("global")?.toString()?.lowercase() == "true"
+                    })
                     task.dependsOn("srcx-context", "srcx-tree", "srcx-deps", "srcx-modules", "srcx-devloop", "srcx-arch")
                 }
             })
@@ -174,7 +180,33 @@ class OpsxPlugin : Plugin<Settings> {
 
             // Hooks
             project.tasks.matching { it.name == "clean" }.configureEach { it.dependsOn("opsx-clean") }
-            // opsx-sync is NOT hooked into assemble — run explicitly or via verify
+
+            // Aggregate: wire root tasks to all included builds.
+            // This is opsx's job as the orchestrator — wrkx only does includeBuild().
+            project.afterEvaluate {
+                val aggregate = project.findProperty("zone.clanker.opsx.aggregate")?.toString() != "false"
+                if (!aggregate) return@afterEvaluate
+
+                // Only aggregate discovery tasks — NOT opsx-sync or opsx-clean.
+                // opsx-sync handles symlinks at workspace level.
+                // opsx-clean should only affect the workspace, not cascade.
+                // Each build generates its own .opsx/ context via srcx tasks.
+                val tasksToAggregate = listOf(
+                    "srcx-context", "srcx-tree", "srcx-modules", "srcx-deps",
+                    "srcx-devloop", "srcx-symbols", "srcx-arch",
+                )
+
+                for (taskName in tasksToAggregate) {
+                    val rootTask = project.tasks.findByName(taskName) ?: continue
+                    for (build in project.gradle.includedBuilds) {
+                        try {
+                            rootTask.dependsOn(build.task(":$taskName"))
+                        } catch (_: Exception) {
+                            // Included build may not have this task
+                        }
+                    }
+                }
+            }
         }
     }
 }

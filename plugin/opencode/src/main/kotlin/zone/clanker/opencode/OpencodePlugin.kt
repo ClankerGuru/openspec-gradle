@@ -272,6 +272,9 @@ class OpencodePlugin : Plugin<Settings> {
     }
 
     override fun apply(settings: Settings) {
+        val agents = settings.providers.gradleProperty("zone.clanker.opsx.agents")
+            .orNull?.lowercase()?.split(",")?.map { it.trim() } ?: listOf("claude")
+        if (agents.none { it in listOf("opencode") }) return
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("opencode-run") != null) return@Action
 

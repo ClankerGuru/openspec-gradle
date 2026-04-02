@@ -65,7 +65,7 @@ open class WrkxRepo(
     fun includeBuild(vararg repos: WrkxRepo): WrkxRepo {
         _includes.addAll(repos)
         val include = onInclude
-            ?: error("includeBuild() requires the repo to be registered via the monolith plugin")
+            ?: error("includeBuild() requires the repo to be registered via the wrkx plugin")
         include(this)
         repos.forEach { include(it) }
         return this
@@ -88,7 +88,7 @@ open class WrkxExtension {
      */
     fun includeEnabled() {
         val action = includeAction
-            ?: error("includeEnabled() can only be called from settings.gradle.kts with the monolith plugin applied")
+            ?: error("includeEnabled() can only be called from settings.gradle.kts with the wrkx plugin applied")
         val enabled = enabledEntries()
         checkForDuplicateBuildNames(enabled)
         enabled.forEach { action(it) }
@@ -115,7 +115,7 @@ open class WrkxExtension {
         repo.onInclude = { target ->
             if (included.add(target)) {
                 val action = includeAction
-                    ?: error("includeBuild() requires includeAction to be set — ensure the monolith plugin is applied in settings.gradle.kts")
+                    ?: error("includeBuild() requires includeAction to be set — ensure the wrkx plugin is applied in settings.gradle.kts")
                 action(target)
             }
         }
@@ -136,7 +136,7 @@ open class WrkxExtension {
      */
     fun includeTree(root: WrkxRepo) {
         val action = includeAction
-            ?: error("includeTree() can only be called from settings.gradle.kts with the monolith plugin applied")
+            ?: error("includeTree() can only be called from settings.gradle.kts with the wrkx plugin applied")
 
         val visited = linkedSetOf<WrkxRepo>()
         fun collect(repo: WrkxRepo) {
