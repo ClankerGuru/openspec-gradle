@@ -1,1 +1,0 @@
-/Users/slop/.clkx/instructions/copilot-instructions.md

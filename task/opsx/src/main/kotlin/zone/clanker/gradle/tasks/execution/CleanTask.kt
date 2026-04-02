@@ -52,6 +52,22 @@ abstract class CleanTask : DefaultTask() {
             }
         }
 
+        // Remove symlinks to ~/.clkx/ from this project
+        val clkxDir = ClkxWriter.clkxDir()
+        if (clkxDir.exists()) {
+            count += removeClkxSymlinks(project.projectDir, clkxDir.toPath())
+        }
+
+        // Remove marker sections from instruction files in this project
+        for (toolId in ToolAdapterRegistry.supportedTools()) {
+            val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+            val instrFile = File(project.projectDir, adapter.getInstructionsFilePath())
+            if (instrFile.exists() && MarkerAppender.hasMarkers(instrFile)) {
+                MarkerAppender.remove(instrFile)
+                count++
+            }
+        }
+
         // Remove .opsx/ directory (context.md etc.)
         val opsxDir = File(project.projectDir, ".opsx")
         if (opsxDir.exists()) {

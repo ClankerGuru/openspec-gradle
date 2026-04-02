@@ -187,8 +187,11 @@ class OpsxPlugin : Plugin<Settings> {
                 val aggregate = project.findProperty("zone.clanker.opsx.aggregate")?.toString() != "false"
                 if (!aggregate) return@afterEvaluate
 
+                // Only aggregate discovery tasks — NOT opsx-sync or opsx-clean.
+                // opsx-sync handles symlinks at workspace level.
+                // opsx-clean should only affect the workspace, not cascade.
+                // Each build generates its own .opsx/ context via srcx tasks.
                 val tasksToAggregate = listOf(
-                    "opsx-sync", "opsx-clean",
                     "srcx-context", "srcx-tree", "srcx-modules", "srcx-deps",
                     "srcx-devloop", "srcx-symbols", "srcx-arch",
                 )

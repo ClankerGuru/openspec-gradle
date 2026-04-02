@@ -1,1 +1,0 @@
-/Users/slop/.clkx/instructions/CLAUDE.md
