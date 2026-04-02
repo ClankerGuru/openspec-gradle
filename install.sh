@@ -12,7 +12,14 @@
 
 set -euo pipefail
 
-VERSION="${OPENSPEC_VERSION:-0.34.3}"
+# Resolve version: env var > latest GitHub release > fallback
+if [ -n "${OPENSPEC_VERSION:-}" ]; then
+    VERSION="$OPENSPEC_VERSION"
+else
+    VERSION=$(curl -fsSL https://api.github.com/repos/ClankerGuru/openspec-gradle/releases/latest 2>/dev/null \
+        | sed -n 's/.*"tag_name": *"v\{0,1\}\([0-9.]*\)".*/\1/p' || true)
+    VERSION="${VERSION:-0.35.0}"
+fi
 INIT_DIR="${GRADLE_USER_HOME:-$HOME/.gradle}/init.d"
 PROPS_FILE="${GRADLE_USER_HOME:-$HOME/.gradle}/gradle.properties"
 
