@@ -74,9 +74,9 @@ abstract class SyncTask : DefaultTask() {
         logger.lifecycle("OpenSpec: Global mode — writing skills to ~/.clkx/ for tools: ${toolList.joinToString(", ")}")
 
         // Load instructions template content for ClkxWriter
-        val instructionsStream = this::class.java.classLoader.getResourceAsStream("templates/instructions.md")
-            ?: error("Missing resource: templates/instructions.md — plugin JAR may be corrupted")
-        val instructionsContent = instructionsStream.bufferedReader().readText()
+        val instructionsContent = (this::class.java.classLoader.getResourceAsStream("templates/instructions.md")
+            ?: error("Missing resource: templates/instructions.md — plugin JAR may be corrupted"))
+            .use { it.bufferedReader().readText() }
 
         val count = ClkxWriter.writeAll(toolList, instructionsContent)
         logger.lifecycle("OpenSpec: Written $count skills to ~/.clkx/")
@@ -125,9 +125,9 @@ abstract class SyncTask : DefaultTask() {
                         val adapter = toolList.mapNotNull { ToolAdapterRegistry.get(it) }
                             .firstOrNull { it.getInstructionsFilePath() == path }
                         if (adapter != null) {
-                            val instrStream = this::class.java.classLoader.getResourceAsStream("templates/instructions.md")
-                            if (instrStream != null) {
-                                val content = instrStream.bufferedReader().readText()
+                            val content = this::class.java.classLoader.getResourceAsStream("templates/instructions.md")
+                                ?.use { it.bufferedReader().readText() }
+                            if (content != null) {
                                 MarkerAppender.append(java.io.File(project.projectDir, path), content)
                             }
                         }

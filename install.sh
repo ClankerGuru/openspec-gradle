@@ -190,8 +190,17 @@ if [ "$SELECTED" = "none" ]; then
     exit 0
 fi
 
-# ── Clean previous install (re-installs are idempotent, not additive) ──
-rm -f "$INIT_DIR"/0*-*.init.gradle.kts
+# ── Clean previous install (only remove OUR init scripts, not others) ──
+for f in "$INIT_DIR"/00-wrkx.init.gradle.kts \
+         "$INIT_DIR"/01-srcx.init.gradle.kts \
+         "$INIT_DIR"/02-opsx.init.gradle.kts \
+         "$INIT_DIR"/02-quality.init.gradle.kts \
+         "$INIT_DIR"/03-claude.init.gradle.kts \
+         "$INIT_DIR"/03-copilot.init.gradle.kts \
+         "$INIT_DIR"/03-codex.init.gradle.kts \
+         "$INIT_DIR"/03-opencode.init.gradle.kts; do
+    [ -f "$f" ] && rm -f "$f"
+done
 
 echo ""
 echo "  Installing..."
