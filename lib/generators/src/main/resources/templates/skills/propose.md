@@ -40,7 +40,7 @@ A proposal's tasks should cover: tests first (TDD) -> implement -> verify (build
 
 **Steps**
 
-1. **Design conversation** — use AskUserQuestion. Cover what, why, where, how, risks, scope. Do NOT create files until conversation is complete.
+1. **Design conversation** — If the change is clear and simple, proceed directly to artifacts. Otherwise, use AskUserQuestion to cover what, why, where, how, risks, scope. Do NOT create files until conversation is complete.
 
 2. **Create the change**:
    ```bash

@@ -10,7 +10,7 @@ object TaskWriter {
 
     // Matches checkbox + optional emoji (with optional agent) + code + rest
     private val TASK_LINE_REGEX = Regex(
-        """^(\s*-\s+)\[([ xX~/])]\s+(?:[⬜🔄✅⛔]\s+(?:\(\w+\)\s+)?)?(`[^`]+`\s+.+)$"""
+        """^(\s*-\s+)\[([ xX~/])]\s+(?:[⬜🔄✅⛔]\s+(?:\([\w-]+\)\s+)?)?(`[^`]+`\s+.+)$"""
     )
 
     /**

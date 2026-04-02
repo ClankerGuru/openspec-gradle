@@ -194,6 +194,11 @@ INSTALLED_AGENTS=""
 IFS=',' read -ra COMPONENTS <<< "$SELECTED"
 for comp in "${COMPONENTS[@]}"; do
     comp=$(echo "$comp" | xargs)
+    # Normalize numeric selections to component names
+    case "$comp" in
+        1) comp="srcx" ;; 2) comp="opsx" ;; 3) comp="wrkx" ;; 4) comp="quality" ;;
+        5) comp="claude" ;; 6) comp="copilot" ;; 7) comp="codex" ;; 8) comp="opencode" ;;
+    esac
     case "$comp" in
         srcx)
             write_srcx
@@ -342,13 +347,12 @@ resolve_global_gitignore() {
 GLOBAL_GITIGNORE=$(resolve_global_gitignore)
 GITIGNORE_PATTERNS=(
     ".opsx/"
-    ".claude/skills"
-    ".claude/CLAUDE.md"
-    ".github/skills"
-    ".github/copilot-instructions.md"
-    ".opencode/skills"
-    ".agents/"
-    "AGENTS.md"
+    ".agents/skills/opsx-*"
+    ".agents/skills/srcx-*"
+    ".opencode/skills/opsx-*"
+    ".opencode/skills/srcx-*"
+    ".claude/skills/opsx-*"
+    ".claude/skills/srcx-*"
 )
 
 mkdir -p "$(dirname "$GLOBAL_GITIGNORE")"

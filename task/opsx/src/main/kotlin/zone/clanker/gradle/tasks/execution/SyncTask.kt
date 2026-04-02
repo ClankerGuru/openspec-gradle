@@ -62,7 +62,12 @@ abstract class SyncTask : DefaultTask() {
      */
     private fun syncGlobal(toolList: List<String>) {
         if (toolList.isEmpty()) {
-            logger.lifecycle("OpenSpec: No agents configured (zone.clanker.opsx.agents=none). Nothing to write globally.")
+            logger.lifecycle("OpenSpec: No agents configured (zone.clanker.opsx.agents=none). Cleaning ~/.clkx/.")
+            val clkxDir = ClkxWriter.clkxDir()
+            if (clkxDir.exists()) {
+                clkxDir.deleteRecursively()
+                logger.lifecycle("OpenSpec: Removed ~/.clkx/ directory")
+            }
             return
         }
 
@@ -105,12 +110,16 @@ abstract class SyncTask : DefaultTask() {
             }
             // Create symlinks + marker-append for instructions
             val symlinkResults = SymlinkManager.createSymlinks(project.projectDir, toolList)
-            var created = 0; var skipped = 0; var real = 0
+            var created = 0; var skipped = 0; var real = 0; var failed = 0
             for ((path, result) in symlinkResults) {
                 when (result) {
                     SymlinkManager.LinkResult.CREATED -> created++
                     SymlinkManager.LinkResult.COPIED -> created++
                     SymlinkManager.LinkResult.SKIPPED -> skipped++
+                    SymlinkManager.LinkResult.FAILED -> {
+                        failed++
+                        logger.warn("OpenSpec: Failed to create symlink or copy for: $path")
+                    }
                     SymlinkManager.LinkResult.REAL_FILE -> {
                         real++
                         val adapter = toolList.mapNotNull { ToolAdapterRegistry.get(it) }
@@ -125,7 +134,7 @@ abstract class SyncTask : DefaultTask() {
                     }
                 }
             }
-            logger.lifecycle("OpenSpec: Symlinks — $created created, $skipped up-to-date, $real real files (marker-appended)")
+            logger.lifecycle("OpenSpec: Symlinks — $created created, $skipped up-to-date, $real real files (marker-appended)${if (failed > 0) ", $failed failed" else ""}")
             return
         }
 
@@ -215,11 +224,16 @@ abstract class SyncTask : DefaultTask() {
         var symlinksCreated = 0
         var symlinksSkipped = 0
         var realFiles = 0
+        var symlinksFailed = 0
         for ((path, result) in symlinkResults) {
             when (result) {
                 SymlinkManager.LinkResult.CREATED -> symlinksCreated++
                 SymlinkManager.LinkResult.SKIPPED -> symlinksSkipped++
                 SymlinkManager.LinkResult.COPIED -> symlinksCreated++ // treat copy as created
+                SymlinkManager.LinkResult.FAILED -> {
+                    symlinksFailed++
+                    logger.warn("OpenSpec: Failed to create symlink or copy for: $path")
+                }
                 SymlinkManager.LinkResult.REAL_FILE -> {
                     realFiles++
                     // For real instruction files, append OPSX content via markers

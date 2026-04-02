@@ -42,9 +42,9 @@ object MarkerAppender {
 
         val existing = file.readText()
         val beginIdx = existing.indexOf(BEGIN)
-        val endIdx = existing.indexOf(END)
+        val endIdx = if (beginIdx >= 0) existing.indexOf(END, beginIdx + BEGIN.length) else -1
 
-        if (beginIdx >= 0 && endIdx >= 0 && beginIdx < endIdx) {
+        if (beginIdx >= 0 && endIdx >= 0) {
             // Replace existing marker section
             val before = existing.substring(0, beginIdx).trimEnd()
             val after = existing.substring(endIdx + END.length).trimStart('\n', '\r')
@@ -89,9 +89,9 @@ object MarkerAppender {
 
         val existing = file.readText()
         val beginIdx = existing.indexOf(BEGIN)
-        val endIdx = existing.indexOf(END)
+        val endIdx = if (beginIdx >= 0) existing.indexOf(END, beginIdx + BEGIN.length) else -1
 
-        if (beginIdx < 0 || endIdx < 0 || beginIdx >= endIdx) return
+        if (beginIdx < 0 || endIdx < 0) return
 
         val before = existing.substring(0, beginIdx)
         val after = existing.substring(endIdx + END.length)
@@ -114,7 +114,7 @@ object MarkerAppender {
         if (!file.exists()) return false
         val text = file.readText()
         val beginIdx = text.indexOf(BEGIN)
-        val endIdx = text.indexOf(END)
-        return beginIdx >= 0 && endIdx >= 0 && beginIdx < endIdx
+        val endIdx = if (beginIdx >= 0) text.indexOf(END, beginIdx + BEGIN.length) else -1
+        return beginIdx >= 0 && endIdx >= 0
     }
 }

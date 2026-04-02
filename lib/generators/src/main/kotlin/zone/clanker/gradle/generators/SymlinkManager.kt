@@ -54,6 +54,8 @@ object SymlinkManager {
         REAL_FILE,
         /** Symlink creation failed; fell back to copying. */
         COPIED,
+        /** Symlink creation and copy both failed, or target does not exist. */
+        FAILED,
     }
 
     /**
@@ -115,13 +117,17 @@ object SymlinkManager {
                 val targetFile = targetPath.toFile()
                 if (targetFile.isDirectory) {
                     targetFile.copyRecursively(linkFile, overwrite = true)
+                    LinkResult.COPIED
                 } else if (targetFile.isFile) {
                     targetFile.copyTo(linkFile, overwrite = true)
+                    LinkResult.COPIED
+                } else {
+                    // Target doesn't exist — nothing to copy
+                    LinkResult.FAILED
                 }
-                LinkResult.COPIED
             } catch (_: Exception) {
-                // Both symlink and copy failed — treat as real file scenario
-                LinkResult.REAL_FILE
+                // Both symlink and copy failed
+                LinkResult.FAILED
             }
         }
     }
