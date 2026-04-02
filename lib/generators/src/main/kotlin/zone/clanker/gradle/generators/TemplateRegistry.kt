@@ -30,6 +30,7 @@ object TemplateRegistry {
         depsSkill(),
         removeSkill(),
         wrkxWorkflowSkill(),
+        diagramSkill(),
     )
 
     /**
@@ -210,6 +211,14 @@ object TemplateRegistry {
         dirName = "wrkx-workflow",
         description = "Workspace management — pull repos, switch branches, check status, and work with included builds. Use when managing multi-repo workspaces.",
         instructions = loadResource("templates/skills/wrkx-workflow.md")
+    )
+
+    // ── Diagram ────────────────────────────────────────────
+
+    private fun diagramSkill() = SkillContent(
+        dirName = "opsx-diagram",
+        description = "Generate Mermaid diagrams for architecture, flows, sequences, or state machines. Use when visualizing or documenting.",
+        instructions = loadResource("templates/skills/diagram.md")
     )
 
     // ── Agent CLI Skills ───────────────────────────────────
