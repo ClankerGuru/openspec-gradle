@@ -88,7 +88,7 @@ open class WrkxExtension {
      */
     fun includeEnabled() {
         val action = includeAction
-            ?: error("includeEnabled() can only be called from settings.gradle.kts with the monolith plugin applied")
+            ?: error("includeEnabled() can only be called from settings.gradle.kts with the wrkx plugin applied")
         val enabled = enabledEntries()
         checkForDuplicateBuildNames(enabled)
         enabled.forEach { action(it) }

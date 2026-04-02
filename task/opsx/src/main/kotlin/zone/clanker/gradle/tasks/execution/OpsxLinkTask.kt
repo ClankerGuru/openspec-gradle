@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import java.io.File
@@ -18,7 +20,7 @@ abstract class OpsxLinkTask : DefaultTask() {
     }
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Link tool configs from ~/.config/opsx (skills & commands)"
     }
 

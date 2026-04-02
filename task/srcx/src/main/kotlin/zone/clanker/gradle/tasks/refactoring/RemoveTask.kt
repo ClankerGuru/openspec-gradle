@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.refactoring
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -35,7 +37,7 @@ abstract class RemoveTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Remove a symbol or line range from the codebase, cleaning up imports. " +
             "Output: .opsx/remove.md. " +
             "Options: -Psymbol=Name or -Pfile=path -PstartLine=N -PendLine=M, -PdryRun=true (preview only). " +

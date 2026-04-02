@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.intelligence
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
@@ -43,7 +45,7 @@ abstract class VerifyTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Enforce architecture rules — fails build on violations. " +
             "Output: .opsx/verify.md. " +
             "Options: -PmaxWarnings=N (default: unlimited), -PfailOnWarning=true (default: false), " +

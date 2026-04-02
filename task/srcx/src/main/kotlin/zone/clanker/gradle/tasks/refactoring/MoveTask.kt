@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.refactoring
 
+import zone.clanker.gradle.tasks.SRCX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -27,7 +29,7 @@ abstract class MoveTask : DefaultTask() {
     abstract val outputFile: RegularFileProperty
 
     init {
-        group = "opsx"
+        group = SRCX_GROUP
         description = "[tool] Move a class/file to a different package, updating all imports. " +
             "Output: .opsx/move.md. " +
             "Options: -Psymbol=ClassName -PtargetPackage=new.pkg (required), -PdryRun=true (preview only). " +

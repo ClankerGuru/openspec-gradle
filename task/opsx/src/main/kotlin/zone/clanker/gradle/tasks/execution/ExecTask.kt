@@ -1,5 +1,7 @@
 package zone.clanker.gradle.tasks.execution
 
+import zone.clanker.gradle.tasks.OPSX_GROUP
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
@@ -59,7 +61,7 @@ abstract class ExecTask : DefaultTask() {
     abstract val parallelThreads: Property<Int>
 
     init {
-        group = "opsx"
+        group = OPSX_GROUP
         description = "[tool] Execute an AI agent with a prompt, verify output, retry on failure. " +
             "Output: .opsx/exec/<timestamp>.md. " +
             "Options: -Pprompt=\"...\" (inline prompt), -Pspec=path/to/task.md (task spec file), " +
