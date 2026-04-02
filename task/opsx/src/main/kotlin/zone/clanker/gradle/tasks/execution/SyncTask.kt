@@ -5,10 +5,8 @@ import zone.clanker.gradle.generators.GeneratedFile
 import zone.clanker.gradle.generators.GlobalGitignore
 import zone.clanker.gradle.generators.InstructionsGenerator
 import zone.clanker.gradle.generators.SkillGenerator
-import zone.clanker.gradle.generators.TaskCommandGenerator
 import zone.clanker.gradle.generators.TaskReconciler
 import zone.clanker.gradle.generators.ToolAdapterRegistry
-import zone.clanker.gradle.generators.TemplateRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
@@ -81,8 +79,10 @@ abstract class SyncTask : DefaultTask() {
             logger.lifecycle("")
         }
 
-        val taskSkills = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList, warnings)
-        val allFiles = skills + taskSkills
+        // Task-code skills (opsx-T1, opsx-auth-2, etc.) are no longer generated as skill files.
+        // TaskCommandGenerator is still used for Gradle task registration, but its skill output is dropped.
+        // val taskSkills = TaskCommandGenerator.generate(project.projectDir, buildDir, toolList, warnings)
+        val allFiles = skills
 
         // Install instructions files separately (some need append mode)
         for (file in instructionFiles) {
