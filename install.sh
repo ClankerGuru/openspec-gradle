@@ -231,7 +231,7 @@ for comp in "${COMPONENTS[@]}"; do
         copilot|github|github-copilot)
             write_agent "plugin-copilot" "zone.clanker.copilot.CopilotPlugin" "03-copilot.init.gradle.kts"
             echo "  [03] copilot — GitHub Copilot CLI"
-            INSTALLED_AGENTS="${INSTALLED_AGENTS:+$INSTALLED_AGENTS,}github"
+            INSTALLED_AGENTS="${INSTALLED_AGENTS:+$INSTALLED_AGENTS,}copilot"
             ;;
         codex)
             write_agent "plugin-codex" "zone.clanker.codex.CodexPlugin" "03-codex.init.gradle.kts"

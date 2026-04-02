@@ -39,7 +39,7 @@ class OpsxPlugin : Plugin<Settings> {
             ToolAdapterRegistry.register(OpenCodeAdapter)
         }
 
-        private val AGENT_ALIASES = mapOf("github" to "github-copilot")
+        private val AGENT_ALIASES = mapOf("github" to "github-copilot", "copilot" to "github-copilot")
 
         private fun readGradleProperty(propsFile: File, key: String): String? {
             if (!propsFile.exists()) return null

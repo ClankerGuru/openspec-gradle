@@ -22,7 +22,7 @@ object AgentRunner {
      * Build the CLI command for the given agent.
      */
     fun buildCommand(agent: String, prompt: String): List<String> = when (agent) {
-        "github", "github-copilot" -> listOf(
+        "github", "github-copilot", "copilot" -> listOf(
             "copilot", "-p", prompt, "--yolo", "-s", "--no-ask-user"
         )
         "claude" -> listOf(

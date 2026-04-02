@@ -219,7 +219,7 @@ All properties go in `gradle.properties` (per-project or `~/.gradle/gradle.prope
 
 ```properties
 # Generate skills for Claude and Copilot
-zone.clanker.opsx.agents=claude,github
+zone.clanker.opsx.agents=claude,copilot
 
 # Use 'build' (compile + test) as the verification gate
 zone.clanker.opsx.verifyCommand=build
