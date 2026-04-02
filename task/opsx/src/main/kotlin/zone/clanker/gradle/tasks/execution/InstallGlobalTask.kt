@@ -125,6 +125,56 @@ abstract class InstallGlobalTask : DefaultTask() {
             |            apply<zone.clanker.gradle.linting.OpenSpecLintingPlugin>()
             |        }
             |    }
+            |
+            |    // Auto-create symlinks from project agent dirs to ~/.clkx/
+            |    afterEvaluate {
+            |        val clkxDir = java.io.File(System.getProperty("user.home"), ".clkx")
+            |        if (!clkxDir.isDirectory) return@afterEvaluate
+            |
+            |        // Agent → list of (project-relative link path, clkx-relative target path)
+            |        data class LinkSpec(val projectRel: String, val clkxRel: String)
+            |        val agentLinks = mapOf(
+            |            "claude-run" to listOf(
+            |                LinkSpec(".claude/skills", "skills/claude"),
+            |                LinkSpec(".claude/CLAUDE.md", "instructions/CLAUDE.md"),
+            |            ),
+            |            "copilot-run" to listOf(
+            |                LinkSpec(".github/skills", "skills/copilot"),
+            |                LinkSpec(".github/copilot-instructions.md", "instructions/copilot-instructions.md"),
+            |            ),
+            |            "codex-run" to listOf(
+            |                LinkSpec(".agents/skills", "skills/codex"),
+            |                LinkSpec("AGENTS.md", "instructions/AGENTS.md"),
+            |            ),
+            |            "opencode-run" to listOf(
+            |                LinkSpec(".opencode/skills", "skills/opencode"),
+            |            ),
+            |        )
+            |
+            |        for ((taskName, specs) in agentLinks) {
+            |            if (tasks.findByName(taskName) == null) continue
+            |            for (spec in specs) {
+            |                val linkPath = projectDir.toPath().resolve(spec.projectRel)
+            |                val targetPath = clkxDir.toPath().resolve(spec.clkxRel)
+            |                if (java.nio.file.Files.isSymbolicLink(linkPath)) {
+            |                    val existing = java.nio.file.Files.readSymbolicLink(linkPath)
+            |                    if (existing == targetPath ||
+            |                        linkPath.parent.resolve(existing).normalize() == targetPath.normalize()) {
+            |                        continue // already correct
+            |                    }
+            |                    java.nio.file.Files.delete(linkPath) // stale — remove and recreate
+            |                } else if (linkPath.toFile().exists()) {
+            |                    continue // real file/directory — don't overwrite
+            |                }
+            |                linkPath.parent?.toFile()?.mkdirs()
+            |                try {
+            |                    java.nio.file.Files.createSymbolicLink(linkPath, targetPath)
+            |                } catch (_: Exception) {
+            |                    // symlink failed (e.g. Windows without dev mode) — skip silently
+            |                }
+            |            }
+            |        }
+            |    }
             |}
             |""".trimMargin() + "\n"
     }

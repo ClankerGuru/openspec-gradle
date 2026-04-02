@@ -29,7 +29,30 @@ object TemplateRegistry {
         inlineSkill(),
         depsSkill(),
         removeSkill(),
+        wrkxWorkflowSkill(),
     )
+
+    /**
+     * Returns skill templates for installed agent CLI wrappers.
+     * Pass the list of agent identifiers that are configured in the project
+     * (e.g., "claude", "copilot", "codex", "opencode").
+     */
+    fun getAgentSkillTemplates(installedAgents: List<String>): List<SkillContent> =
+        installedAgents.mapNotNull { agent ->
+            when (agent) {
+                "claude" -> claudeTasksSkill()
+                "copilot" -> copilotTasksSkill()
+                "codex" -> codexTasksSkill()
+                "opencode" -> opencodeTasksSkill()
+                else -> null
+            }
+        }
+
+    /**
+     * Returns all skill templates: core skills + agent skills for installed agents.
+     */
+    fun getAllSkillTemplates(installedAgents: List<String> = emptyList()): List<SkillContent> =
+        getSkillTemplates() + getAgentSkillTemplates(installedAgents)
 
     // ── OPSX (bootstrap) ────────────────────────────────
 
@@ -179,5 +202,39 @@ object TemplateRegistry {
         description = "Remove a symbol or code block, cleaning up imports. Use when the user says 'delete this', 'remove X', or wants to clean dead code.",
         argumentHint = "[symbol-name]",
         instructions = loadResource("templates/skills/remove.md")
+    )
+
+    // ── Workspace Workflow ─────────────────────────────────
+
+    private fun wrkxWorkflowSkill() = SkillContent(
+        dirName = "wrkx-workflow",
+        description = "Workspace management — pull repos, switch branches, check status, and work with included builds. Use when managing multi-repo workspaces.",
+        instructions = loadResource("templates/skills/wrkx-workflow.md")
+    )
+
+    // ── Agent CLI Skills ───────────────────────────────────
+
+    private fun claudeTasksSkill() = SkillContent(
+        dirName = "clkx-claude",
+        description = "Run Claude Code headlessly via Gradle — claude-run, claude-resume, claude-auth. Use when dispatching work to Claude or managing Claude sessions.",
+        instructions = loadResource("templates/skills/claude-tasks.md")
+    )
+
+    private fun copilotTasksSkill() = SkillContent(
+        dirName = "clkx-copilot",
+        description = "Run GitHub Copilot headlessly via Gradle — copilot-run, copilot-resume. Use when dispatching work to Copilot or managing Copilot sessions.",
+        instructions = loadResource("templates/skills/copilot-tasks.md")
+    )
+
+    private fun codexTasksSkill() = SkillContent(
+        dirName = "clkx-codex",
+        description = "Run OpenAI Codex headlessly via Gradle — codex-exec, codex-review. Use when dispatching work to Codex or running code reviews.",
+        instructions = loadResource("templates/skills/codex-tasks.md")
+    )
+
+    private fun opencodeTasksSkill() = SkillContent(
+        dirName = "clkx-opencode",
+        description = "Run opencode headlessly via Gradle — opencode-run, opencode-serve. Use when dispatching work to opencode or starting a headless server.",
+        instructions = loadResource("templates/skills/opencode-tasks.md")
     )
 }

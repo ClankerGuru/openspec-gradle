@@ -254,6 +254,122 @@ fi
 # ── Remove legacy init script ──
 rm -f "$INIT_DIR/openspec.init.gradle.kts" "$INIT_DIR/openspec.init.gradle.kts.bak"
 
+# ── Create ~/.clkx/ directory structure ──
+CLKX_DIR="$HOME/.clkx"
+echo ""
+echo "  Setting up ~/.clkx/ shared directory..."
+
+mkdir -p "$CLKX_DIR/skills/claude"
+mkdir -p "$CLKX_DIR/skills/copilot"
+mkdir -p "$CLKX_DIR/skills/codex"
+mkdir -p "$CLKX_DIR/skills/opencode"
+mkdir -p "$CLKX_DIR/instructions"
+echo "  [ok] ~/.clkx/ directory structure created"
+echo "       Run 'opsx-sync --global' in any Gradle project to populate skills."
+
+# ── Configure Claude ~/.claude/settings.json with additionalDirs ──
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+if echo "$INSTALLED_AGENTS" | grep -q "claude"; then
+    mkdir -p "$HOME/.claude"
+    if [ -f "$CLAUDE_SETTINGS" ]; then
+        # Check if additionalDirs already contains ~/.clkx
+        if command -v jq &>/dev/null; then
+            if ! jq -e '.additionalDirs // [] | index("~/.clkx")' "$CLAUDE_SETTINGS" &>/dev/null; then
+                # Add ~/.clkx to additionalDirs array (create array if absent)
+                jq '.additionalDirs = ((.additionalDirs // []) + ["~/.clkx"] | unique)' \
+                    "$CLAUDE_SETTINGS" > "${CLAUDE_SETTINGS}.tmp" && \
+                    mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
+                echo "  [ok] Added ~/.clkx to Claude additionalDirs"
+            else
+                echo "  [ok] Claude additionalDirs already includes ~/.clkx"
+            fi
+        else
+            # Fallback without jq: check if already present, append if not
+            if ! grep -q '"~/.clkx"' "$CLAUDE_SETTINGS" 2>/dev/null; then
+                echo "  [!!] Install jq to auto-configure Claude additionalDirs, or manually add:"
+                echo "       \"additionalDirs\": [\"~/.clkx\"] to $CLAUDE_SETTINGS"
+            else
+                echo "  [ok] Claude additionalDirs already includes ~/.clkx"
+            fi
+        fi
+    else
+        # Create a fresh settings.json
+        cat > "$CLAUDE_SETTINGS" << 'CLAUDE_JSON'
+{
+  "additionalDirs": ["~/.clkx"]
+}
+CLAUDE_JSON
+        echo "  [ok] Created $CLAUDE_SETTINGS with additionalDirs"
+    fi
+fi
+
+# ── Create ~/.codex/skills symlink → ~/.clkx/skills/codex/ ──
+if echo "$INSTALLED_AGENTS" | grep -q "codex"; then
+    CODEX_SKILLS="$HOME/.codex/skills"
+    mkdir -p "$HOME/.codex"
+    if [ -L "$CODEX_SKILLS" ]; then
+        EXISTING_TARGET=$(readlink "$CODEX_SKILLS")
+        if [ "$EXISTING_TARGET" = "$CLKX_DIR/skills/codex" ] || [ "$EXISTING_TARGET" = "$CLKX_DIR/skills/codex/" ]; then
+            echo "  [ok] ~/.codex/skills already linked to ~/.clkx/skills/codex/"
+        else
+            rm -f "$CODEX_SKILLS"
+            ln -s "$CLKX_DIR/skills/codex" "$CODEX_SKILLS"
+            echo "  [ok] Updated ~/.codex/skills symlink → ~/.clkx/skills/codex/"
+        fi
+    elif [ -d "$CODEX_SKILLS" ]; then
+        echo "  [--] ~/.codex/skills/ is a real directory — skipping symlink"
+    else
+        ln -s "$CLKX_DIR/skills/codex" "$CODEX_SKILLS"
+        echo "  [ok] Created ~/.codex/skills → ~/.clkx/skills/codex/"
+    fi
+fi
+
+# ── Ensure global gitignore has OpenSpec patterns ──
+resolve_global_gitignore() {
+    local configured
+    configured=$(git config --global core.excludesFile 2>/dev/null || true)
+    if [ -n "$configured" ]; then
+        # Expand ~ if present
+        echo "${configured/#\~/$HOME}"
+    else
+        # Set XDG default and register with git
+        local fallback="$HOME/.config/git/ignore"
+        git config --global core.excludesFile "$fallback" 2>/dev/null || true
+        echo "$fallback"
+    fi
+}
+
+GLOBAL_GITIGNORE=$(resolve_global_gitignore)
+GITIGNORE_PATTERNS=(
+    ".opsx/"
+    ".claude/skills"
+    ".claude/CLAUDE.md"
+    ".github/skills"
+    ".github/copilot-instructions.md"
+    ".opencode/skills"
+    ".agents/"
+    "AGENTS.md"
+)
+
+mkdir -p "$(dirname "$GLOBAL_GITIGNORE")"
+touch "$GLOBAL_GITIGNORE"
+ADDED_PATTERNS=0
+for pattern in "${GITIGNORE_PATTERNS[@]}"; do
+    if ! grep -qxF "$pattern" "$GLOBAL_GITIGNORE" 2>/dev/null; then
+        if [ "$ADDED_PATTERNS" -eq 0 ]; then
+            echo "" >> "$GLOBAL_GITIGNORE"
+            echo "# OpenSpec generated files (managed by openspec-gradle plugin)" >> "$GLOBAL_GITIGNORE"
+        fi
+        echo "$pattern" >> "$GLOBAL_GITIGNORE"
+        ADDED_PATTERNS=$((ADDED_PATTERNS + 1))
+    fi
+done
+if [ "$ADDED_PATTERNS" -gt 0 ]; then
+    echo "  [ok] Added $ADDED_PATTERNS patterns to global gitignore ($GLOBAL_GITIGNORE)"
+else
+    echo "  [ok] Global gitignore already up to date ($GLOBAL_GITIGNORE)"
+fi
+
 echo ""
 echo "  Done! OpenSpec v${VERSION}"
 echo ""
