@@ -31,6 +31,11 @@ interface ToolAdapter {
     fun getInstructionsFilePath(): String
     /** Whether instructions should be appended to an existing file (with markers) vs written fresh */
     val appendInstructions: Boolean get() = false
+    /**
+     * Short directory name used under ~/.clkx/skills/ for global mode.
+     * Defaults to [toolId] but can be overridden (e.g., "github-copilot" -> "copilot").
+     */
+    val globalDirName: String get() = toolId
 }
 
 /**

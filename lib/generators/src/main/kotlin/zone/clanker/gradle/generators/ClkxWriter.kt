@@ -51,7 +51,7 @@ object ClkxWriter {
 
         for (toolId in tools) {
             val adapter = ToolAdapterRegistry.get(toolId) ?: continue
-            val agentDir = File(skillsDir, adapter.toolId.replace("github-copilot", "copilot"))
+            val agentDir = File(skillsDir, adapter.globalDirName)
 
             for (skill in skills) {
                 // Get the filename part from the adapter's path pattern
