@@ -78,7 +78,9 @@ abstract class SyncTask : DefaultTask() {
     }
 
     /**
-     * Default project mode: generate .opsx/ context files and per-project skill files.
+     * Default project mode: generate .opsx/ context files.
+     * If ~/.clkx/ exists, create symlinks for skills/instructions instead of generating per-project.
+     * If ~/.clkx/ doesn't exist, fall back to generating per-project files.
      */
     private fun syncProject(toolList: List<String>) {
         val buildDir = outputDir.get()
@@ -91,7 +93,44 @@ abstract class SyncTask : DefaultTask() {
             return
         }
 
-        logger.lifecycle("OpenSpec: Generating files for tools: ${toolList.joinToString(", ")}")
+        val clkxDir = ClkxWriter.clkxDir()
+        val useSymlinks = clkxDir.exists() && java.io.File(clkxDir, "skills").exists()
+
+        if (useSymlinks) {
+            logger.lifecycle("OpenSpec: Using ~/.clkx/ for skills (symlink mode)")
+            // Clean any existing per-project skill files before symlinking
+            for (toolId in toolList) {
+                val adapter = ToolAdapterRegistry.get(toolId) ?: continue
+                AgentCleaner.cleanAgent(project.projectDir, adapter)
+            }
+            // Create symlinks + marker-append for instructions
+            val symlinkResults = SymlinkManager.createSymlinks(project.projectDir, toolList)
+            var created = 0; var skipped = 0; var real = 0
+            for ((path, result) in symlinkResults) {
+                when (result) {
+                    SymlinkManager.LinkResult.CREATED -> created++
+                    SymlinkManager.LinkResult.COPIED -> created++
+                    SymlinkManager.LinkResult.SKIPPED -> skipped++
+                    SymlinkManager.LinkResult.REAL_FILE -> {
+                        real++
+                        val adapter = toolList.mapNotNull { ToolAdapterRegistry.get(it) }
+                            .firstOrNull { it.getInstructionsFilePath() == path }
+                        if (adapter != null) {
+                            val instrStream = this::class.java.classLoader.getResourceAsStream("templates/instructions.md")
+                            if (instrStream != null) {
+                                val content = instrStream.bufferedReader().readText()
+                                MarkerAppender.append(java.io.File(project.projectDir, path), content)
+                            }
+                        }
+                    }
+                }
+            }
+            logger.lifecycle("OpenSpec: Symlinks — $created created, $skipped up-to-date, $real real files (marker-appended)")
+            return
+        }
+
+        // Fallback: ~/.clkx/ doesn't exist — generate per-project files
+        logger.lifecycle("OpenSpec: Generating files for tools: ${toolList.joinToString(", ")} (run opsx-sync -Pglobal=true first for symlink mode)")
 
         val skills = SkillGenerator.generate(buildDir, toolList)
         val instructionFiles = InstructionsGenerator.generate(buildDir, toolList)
