@@ -39,8 +39,8 @@ object TaskLifecycle {
         verifyCommand: String,
         logger: Logger,
     ) {
-        // 1. Run verify assertions (unless force-skipped)
-        if (!skipGate) {
+        // 1. Run verify assertions (unless force-skipped or verify=off)
+        if (!skipGate && verifyCommand.lowercase() != "off") {
             val assertions = taskItem.verifyAssertions.ifEmpty {
                 // Default: just check build passes
                 listOf(VerifyAssertion("build-passes", ""))
