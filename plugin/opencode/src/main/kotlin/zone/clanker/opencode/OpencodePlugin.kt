@@ -33,6 +33,17 @@ abstract class OpencodeRunTask : OpencodeBaseTask() {
     @get:Input @get:Optional abstract val session: Property<String>
     @get:Input @get:Optional abstract val fork: Property<Boolean>
     @get:Input @get:Optional abstract val opencodePrompt: Property<String>
+    @get:Input @get:Optional abstract val command: Property<String>
+    @get:Input @get:Optional abstract val shareSession: Property<Boolean>
+    @get:Input @get:Optional abstract val format: Property<String>
+    @get:Input @get:Optional abstract val fileAttachments: ListProperty<String>
+    @get:Input @get:Optional abstract val title: Property<String>
+    @get:Input @get:Optional abstract val attach: Property<String>
+    @get:Input @get:Optional abstract val password: Property<String>
+    @get:Input @get:Optional abstract val dir: Property<String>
+    @get:Input @get:Optional abstract val variant: Property<String>
+    @get:Input @get:Optional abstract val thinking: Property<Boolean>
+    @get:Input @get:Optional abstract val extraArgs: ListProperty<String>
 
     init { description = "Run opencode with a message (1:1 CLI wrapper)" }
 
@@ -52,6 +63,17 @@ abstract class OpencodeRunTask : OpencodeBaseTask() {
         session.orNull?.let { cmd += listOf("--session", it) }
         if (fork.getOrElse(false)) cmd += "--fork"
         opencodePrompt.orNull?.let { cmd += listOf("--prompt", it) }
+        command.orNull?.let { cmd += listOf("--command", it) }
+        if (shareSession.getOrElse(false)) cmd += "--share"
+        format.orNull?.let { cmd += listOf("--format", it) }
+        fileAttachments.getOrElse(emptyList()).forEach { cmd += listOf("--file", it) }
+        title.orNull?.let { cmd += listOf("--title", it) }
+        attach.orNull?.let { cmd += listOf("--attach", it) }
+        password.orNull?.let { cmd += listOf("--password", it) }
+        dir.orNull?.let { cmd += listOf("--dir", it) }
+        variant.orNull?.let { cmd += listOf("--variant", it) }
+        if (thinking.getOrElse(false)) cmd += "--thinking"
+        extraArgs.getOrElse(emptyList()).forEach { cmd += it }
         commandLine(cmd)
         super.exec()
     }
@@ -260,8 +282,13 @@ abstract class OpencodeDbTask : OpencodeBaseTask() {
 
 abstract class OpencodeVersionTask : OpencodeBaseTask() {
     init {
-        description = "Show opencode version"
+        description = "Show opencode version (and wrapper compatibility)"
         commandLine("opencode", "--version")
+    }
+
+    override fun exec() {
+        super.exec()
+        logger.lifecycle("Wrapper built for CLI ${OpencodePlugin.CLI_VERSION}")
     }
 }
 
@@ -348,6 +375,16 @@ class OpencodePlugin : Plugin<Settings> {
                 prop("session")?.let { t.session.set(it) }
                 if (project.hasProperty("fork")) t.fork.set(true)
                 prop("opencodePrompt")?.let { t.opencodePrompt.set(it) }
+                prop("command")?.let { t.command.set(it) }
+                if (project.hasProperty("shareSession")) t.shareSession.set(true)
+                prop("format")?.let { t.format.set(it) }
+                prop("title")?.let { t.title.set(it) }
+                prop("attach")?.let { t.attach.set(it) }
+                prop("password")?.let { t.password.set(it) }
+                prop("dir")?.let { t.dir.set(it) }
+                prop("variant")?.let { t.variant.set(it) }
+                if (project.hasProperty("thinking")) t.thinking.set(true)
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",")) }
             })
 
             project.tasks.register("opencode-resume", OpencodeResumeTask::class.java).configure(org.gradle.api.Action { t ->

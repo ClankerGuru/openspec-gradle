@@ -47,6 +47,12 @@ abstract class ClaudeRunTask : Exec() {
     @get:Input @get:Optional abstract val betas: ListProperty<String>
     @get:Input @get:Optional abstract val debug: Property<String>
     @get:Input @get:Optional abstract val debugFile: Property<String>
+    @get:Input @get:Optional abstract val allowDangerouslySkipPermissions: Property<Boolean>
+    @get:Input @get:Optional abstract val chrome: Property<Boolean>
+    @get:Input @get:Optional abstract val noChrome: Property<Boolean>
+    @get:Input @get:Optional abstract val ide: Property<Boolean>
+    @get:Input @get:Optional abstract val replayUserMessages: Property<Boolean>
+    @get:Input @get:Optional abstract val extraArgs: ListProperty<String>
 
     init {
         group = "claude"
@@ -91,6 +97,12 @@ abstract class ClaudeRunTask : Exec() {
         betas.getOrElse(emptyList()).forEach { cmd += listOf("--betas", it) }
         debug.orNull?.let { cmd += listOf("--debug", it) }
         debugFile.orNull?.let { cmd += listOf("--debug-file", it) }
+        if (allowDangerouslySkipPermissions.getOrElse(false)) cmd += "--allow-dangerously-skip-permissions"
+        if (chrome.getOrElse(false)) cmd += "--chrome"
+        if (noChrome.getOrElse(false)) cmd += "--no-chrome"
+        if (ide.getOrElse(false)) cmd += "--ide"
+        if (replayUserMessages.getOrElse(false)) cmd += "--replay-user-messages"
+        extraArgs.getOrElse(emptyList()).forEach { cmd += it }
         commandLine(cmd)
         super.exec()
     }
@@ -137,8 +149,13 @@ abstract class ClaudeAuthTask : Exec() {
 abstract class ClaudeVersionTask : Exec() {
     init {
         group = "claude"
-        description = "Show Claude Code version"
+        description = "Show Claude Code version (and wrapper compatibility)"
         commandLine("claude", "--version")
+    }
+
+    override fun exec() {
+        super.exec()
+        logger.lifecycle("Wrapper built for CLI ${ClaudePlugin.CLI_VERSION}")
     }
 }
 
@@ -298,6 +315,12 @@ class ClaudePlugin : Plugin<Settings> {
                 prop("settings")?.let { t.settings.set(it) }
                 prop("debug")?.let { t.debug.set(it) }
                 prop("debugFile")?.let { t.debugFile.set(it) }
+                if (project.hasProperty("allowDangerouslySkipPermissions")) t.allowDangerouslySkipPermissions.set(true)
+                if (project.hasProperty("chrome")) t.chrome.set(true)
+                if (project.hasProperty("noChrome")) t.noChrome.set(true)
+                if (project.hasProperty("ide")) t.ide.set(true)
+                if (project.hasProperty("replayUserMessages")) t.replayUserMessages.set(true)
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",")) }
             })
 
             project.tasks.register("claude-resume", ClaudeResumeTask::class.java).configure(org.gradle.api.Action { t ->
