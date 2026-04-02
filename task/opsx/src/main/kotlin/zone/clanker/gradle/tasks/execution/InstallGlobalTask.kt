@@ -114,8 +114,11 @@ abstract class InstallGlobalTask : DefaultTask() {
             |        }
             |    }
             |    afterEvaluate {
-            |        val lintingEnabled = System.getProperty("openspec.linting.enabled") != "false"
-            |        if (!lintingEnabled) return@afterEvaluate
+            |        val disabled = System.getProperty("zone.clanker.quality.enabled")?.lowercase() == "false" ||
+            |            findProperty("zone.clanker.quality.enabled")?.toString()?.lowercase() == "false" ||
+            |            System.getProperty("openspec.linting.enabled")?.lowercase() == "false" ||
+            |            findProperty("openspec.linting.enabled")?.toString()?.lowercase() == "false"
+            |        if (disabled) return@afterEvaluate
             |
             |        val isKotlinProject = plugins.hasPlugin("org.jetbrains.kotlin.jvm") ||
             |            plugins.hasPlugin("org.jetbrains.kotlin.android") ||

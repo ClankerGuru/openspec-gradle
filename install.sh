@@ -85,9 +85,8 @@ OPSX
 write_quality() {
     cat > "$INIT_DIR/02-quality.init.gradle.kts" << QUALITY
 // Linting: detekt + ktlint for Kotlin projects
-// Disable all: -Dopenspec.linting.enabled=false
-// Disable detekt only: -Dopenspec.detekt.enabled=false
-// Disable ktlint only: -Dopenspec.ktlint.enabled=false
+// Disable per-project: zone.clanker.quality.enabled=false in gradle.properties
+// Disable globally: -Dzone.clanker.quality.enabled=false
 initscript {
     repositories {
         mavenLocal()
@@ -102,8 +101,16 @@ initscript {
 }
 allprojects {
     afterEvaluate {
-        val lintingEnabled = System.getProperty("openspec.linting.enabled") != "false"
-        if (!lintingEnabled) return@afterEvaluate
+        // Check both new and legacy property names, both system props and project props
+        // Check: system property, project property, env var
+        // Note: for workspaces with included builds, use ~/.gradle/gradle.properties
+        // or -D flag — per-project gradle.properties won't propagate to included builds
+        val disabled = System.getProperty("zone.clanker.quality.enabled")?.lowercase() == "false" ||
+            findProperty("zone.clanker.quality.enabled")?.toString()?.lowercase() == "false" ||
+            System.getenv("OPENSPEC_QUALITY_ENABLED")?.lowercase() == "false" ||
+            System.getProperty("openspec.linting.enabled")?.lowercase() == "false" ||
+            findProperty("openspec.linting.enabled")?.toString()?.lowercase() == "false"
+        if (disabled) return@afterEvaluate
         val isKotlinProject = plugins.hasPlugin("org.jetbrains.kotlin.jvm") ||
             plugins.hasPlugin("org.jetbrains.kotlin.android") ||
             plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
