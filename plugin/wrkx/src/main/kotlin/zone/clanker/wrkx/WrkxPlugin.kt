@@ -34,7 +34,7 @@ abstract class WrkxPlugin : Plugin<Settings> {
         val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
 
         val repoDir = settings.providers.gradleProperty("zone.clanker.wrkx.repoDir")
-            .orNull?.let { resolvePath(it) } ?: File(settingsDir.parentFile, "${settingsDir.name}-repos")
+            .orNull?.let { resolvePath(it) } ?: File(settingsDir.parentFile ?: settingsDir, "${settingsDir.name}-repos")
 
         val extension = settings.extensions.create("wrkx", WrkxExtension::class.java)
         extension.baseDir = repoDir
@@ -135,7 +135,7 @@ abstract class WrkxPlugin : Plugin<Settings> {
                     project.provider {
                         project.findProperty("zone.clanker.wrkx.repoDir")?.toString()
                             ?.let { raw -> resolveProjectPath(raw) }
-                            ?: java.io.File(rootDir.parentFile, "${rootDir.name}-repos").absolutePath
+                            ?: java.io.File(rootDir.parentFile ?: rootDir, "${rootDir.name}-repos").absolutePath
                     }
                 )
                 it.reposFile.convention(

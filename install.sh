@@ -182,7 +182,7 @@ while [ $# -gt 0 ]; do
         --all)        CLI_ALL=true ;;
         --core)       CLI_CORE=true ;;
         --uninstall)  CLI_UNINSTALL=true ;;
-        --agents)     shift; CLI_AGENTS="$1" ;;
+        --agents)     shift; if [ $# -eq 0 ]; then echo "Error: --agents requires a value"; exit 1; fi; CLI_AGENTS="$1" ;;
         --agents=*)   CLI_AGENTS="${1#--agents=}" ;;
         --help|-h)
             echo "Usage:"

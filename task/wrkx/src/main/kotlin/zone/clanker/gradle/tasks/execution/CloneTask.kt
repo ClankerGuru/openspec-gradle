@@ -199,7 +199,8 @@ abstract class CloneTask : DefaultTask() {
 
         if (checkoutExit == 0) return ref
 
-        // Branch doesn't exist remotely — create it locally
+        // Branch doesn't exist remotely — create it locally from current HEAD
+        logger.warn("Ref '$ref' not found remotely for ${entry.name} — creating local branch")
         val createBranch = ProcessBuilder("git", "checkout", "-b", ref)
             .directory(targetDir)
             .redirectErrorStream(true)
