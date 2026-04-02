@@ -1,22 +1,13 @@
-Start a new change using the artifact-driven approach.
+Start a new change with a scaffolded directory.
 
-**Input**: The argument is the change name (kebab-case), OR a description of what the user wants to build.
+**Input**: Change name (kebab-case) or a description of what to build.
 
-**Steps**
-
-1. **If no input provided, ask what they want to build**
-
-   Use the **AskUserQuestion tool** to ask:
-   > "What change do you want to work on? Describe what you want to build or fix."
-
-   From their description, derive a kebab-case name.
-
-2. **Create the change directory**
+1. If no input, ask what they want to build. Derive a kebab-case name from the description.
+2. Create the change:
    ```bash
    ./gradlew opsx-propose --name=<name>
    ```
-
-3. **Create `.opsx.yaml`** with change metadata:
+3. Create `.opsx.yaml` with metadata:
    ```yaml
    name: <name>
    schema: spec-driven
@@ -38,12 +29,7 @@ Start a new change using the artifact-driven approach.
    apply:
      requires: [tasks]
    ```
+4. Show the artifact sequence: proposal -> design -> tasks
+5. **STOP and wait for user direction** — do NOT create artifacts yet
 
-4. **Show the artifact sequence**: proposal → design → tasks
-5. **STOP and wait for user direction** - do NOT create artifacts yet
-
-**Output**: Change name, location, artifact sequence, and prompt to continue.
-
-**Guardrails**
-- Do NOT create any artifacts yet - just scaffold
-- If name already exists, suggest continuing that change instead
+If name already exists, suggest continuing that change instead.

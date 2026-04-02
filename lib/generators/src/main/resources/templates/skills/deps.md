@@ -1,19 +1,9 @@
 Query project dependencies — resolved versions, transitive deps, and module relationships.
 
-## Steps
+```bash
+./gradlew srcx-deps
+```
 
-1. Run: `./gradlew srcx-deps` for the full dependency report
-2. Check `.opsx/deps.md` for auto-generated dependency tree
+Read `.opsx/deps.md` for the full dependency tree. Dependencies are resolved (actual versions after conflict resolution) and grouped by Gradle configuration. For multi-module projects, each module's deps are shown separately.
 
-## Use Cases
-
-- "What version of library X are we using?" — check deps.md
-- "What depends on module Y?" — check `.opsx/modules.md` for module graph
-- "Are there dependency conflicts?" — look for version annotations in the report
-- Upgrading a library: check deps.md to understand the dependency chain
-
-## Notes
-
-- Dependencies are resolved (actual versions after conflict resolution)
-- Grouped by Gradle configuration (implementation, api, testImplementation, etc.)
-- For multi-module projects, each module's deps are shown separately
+For module relationships, also check `.opsx/modules.md`.
