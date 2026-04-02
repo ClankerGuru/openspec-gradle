@@ -1,6 +1,5 @@
 package zone.clanker.wrkx
 
-import org.gradle.api.GradleException
 import org.gradle.api.plugins.ExtensionAware
 import zone.clanker.gradle.core.WrkxExtension
 import zone.clanker.gradle.core.WrkxRepo
@@ -23,8 +22,6 @@ abstract class WrkxPlugin : Plugin<Settings> {
             settings.extensions.findByName("monolith") != null) return
 
         val home = System.getProperty("user.home")
-        val defaultDir = settings.settingsDir.absolutePath
-
         val settingsDir = settings.settingsDir
 
         fun resolvePath(raw: String): File {
@@ -37,7 +34,7 @@ abstract class WrkxPlugin : Plugin<Settings> {
         val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
 
         val repoDir = settings.providers.gradleProperty("zone.clanker.wrkx.repoDir")
-            .orNull?.let { resolvePath(it) } ?: settingsDir
+            .orNull?.let { resolvePath(it) } ?: File(settingsDir.parentFile ?: settingsDir, "${settingsDir.name}-repos")
 
         val extension = settings.extensions.create("wrkx", WrkxExtension::class.java)
         extension.baseDir = repoDir
@@ -138,7 +135,7 @@ abstract class WrkxPlugin : Plugin<Settings> {
                     project.provider {
                         project.findProperty("zone.clanker.wrkx.repoDir")?.toString()
                             ?.let { raw -> resolveProjectPath(raw) }
-                            ?: rootDir.absolutePath
+                            ?: java.io.File(rootDir.parentFile ?: rootDir, "${rootDir.name}-repos").absolutePath
                     }
                 )
                 it.reposFile.convention(
@@ -148,16 +145,6 @@ abstract class WrkxPlugin : Plugin<Settings> {
                             ?: "${rootDir.absolutePath}/workspace.json"
                     }
                 )
-                if (project.hasProperty("dryRun")) {
-                    val value = project.property("dryRun").toString().lowercase()
-                    if (value !in setOf("true", "false")) {
-                        throw GradleException("Invalid dryRun value '$value' — must be 'true' or 'false'")
-                    }
-                    it.dryRun.set(value == "true")
-                } else {
-                    it.dryRun.convention(true)
-                }
-
                 it.extensionRepos.addAll(extension.allEntries())
             })
 

@@ -24,9 +24,6 @@ abstract class CloneTask : DefaultTask() {
     @get:Input
     abstract val reposDir: Property<String>
 
-    @get:Input
-    abstract val dryRun: Property<Boolean>
-
     /** Populated by the plugin from the MonolithExtension. If empty, falls back to JSON file. */
     @get:Internal
     val extensionRepos: MutableList<WrkxRepo> = mutableListOf()
@@ -35,13 +32,13 @@ abstract class CloneTask : DefaultTask() {
         group = WRKX_GROUP
         description = "[tool] Clone repositories from workspace.json via gh. " +
             "Use when: Setting up a workspace or syncing missing repos. " +
-            "Params: -PdryRun=false to clone, -PreposDir=path."
+            "Params: -PreposDir=path."
     }
 
-    private data class CloneEntry(val name: String, val category: String, val directoryName: String)
+    private data class CloneEntry(val name: String, val category: String, val directoryName: String, val ref: String)
 
     private sealed class CloneResult {
-        data class Cloned(val entry: CloneEntry, val targetDir: File) : CloneResult()
+        data class Cloned(val entry: CloneEntry, val targetDir: File, val checkedOutRef: String?) : CloneResult()
         data class Failed(val entry: CloneEntry, val exitCode: Int, val output: String) : CloneResult()
     }
 
@@ -49,13 +46,12 @@ abstract class CloneTask : DefaultTask() {
     fun clone() {
         val home = System.getProperty("user.home")
         val baseDir = File(reposDir.get().replace("~", home))
-        val isDryRun = dryRun.get()
 
         // Resolve entries: prefer extension, fall back to JSON file
         val entries: List<CloneEntry> = if (extensionRepos.isNotEmpty()) {
             extensionRepos.filter { it.enabled }.map { repo ->
                 val dirName = RepoEntry(repo.repoName, true, repo.category, repo.substitutions).directoryName
-                CloneEntry(repo.repoName, repo.category, dirName)
+                CloneEntry(repo.repoName, repo.category, dirName, repo.ref)
             }
         } else {
             val configFile = File(reposFile.get().replace("~", home))
@@ -66,7 +62,7 @@ abstract class CloneTask : DefaultTask() {
                 return
             }
             RepoEntry.parseFile(configFile).filter { it.enable }.map {
-                CloneEntry(it.name, it.category, it.directoryName)
+                CloneEntry(it.name, it.category, it.directoryName, it.ref)
             }
         }
 
@@ -76,33 +72,31 @@ abstract class CloneTask : DefaultTask() {
         }
 
         // Check gh is available
-        if (!isDryRun) {
-            try {
-                val proc = ProcessBuilder("gh", "--version")
-                    .redirectErrorStream(true)
-                    .start()
-                val exitCode = proc.waitFor()
-                if (exitCode != 0) {
-                    throw GradleException(
-                        "gh (GitHub CLI) returned exit code $exitCode. Ensure it is installed and authenticated: https://cli.github.com/"
-                    )
-                }
-            } catch (e: GradleException) {
-                throw e
-            } catch (e: Exception) {
+        try {
+            val proc = ProcessBuilder("gh", "--version")
+                .redirectErrorStream(true)
+                .start()
+            val exitCode = proc.waitFor()
+            if (exitCode != 0) {
                 throw GradleException(
-                    "gh (GitHub CLI) is not available on PATH. Install it: https://cli.github.com/", e
+                    "gh (GitHub CLI) returned exit code $exitCode. Ensure it is installed and authenticated: https://cli.github.com/"
                 )
             }
-            baseDir.mkdirs()
+        } catch (e: GradleException) {
+            throw e
+        } catch (e: Exception) {
+            throw GradleException(
+                "gh (GitHub CLI) is not available on PATH. Install it: https://cli.github.com/", e
+            )
         }
+        baseDir.mkdirs()
 
         val results = mutableMapOf<String, MutableList<String>>()
         var cloned = 0
         var skipped = 0
         var failed = 0
 
-        // Separate skip/dry-run from actual clones
+        // Separate skip from actual clones
         val toClone = mutableListOf<CloneEntry>()
 
         for (entry in entries) {
@@ -113,12 +107,6 @@ abstract class CloneTask : DefaultTask() {
             if (targetDir.exists()) {
                 categoryList.add("  SKIP  ${entry.name} (already exists)")
                 skipped++
-                continue
-            }
-
-            if (isDryRun) {
-                categoryList.add("  CLONE ${entry.name} → ${targetDir.absolutePath}")
-                cloned++
                 continue
             }
 
@@ -145,8 +133,13 @@ abstract class CloneTask : DefaultTask() {
                             CloneResult.Failed(entry, -1, "Clone timed out after 5 minutes")
                         } else {
                             val exitCode = process.exitValue()
-                            if (exitCode == 0) CloneResult.Cloned(entry, targetDir)
-                            else CloneResult.Failed(entry, exitCode, output)
+                            if (exitCode == 0) {
+                                // Checkout ref if specified and not "main"
+                                val checkedOutRef = checkoutRef(entry, targetDir)
+                                CloneResult.Cloned(entry, targetDir, checkedOutRef)
+                            } else {
+                                CloneResult.Failed(entry, exitCode, output)
+                            }
                         }
                     })
                 }
@@ -155,8 +148,9 @@ abstract class CloneTask : DefaultTask() {
                     when (val result = future.get()) {
                         is CloneResult.Cloned -> {
                             val category = result.entry.category.ifBlank { "default" }
+                            val refSuffix = if (result.checkedOutRef != null) " [${result.checkedOutRef}]" else ""
                             results.getOrPut(category) { mutableListOf() }
-                                .add("  CLONE ${result.entry.name} → ${result.targetDir.absolutePath}")
+                                .add("  CLONE ${result.entry.name} → ${result.targetDir.absolutePath}$refSuffix")
                             cloned++
                         }
                         is CloneResult.Failed -> {
@@ -177,14 +171,46 @@ abstract class CloneTask : DefaultTask() {
 
         // Print summary
         println()
-        if (isDryRun) println("DRY RUN — no repos will be cloned. Use -PdryRun=false to clone.")
-        println()
         for ((category, lines) in results.entries.sortedBy { it.key }) {
             println("[$category]")
             lines.forEach { println(it) }
             println()
         }
         println("Summary: $cloned cloned, $skipped skipped, $failed failed (${entries.size} total)")
-        if (isDryRun) println("Base directory: ${baseDir.absolutePath}")
+    }
+
+    /**
+     * After cloning, check out the specified ref if it's not null/blank and not "main".
+     * First tries `git checkout <ref>` (existing remote branch).
+     * If that fails, creates it locally with `git checkout -b <ref>`.
+     * Returns the ref that was checked out, or null if no checkout was needed.
+     */
+    private fun checkoutRef(entry: CloneEntry, targetDir: File): String? {
+        val ref = entry.ref
+        if (ref.isBlank() || ref == "main") return null
+
+        // Try checking out existing branch
+        val checkout = ProcessBuilder("git", "checkout", ref)
+            .directory(targetDir)
+            .redirectErrorStream(true)
+            .start()
+        val checkoutOutput = checkout.inputStream.bufferedReader().readText()
+        val checkoutExit = checkout.waitFor()
+
+        if (checkoutExit == 0) return ref
+
+        // Branch doesn't exist remotely — create it locally from current HEAD
+        logger.warn("Ref '$ref' not found remotely for ${entry.name} — creating local branch")
+        val createBranch = ProcessBuilder("git", "checkout", "-b", ref)
+            .directory(targetDir)
+            .redirectErrorStream(true)
+            .start()
+        val createOutput = createBranch.inputStream.bufferedReader().readText()
+        val createExit = createBranch.waitFor()
+
+        if (createExit == 0) return ref
+
+        logger.warn("Failed to checkout ref '$ref' for ${entry.name}: $createOutput")
+        return null
     }
 }
