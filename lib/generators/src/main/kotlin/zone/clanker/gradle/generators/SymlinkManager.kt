@@ -5,66 +5,63 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Creates symlinks from per-project agent config directories to the shared ~/.clkx/ directory.
+ * Creates per-skill symlinks from project agent directories to ~/.clkx/.
  *
- * For each agent, links the skills directory and instructions file:
- * - Claude: `.claude/skills -> ~/.clkx/skills/claude`, `.claude/CLAUDE.md -> ~/.clkx/instructions/CLAUDE.md`
- * - Copilot: `.github/skills -> ~/.clkx/skills/copilot`, `.github/copilot-instructions.md -> ~/.clkx/instructions/copilot-instructions.md`
- * - Codex: `.agents/skills -> ~/.clkx/skills/codex`, `AGENTS.md -> ~/.clkx/instructions/AGENTS.md`
- * - OpenCode: `.opencode/skills -> ~/.clkx/skills/opencode`
+ * Skills are symlinked individually so project-specific skills can coexist:
+ * ```
+ * .claude/skills/                          ← REAL directory
+ *   srcx-find → ~/.clkx/skills/claude/srcx-find      ← symlink (ours)
+ *   opsx-propose → ~/.clkx/skills/claude/opsx-propose ← symlink (ours)
+ *   my-custom-skill/SKILL.md                          ← real (project-specific)
+ * ```
  *
- * If a target path is already a symlink pointing to the right place, it is skipped.
- * If a target path is a real file/directory (team-committed), it is NOT overwritten — the caller
- * should fall back to [MarkerAppender] for instructions, and copy-install for skills.
+ * Instructions files are symlinked as whole files (CLAUDE.md, copilot-instructions.md).
  */
 object SymlinkManager {
 
-    /**
-     * Symlink mapping: project-relative path -> clkx-relative path.
-     */
     private data class LinkSpec(val projectRelative: String, val clkxRelative: String)
 
-    private val AGENT_LINKS: Map<String, List<LinkSpec>> = mapOf(
-        "claude" to listOf(
-            LinkSpec(".claude/skills", "skills/claude"),
-            LinkSpec(".claude/CLAUDE.md", "instructions/CLAUDE.md"),
+    /**
+     * Agent config: skills parent dir + clkx subdirectory + instruction file links.
+     */
+    private data class AgentConfig(
+        val skillsDir: String,
+        val clkxSkillsDir: String,
+        val instructionLinks: List<LinkSpec>,
+    )
+
+    private val AGENT_CONFIG: Map<String, AgentConfig> = mapOf(
+        "claude" to AgentConfig(
+            skillsDir = ".claude/skills",
+            clkxSkillsDir = "skills/claude",
+            instructionLinks = listOf(LinkSpec(".claude/CLAUDE.md", "instructions/CLAUDE.md")),
         ),
-        "github-copilot" to listOf(
-            LinkSpec(".github/skills", "skills/copilot"),
-            LinkSpec(".github/copilot-instructions.md", "instructions/copilot-instructions.md"),
+        "github-copilot" to AgentConfig(
+            skillsDir = ".github/skills",
+            clkxSkillsDir = "skills/copilot",
+            instructionLinks = listOf(LinkSpec(".github/copilot-instructions.md", "instructions/copilot-instructions.md")),
         ),
-        "codex" to listOf(
-            LinkSpec(".agents/skills", "skills/codex"),
-            LinkSpec("AGENTS.md", "instructions/AGENTS.md"),
+        "codex" to AgentConfig(
+            skillsDir = ".agents/skills",
+            clkxSkillsDir = "skills/codex",
+            instructionLinks = listOf(LinkSpec("AGENTS.md", "instructions/AGENTS.md")),
         ),
-        "opencode" to listOf(
-            LinkSpec(".opencode/skills", "skills/opencode"),
+        "opencode" to AgentConfig(
+            skillsDir = ".opencode/skills",
+            clkxSkillsDir = "skills/opencode",
+            instructionLinks = emptyList(),
         ),
     )
 
-    /**
-     * Result of a symlink operation for a single path.
-     */
     enum class LinkResult {
-        /** Symlink already existed and pointed to the correct target. */
-        SKIPPED,
-        /** Symlink was created successfully. */
-        CREATED,
-        /** Target is a real file/directory — not overwritten. Caller should use MarkerAppender. */
-        REAL_FILE,
-        /** Symlink creation failed; fell back to copying. */
-        COPIED,
-        /** Symlink creation and copy both failed, or target does not exist. */
-        FAILED,
+        SKIPPED, CREATED, REAL_FILE, COPIED, FAILED,
     }
 
     /**
-     * Create symlinks for all configured agents.
-     *
-     * @param projectDir the project root directory
-     * @param agents list of agent IDs (e.g., "claude", "github-copilot", "codex", "opencode")
-     * @param clkxDir the shared clkx directory (defaults to ~/.clkx/)
-     * @return map of project-relative path to result for each link attempted
+     * Create per-skill symlinks for all configured agents.
+     * The skills parent directory is created as a REAL directory.
+     * Each skill inside is symlinked individually to ~/.clkx/.
+     * Instructions files are symlinked as whole files.
      */
     fun createSymlinks(
         projectDir: File,
@@ -74,31 +71,48 @@ object SymlinkManager {
         val results = mutableMapOf<String, LinkResult>()
 
         for (agent in agents) {
-            val specs = AGENT_LINKS[agent] ?: continue
-            for (spec in specs) {
+            val config = AGENT_CONFIG[agent] ?: continue
+
+            // 1. Instructions file symlinks (whole file)
+            for (spec in config.instructionLinks) {
                 val linkPath = projectDir.toPath().resolve(spec.projectRelative)
                 val targetPath = clkxDir.toPath().resolve(spec.clkxRelative)
                 results[spec.projectRelative] = createLink(linkPath, targetPath)
+            }
+
+            // 2. Skills: create parent as real dir, symlink each skill individually
+            val skillsParent = File(projectDir, config.skillsDir)
+            val clkxSkillsDir = File(clkxDir, config.clkxSkillsDir)
+
+            if (!clkxSkillsDir.exists()) continue
+
+            // If skills parent is currently a symlink to clkx (old style), remove it first
+            val skillsParentPath = skillsParent.toPath()
+            if (Files.isSymbolicLink(skillsParentPath)) {
+                Files.delete(skillsParentPath)
+            }
+
+            // Create real directory
+            skillsParent.mkdirs()
+
+            // Symlink each skill dir
+            val skillDirs = clkxSkillsDir.listFiles()?.filter { it.isDirectory } ?: continue
+            for (skillDir in skillDirs) {
+                val linkPath = skillsParent.toPath().resolve(skillDir.name)
+                val targetPath = skillDir.toPath()
+                val relPath = "${config.skillsDir}/${skillDir.name}"
+                results[relPath] = createLink(linkPath, targetPath)
             }
         }
 
         return results
     }
 
-    /**
-     * Returns the set of all supported agent IDs known to the symlink manager.
-     */
-    fun supportedAgents(): Set<String> = AGENT_LINKS.keys
+    fun supportedAgents(): Set<String> = AGENT_CONFIG.keys
 
     /**
-     * Remove symlinks (or copies) for the given agents that point into ~/.clkx/.
-     * Only removes paths that are symlinks pointing into [clkxDir] or empty directories
-     * that were created as copies from clkx. Real files committed by the team are left untouched.
-     *
-     * @param projectDir the project root directory
-     * @param agents list of agent IDs to clean (e.g., "claude", "github-copilot")
-     * @param clkxDir the shared clkx directory (defaults to ~/.clkx/)
-     * @return number of symlinks/copies removed
+     * Remove our symlinks for the given agents.
+     * Only removes symlinks pointing into ~/.clkx/. Real dirs (project-specific) are untouched.
      */
     fun removeSymlinks(
         projectDir: File,
@@ -106,61 +120,64 @@ object SymlinkManager {
         clkxDir: File = ClkxWriter.clkxDir(),
     ): Int {
         var removed = 0
+        val clkxPath = clkxDir.toPath().normalize()
+
         for (agent in agents) {
-            val specs = AGENT_LINKS[agent] ?: continue
-            for (spec in specs) {
-                val linkPath = projectDir.toPath().resolve(spec.projectRelative)
-                if (Files.isSymbolicLink(linkPath)) {
-                    // Only remove if it points into clkx
-                    val target = try {
-                        Files.readSymbolicLink(linkPath)
-                    } catch (_: Exception) {
-                        continue
-                    }
-                    val resolvedTarget = linkPath.parent.resolve(target).normalize()
-                    val clkxPath = clkxDir.toPath().normalize()
-                    if (resolvedTarget.startsWith(clkxPath)) {
-                        Files.delete(linkPath)
-                        removed++
-                        // Prune empty parent directories
-                        AgentCleaner.pruneEmptyParents(linkPath.parent?.toFile(), projectDir)
-                    }
+            val config = AGENT_CONFIG[agent] ?: continue
+
+            // Remove instruction symlinks
+            for (spec in config.instructionLinks) {
+                removed += removeIfClkxSymlink(projectDir.toPath().resolve(spec.projectRelative), clkxPath, projectDir)
+            }
+
+            // Remove per-skill symlinks inside the skills parent
+            val skillsParent = File(projectDir, config.skillsDir)
+            if (skillsParent.exists() && skillsParent.isDirectory) {
+                val entries = skillsParent.listFiles() ?: continue
+                for (entry in entries) {
+                    removed += removeIfClkxSymlink(entry.toPath(), clkxPath, projectDir)
                 }
-                // If it was a copy (not a symlink), we don't remove real files —
-                // AgentCleaner.cleanAgent handles that via the adapter.
+                // Prune skills parent if empty after cleanup
+                if (skillsParent.listFiles()?.isEmpty() == true) {
+                    skillsParent.delete()
+                    AgentCleaner.pruneEmptyParents(skillsParent, projectDir)
+                }
             }
         }
         return removed
     }
 
-    /**
-     * Create a single symlink from [linkPath] pointing to [targetPath].
-     */
+    private fun removeIfClkxSymlink(linkPath: Path, clkxPath: Path, projectDir: File): Int {
+        if (!Files.isSymbolicLink(linkPath)) return 0
+        val target = try { Files.readSymbolicLink(linkPath) } catch (_: Exception) { return 0 }
+        val resolved = linkPath.parent.resolve(target).normalize()
+        if (resolved.startsWith(clkxPath)) {
+            Files.delete(linkPath)
+            AgentCleaner.pruneEmptyParents(linkPath.parent?.toFile(), projectDir)
+            return 1
+        }
+        return 0
+    }
+
     private fun createLink(linkPath: Path, targetPath: Path): LinkResult {
         val linkFile = linkPath.toFile()
 
-        // If already a symlink, check if it points to the right target
         if (Files.isSymbolicLink(linkPath)) {
             val existing = Files.readSymbolicLink(linkPath)
             if (existing == targetPath || linkPath.parent.resolve(existing).normalize() == targetPath.normalize()) {
                 return LinkResult.SKIPPED
             }
-            // Wrong target — remove and recreate
             Files.delete(linkPath)
         } else if (linkFile.exists()) {
-            // Real file or directory — don't overwrite
             return LinkResult.REAL_FILE
         }
 
-        // Ensure parent directory exists
         linkPath.parent?.toFile()?.mkdirs()
 
-        // Attempt to create symlink
         return try {
             Files.createSymbolicLink(linkPath, targetPath)
             LinkResult.CREATED
         } catch (_: Exception) {
-            // Fallback: copy the target to the link location (Windows, permissions, etc.)
             try {
                 val targetFile = targetPath.toFile()
                 if (targetFile.isDirectory) {
@@ -170,11 +187,9 @@ object SymlinkManager {
                     targetFile.copyTo(linkFile, overwrite = true)
                     LinkResult.COPIED
                 } else {
-                    // Target doesn't exist — nothing to copy
                     LinkResult.FAILED
                 }
             } catch (_: Exception) {
-                // Both symlink and copy failed
                 LinkResult.FAILED
             }
         }
