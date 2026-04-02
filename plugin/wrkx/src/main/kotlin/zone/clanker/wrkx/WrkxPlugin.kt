@@ -16,6 +16,8 @@ import java.io.File
 abstract class WrkxPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
+        // Check if disabled via gradle.properties
+        if (settings.providers.gradleProperty("zone.clanker.wrkx.enabled").orNull?.lowercase() == "false") return
         // Guard against double-application (init script + settings.gradle.kts)
         if (settings.extensions.findByName("wrkx") != null ||
             settings.extensions.findByName("monolith") != null) return
@@ -23,19 +25,22 @@ abstract class WrkxPlugin : Plugin<Settings> {
         val home = System.getProperty("user.home")
         val defaultDir = settings.settingsDir.absolutePath
 
-        val rawPath = settings.providers.gradleProperty("zone.clanker.wrkx.configFile").orNull
-        val configFile = if (rawPath != null) {
-            File(rawPath.replace("~", home))
-        } else {
-            File("$defaultDir/workspace.json")
+        val settingsDir = settings.settingsDir
+
+        fun resolvePath(raw: String): File {
+            val expanded = raw.replace("~", home)
+            return if (File(expanded).isAbsolute) File(expanded) else File(settingsDir, expanded)
         }
+
+        val rawPath = settings.providers.gradleProperty("zone.clanker.wrkx.configFile").orNull
+        val configFile = if (rawPath != null) resolvePath(rawPath) else File(settingsDir, "workspace.json")
         val entries = if (configFile.exists()) RepoEntry.parseFile(configFile) else emptyList()
 
-        val monolithDir = settings.providers.gradleProperty("zone.clanker.wrkx.repoDir")
-            .orNull?.let { File(it.replace("~", home)) } ?: File(defaultDir)
+        val repoDir = settings.providers.gradleProperty("zone.clanker.wrkx.repoDir")
+            .orNull?.let { resolvePath(it) } ?: settingsDir
 
         val extension = settings.extensions.create("wrkx", WrkxExtension::class.java)
-        extension.baseDir = monolithDir
+        extension.baseDir = repoDir
         for (entry in entries) {
             require(entry.name.isNotBlank()) { "${configFile.name} contains a repo with blank 'name'" }
             val propertyName = WrkxExtension.toCamelCase(entry.directoryName)
@@ -47,7 +52,7 @@ abstract class WrkxPlugin : Plugin<Settings> {
                 defaultSubstitute = entry.substitute,
                 defaultRef = entry.ref
             )
-            repo.clonePath = File(monolithDir, entry.directoryName)
+            repo.clonePath = File(repoDir, entry.directoryName)
             extension.register(propertyName, repo)
             (extension as ExtensionAware).extensions.add(propertyName, repo)
         }
@@ -80,6 +85,8 @@ abstract class WrkxPlugin : Plugin<Settings> {
     }
 
     companion object {
+        const val ENABLED_PROP = "zone.clanker.wrkx.enabled"
+
         internal fun applyToSettings(project: org.gradle.api.Project, extension: WrkxExtension) {
             if (project.tasks.findByName("wrkx-clone") != null) return
 
@@ -122,16 +129,23 @@ abstract class WrkxPlugin : Plugin<Settings> {
 
             project.tasks.register("wrkx-clone", CloneTask::class.java).configure(org.gradle.api.Action {
                 val home = System.getProperty("user.home")
+                val rootDir = project.rootDir
+                fun resolveProjectPath(raw: String): String {
+                    val expanded = raw.replace("~", home)
+                    return if (java.io.File(expanded).isAbsolute) expanded else java.io.File(rootDir, expanded).absolutePath
+                }
                 it.reposDir.convention(
                     project.provider {
                         project.findProperty("zone.clanker.wrkx.repoDir")?.toString()
-                            ?: project.rootDir.absolutePath
+                            ?.let { raw -> resolveProjectPath(raw) }
+                            ?: rootDir.absolutePath
                     }
                 )
                 it.reposFile.convention(
                     project.provider {
                         project.findProperty("zone.clanker.wrkx.configFile")?.toString()
-                            ?: "${project.rootDir.absolutePath}/workspace.json"
+                            ?.let { raw -> resolveProjectPath(raw) }
+                            ?: "${rootDir.absolutePath}/workspace.json"
                     }
                 )
                 if (project.hasProperty("dryRun")) {
@@ -147,32 +161,6 @@ abstract class WrkxPlugin : Plugin<Settings> {
                 it.extensionRepos.addAll(extension.allEntries())
             })
 
-            // Aggregate: wire root opsx tasks to all included builds.
-            // Only cacheable discovery + lifecycle tasks propagate — they're free when UP-TO-DATE.
-            // Intelligence tasks (find, calls, usages, verify) are parameterized and expensive,
-            // so they stay per-build: use ./gradlew :gort:srcx-find -Psymbol=Foo
-            project.afterEvaluate {
-                val aggregate = project.findProperty("zone.clanker.wrkx.aggregate")?.toString() != "false"
-                if (!aggregate) return@afterEvaluate
-
-                val tasksToAggregate = listOf(
-                    // Lifecycle
-                    "opsx-sync", "opsx-clean",
-                    // Discovery (all @CacheableTask — skip when inputs unchanged)
-                    "srcx-context", "srcx-tree", "srcx-modules", "srcx-deps", "srcx-devloop", "srcx-symbols", "srcx-arch",
-                )
-
-                for (taskName in tasksToAggregate) {
-                    val rootTask = project.tasks.findByName(taskName) ?: continue
-                    for (build in project.gradle.includedBuilds) {
-                        try {
-                            rootTask.dependsOn(build.task(":$taskName"))
-                        } catch (_: Exception) {
-                            // Included build may not have this task
-                        }
-                    }
-                }
-            }
         }
     }
 }

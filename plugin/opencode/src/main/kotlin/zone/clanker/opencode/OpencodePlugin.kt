@@ -269,9 +269,11 @@ abstract class OpencodeVersionTask : OpencodeBaseTask() {
 class OpencodePlugin : Plugin<Settings> {
     companion object {
         const val CLI_VERSION = "1.3.13"
+        const val ENABLED_PROP = "zone.clanker.opencode.enabled"
     }
 
     override fun apply(settings: Settings) {
+        if (settings.providers.gradleProperty(ENABLED_PROP).orNull?.lowercase() == "false") return
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("opencode-run") != null) return@Action
 

@@ -17,18 +17,15 @@ class OpenSpecKtlintPlugin : Plugin<Project> {
 
     companion object {
         private const val KTLINT_PLUGIN_ID = "org.jlleitschuh.gradle.ktlint"
-        private const val ENABLED_PROP = "openspec.ktlint.enabled"
-        private const val VERSION_PROP = "openspec.ktlint.version"
+        private const val ENABLED_PROP = "zone.clanker.quality.ktlint"
+        private const val LEGACY_ENABLED_PROP = "openspec.ktlint.enabled"
+        private const val VERSION_PROP = "zone.clanker.quality.ktlint.version"
+        private const val LEGACY_VERSION_PROP = "openspec.ktlint.version"
         private const val DEFAULT_VERSION = "1.5.0"
     }
 
     override fun apply(project: Project) {
-        val enabled = isEnabled(project)
-
-        if (!enabled) {
-            project.logger.lifecycle("🧹 [OpenSpec] ktlint disabled via system property — skipping")
-            return
-        }
+        if (!isEnabled(project)) return
 
         project.afterEvaluate {
             if (project.plugins.hasPlugin(KTLINT_PLUGIN_ID)) {
@@ -45,14 +42,10 @@ class OpenSpecKtlintPlugin : Plugin<Project> {
     }
 
     private fun isEnabled(project: Project): Boolean {
-        // System property takes precedence
-        System.getProperty(ENABLED_PROP)?.let {
-            return it.lowercase() != "false"
-        }
-        // Fall back to project property
-        project.findProperty(ENABLED_PROP)?.let {
-            return it.toString().lowercase() != "false"
-        }
+        System.getProperty(ENABLED_PROP)?.let { return it.lowercase() != "false" }
+        project.findProperty(ENABLED_PROP)?.let { return it.toString().lowercase() != "false" }
+        System.getProperty(LEGACY_ENABLED_PROP)?.let { return it.lowercase() != "false" }
+        project.findProperty(LEGACY_ENABLED_PROP)?.let { return it.toString().lowercase() != "false" }
         return true
     }
 
@@ -69,6 +62,8 @@ class OpenSpecKtlintPlugin : Plugin<Project> {
         if (ktlintExtension != null) {
             val version = System.getProperty(VERSION_PROP)
                 ?: project.findProperty(VERSION_PROP)?.toString()
+                ?: System.getProperty(LEGACY_VERSION_PROP)
+                ?: project.findProperty(LEGACY_VERSION_PROP)?.toString()
                 ?: DEFAULT_VERSION
 
             // Configure via reflection to avoid compile-time dependency
