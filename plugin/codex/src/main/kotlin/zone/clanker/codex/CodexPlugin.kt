@@ -303,7 +303,7 @@ class CodexPlugin : Plugin<Settings> {
                 prop("color")?.let { t.color.set(it) }
                 if (project.hasProperty("json")) t.json.set(true)
                 prop("outputLastMessage")?.let { t.outputLastMessage.set(it) }
-                prop("extraArgs")?.let { t.extraArgs.set(it.split(",")) }
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",").map(String::trim).filter(String::isNotEmpty)) }
             })
 
             project.tasks.register("codex-review", CodexReviewTask::class.java)

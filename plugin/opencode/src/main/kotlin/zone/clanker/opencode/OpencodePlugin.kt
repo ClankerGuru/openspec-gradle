@@ -384,7 +384,7 @@ class OpencodePlugin : Plugin<Settings> {
                 prop("dir")?.let { t.dir.set(it) }
                 prop("variant")?.let { t.variant.set(it) }
                 if (project.hasProperty("thinking")) t.thinking.set(true)
-                prop("extraArgs")?.let { t.extraArgs.set(it.split(",")) }
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",").map(String::trim).filter(String::isNotEmpty)) }
             })
 
             project.tasks.register("opencode-resume", OpencodeResumeTask::class.java).configure(org.gradle.api.Action { t ->

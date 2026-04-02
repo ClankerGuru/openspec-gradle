@@ -303,7 +303,7 @@ class CopilotPlugin : Plugin<Settings> {
                 if (project.hasProperty("disallowTempDir")) t.disallowTempDir.set(true)
                 if (project.hasProperty("enableAllGithubMcpTools")) t.enableAllGithubMcpTools.set(true)
                 if (project.hasProperty("enableReasoningSummaries")) t.enableReasoningSummaries.set(true)
-                prop("extraArgs")?.let { t.extraArgs.set(it.split(",")) }
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",").map(String::trim).filter(String::isNotEmpty)) }
             })
 
             project.tasks.register("copilot-resume", CopilotResumeTask::class.java).configure(org.gradle.api.Action { t ->

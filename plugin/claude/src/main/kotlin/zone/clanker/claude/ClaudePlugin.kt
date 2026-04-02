@@ -99,7 +99,7 @@ abstract class ClaudeRunTask : Exec() {
         debugFile.orNull?.let { cmd += listOf("--debug-file", it) }
         if (allowDangerouslySkipPermissions.getOrElse(false)) cmd += "--allow-dangerously-skip-permissions"
         if (chrome.getOrElse(false)) cmd += "--chrome"
-        if (noChrome.getOrElse(false)) cmd += "--no-chrome"
+        else if (noChrome.getOrElse(false)) cmd += "--no-chrome"
         if (ide.getOrElse(false)) cmd += "--ide"
         if (replayUserMessages.getOrElse(false)) cmd += "--replay-user-messages"
         extraArgs.getOrElse(emptyList()).forEach { cmd += it }
@@ -320,7 +320,7 @@ class ClaudePlugin : Plugin<Settings> {
                 if (project.hasProperty("noChrome")) t.noChrome.set(true)
                 if (project.hasProperty("ide")) t.ide.set(true)
                 if (project.hasProperty("replayUserMessages")) t.replayUserMessages.set(true)
-                prop("extraArgs")?.let { t.extraArgs.set(it.split(",")) }
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",").map(String::trim).filter(String::isNotEmpty)) }
             })
 
             project.tasks.register("claude-resume", ClaudeResumeTask::class.java).configure(org.gradle.api.Action { t ->
