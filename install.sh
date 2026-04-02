@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # OpenSpec Gradle — one-line installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/ClankerGuru/openspec-gradle/main/install.sh | bash
 #
-# Non-interactive: OPENSPEC_COMPONENTS=srcx,opsx,claude curl ... | bash
-# To uninstall: rm ~/.gradle/init.d/0*-*.init.gradle.kts
+# Usage:
+#   Interactive:     bash install.sh
+#   Positional args: bash install.sh copilot claude srcx opsx
+#   Env var (piped):  OPENSPEC_COMPONENTS=copilot,claude curl ... | bash
+#   Install all:     bash install.sh all
+#
+# Components: wrkx, srcx, opsx, quality, claude, copilot, codex, opencode, all
+# To uninstall: rm ~/.gradle/init.d/{00-wrkx,01-srcx,02-opsx,02-quality,03-claude,03-copilot,03-codex,03-opencode}.init.gradle.kts
 
 set -euo pipefail
 
@@ -158,7 +163,10 @@ normalize_selection() {
 }
 
 # ── Selection ──
-if [ -n "${OPENSPEC_COMPONENTS:-}" ]; then
+if [ $# -gt 0 ]; then
+    # Positional args: bash install.sh copilot claude
+    SELECTED=$(normalize_selection "$(IFS=,; echo "$*")")
+elif [ -n "${OPENSPEC_COMPONENTS:-}" ]; then
     SELECTED=$(normalize_selection "$OPENSPEC_COMPONENTS")
 elif [ -t 0 ]; then
     echo "  Select components to install (comma-separated numbers, names, or 'all'):"
