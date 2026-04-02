@@ -182,7 +182,7 @@ elif [ -t 0 ]; then
     SELECTED=$(normalize_selection "$CHOICE")
 else
     echo "  Non-interactive mode — installing all."
-    SELECTED="wrkx,srcx,opsx,quality,claude,copilot,codex,opencode"
+    SELECTED="wrkx,srcx,opsx,quality,claude"
 fi
 
 if [ "$SELECTED" = "none" ]; then

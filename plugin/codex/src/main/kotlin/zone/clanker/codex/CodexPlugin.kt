@@ -210,11 +210,12 @@ abstract class CodexVersionTask : CodexBaseTask() {
 class CodexPlugin : Plugin<Settings> {
     companion object {
         const val CLI_VERSION = "0.117.0"
-        const val ENABLED_PROP = "zone.clanker.codex.enabled"
     }
 
     override fun apply(settings: Settings) {
-        if (settings.providers.gradleProperty(ENABLED_PROP).orNull?.lowercase() == "false") return
+        val agents = settings.providers.gradleProperty("zone.clanker.opsx.agents")
+            .orNull?.lowercase()?.split(",")?.map { it.trim() } ?: listOf("claude")
+        if (agents.none { it in listOf("codex") }) return
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("codex-exec") != null) return@Action
 
