@@ -17,6 +17,13 @@ Run OpenAI Codex headlessly via Gradle wrapper tasks.
 | `-Psandbox=docker` | Sandbox mode: `docker`, `none` |
 | `-Pprofile=name` | Configuration profile |
 
+## Passthrough
+
+For flags not yet mapped to Gradle properties:
+```bash
+./gradlew codex-exec -Pprompt="..." -PextraArgs="--new-flag,--other=val"
+```
+
 ## Examples
 
 ```bash

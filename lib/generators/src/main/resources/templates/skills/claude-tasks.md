@@ -22,6 +22,13 @@ Run Claude Code headlessly via Gradle wrapper tasks.
 | `-PsystemPrompt="..."` | Override system prompt |
 | `-PappendSystemPrompt="..."` | Append to system prompt |
 
+## Passthrough
+
+For flags not yet mapped to Gradle properties:
+```bash
+./gradlew claude-run -Pprompt="..." -PextraArgs="--new-flag,--other=val"
+```
+
 ## Examples
 
 ```bash

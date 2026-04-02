@@ -79,6 +79,7 @@ abstract class CopilotRunTask : CopilotBaseTask() {
     @get:Input @get:Optional abstract val excludedTools: ListProperty<String>
     @get:Input @get:Optional abstract val pluginDir: ListProperty<String>
     @get:Input @get:Optional abstract val secretEnvVars: ListProperty<String>
+    @get:Input @get:Optional abstract val extraArgs: ListProperty<String>
 
     init { description = "Run GitHub Copilot in non-interactive print mode (1:1 CLI wrapper)" }
 
@@ -138,6 +139,7 @@ abstract class CopilotRunTask : CopilotBaseTask() {
         excludedTools.getOrElse(emptyList()).forEach { cmd += listOf("--excluded-tools", it) }
         pluginDir.getOrElse(emptyList()).forEach { cmd += listOf("--plugin-dir", it) }
         secretEnvVars.getOrElse(emptyList()).forEach { cmd += listOf("--secret-env-vars", it) }
+        extraArgs.getOrElse(emptyList()).forEach { cmd += it }
 
         commandLine = cmd
         super.exec()
@@ -164,11 +166,16 @@ abstract class CopilotLoginTask : CopilotBaseTask() {
     }
 }
 
-/** copilot version */
+/** copilot version — shows installed version and compares to wrapper version. */
 abstract class CopilotVersionTask : CopilotBaseTask() {
     init {
-        description = "Show GitHub Copilot CLI version"
+        description = "Show GitHub Copilot CLI version (and wrapper compatibility)"
         commandLine = listOf("copilot", "--version")
+    }
+
+    override fun exec() {
+        super.exec()
+        logger.lifecycle("Wrapper built for CLI ${CopilotPlugin.CLI_VERSION}")
     }
 }
 
@@ -216,7 +223,7 @@ class CopilotPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
         val agents = settings.providers.gradleProperty("zone.clanker.opsx.agents")
-            .orNull?.lowercase()?.split(",")?.map { it.trim() } ?: listOf("claude")
+            .orNull?.lowercase()?.split(",")?.map { it.trim() } ?: listOf("claude", "copilot")
         if (agents.none { it in listOf("copilot", "github", "github-copilot") }) return
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("copilot-run") != null) return@Action
@@ -296,6 +303,7 @@ class CopilotPlugin : Plugin<Settings> {
                 if (project.hasProperty("disallowTempDir")) t.disallowTempDir.set(true)
                 if (project.hasProperty("enableAllGithubMcpTools")) t.enableAllGithubMcpTools.set(true)
                 if (project.hasProperty("enableReasoningSummaries")) t.enableReasoningSummaries.set(true)
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",").map(String::trim).filter(String::isNotEmpty)) }
             })
 
             project.tasks.register("copilot-resume", CopilotResumeTask::class.java).configure(org.gradle.api.Action { t ->

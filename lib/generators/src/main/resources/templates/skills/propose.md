@@ -12,19 +12,29 @@
 
 ---
 
-Before writing artifacts, have a conversation. Match depth to complexity:
-- **Simple** (config tweak) -- go straight to artifacts
-- **Medium** (add a feature) -- a few clarifying questions, then write
-- **Complex** (architecture redesign) -- deep conversation, explore alternatives
+**STOP. Do NOT write artifacts yet.**
 
-**Investigate first.** Run `srcx-find`, `srcx-usages`, `srcx-arch` before asking questions. Come back with what you found.
+This is a collaborative design process. You lay out the plan, present options at every design fork, and let the user decide. You never make design decisions silently.
+
+**Investigate first.** Run `srcx-find`, `srcx-usages`, `srcx-arch` before talking. Come back with what you found.
 
 ## Steps
 
-1. **Design conversation** using AskUserQuestion with 2-4 options. One question at a time. Push back respectfully.
-2. **Create the change**: `./gradlew opsx-propose --name=<name>`
-3. **Create artifacts in order**: proposal.md -> design.md -> tasks.md. Update `.opsx.yaml` status to `done` after each.
-4. **Task requirements**: Each task touches 1-3 files max. Include exact file paths, line ranges, every import needed. Each implementation task needs a test task.
+1. **Lay out the plan.** Present the steps you intend to follow. Ask: "Does this approach make sense, or would you structure it differently?"
+
+2. **Walk through each design decision.** For every decision point (naming, architecture, boundaries, tooling, phasing):
+   - Present **options** (A, B, C) with tradeoffs — or "do something else entirely"
+   - Ask about **constraints** — what's non-negotiable, what's flexible
+   - **Wait for the user to choose** before moving to the next decision
+   - One decision at a time. Do not batch them.
+
+3. **Summarize and confirm.** Before writing anything, recap all decisions made and get explicit go-ahead.
+
+4. **Create the change**: `./gradlew opsx-propose --name=<name>`
+
+5. **Create artifacts in order**: proposal.md → design.md → tasks.md. Update `.opsx.yaml` status to `done` after each.
+
+6. **Task requirements**: Each task touches 1-3 files max. Include exact file paths, line ranges, every import needed. Each implementation task needs a test task.
 
 Task codes: `<prefix>-<number>` from name initials (e.g., `add-user-auth` -> `aua-1`). Tasks can declare dependencies: `-> depends: aua-1`.
 

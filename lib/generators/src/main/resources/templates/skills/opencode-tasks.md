@@ -17,6 +17,13 @@ Run opencode headlessly via Gradle wrapper tasks.
 | `-PcontinueSession=true` | Continue most recent session |
 | `-Pport=8080` | Port for `opencode-serve` |
 
+## Passthrough
+
+For flags not yet mapped to Gradle properties:
+```bash
+./gradlew opencode-run -Pprompt="..." -PextraArgs="--new-flag,--other=val"
+```
+
 ## Examples
 
 ```bash

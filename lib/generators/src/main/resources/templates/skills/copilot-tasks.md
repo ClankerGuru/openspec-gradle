@@ -19,6 +19,13 @@ Run GitHub Copilot headlessly via Gradle wrapper tasks.
 | `-PsessionId=id` | Resume a specific session |
 | `-Pyolo=true` | Skip all confirmations |
 
+## Passthrough
+
+For flags not yet mapped to Gradle properties:
+```bash
+./gradlew copilot-run -Pprompt="..." -PextraArgs="--new-flag,--other=val"
+```
+
 ## Examples
 
 ```bash

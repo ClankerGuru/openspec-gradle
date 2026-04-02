@@ -37,6 +37,13 @@ abstract class CodexExecTask : CodexBaseTask() {
     @get:Input @get:Optional abstract val cd: Property<String>
     @get:Input @get:Optional abstract val search: Property<Boolean>
     @get:Input @get:Optional abstract val addDir: ListProperty<String>
+    @get:Input @get:Optional abstract val skipGitRepoCheck: Property<Boolean>
+    @get:Input @get:Optional abstract val ephemeral: Property<Boolean>
+    @get:Input @get:Optional abstract val outputSchema: Property<String>
+    @get:Input @get:Optional abstract val color: Property<String>
+    @get:Input @get:Optional abstract val json: Property<Boolean>
+    @get:Input @get:Optional abstract val outputLastMessage: Property<String>
+    @get:Input @get:Optional abstract val extraArgs: ListProperty<String>
 
     init { description = "Run Codex CLI in non-interactive exec mode (1:1 CLI wrapper)" }
 
@@ -61,6 +68,13 @@ abstract class CodexExecTask : CodexBaseTask() {
         cd.orNull?.let { cmd += listOf("--cd", it) }
         if (search.getOrElse(false)) cmd += "--search"
         addDir.getOrElse(emptyList()).forEach { cmd += listOf("--add-dir", it) }
+        if (skipGitRepoCheck.getOrElse(false)) cmd += "--skip-git-repo-check"
+        if (ephemeral.getOrElse(false)) cmd += "--ephemeral"
+        outputSchema.orNull?.let { cmd += listOf("--output-schema", it) }
+        color.orNull?.let { cmd += listOf("--color", it) }
+        if (json.getOrElse(false)) cmd += "--json"
+        outputLastMessage.orNull?.let { cmd += listOf("--output-last-message", it) }
+        extraArgs.getOrElse(emptyList()).forEach { cmd += it }
         commandLine(cmd)
         super.exec()
     }
@@ -201,8 +215,13 @@ abstract class CodexFeaturesTask : CodexBaseTask() {
 /** codex --version */
 abstract class CodexVersionTask : CodexBaseTask() {
     init {
-        description = "Show Codex CLI version"
+        description = "Show Codex CLI version (and wrapper compatibility)"
         commandLine("codex", "--version")
+    }
+
+    override fun exec() {
+        super.exec()
+        logger.lifecycle("Wrapper built for CLI ${CodexPlugin.CLI_VERSION}")
     }
 }
 
@@ -214,7 +233,7 @@ class CodexPlugin : Plugin<Settings> {
 
     override fun apply(settings: Settings) {
         val agents = settings.providers.gradleProperty("zone.clanker.opsx.agents")
-            .orNull?.lowercase()?.split(",")?.map { it.trim() } ?: listOf("claude")
+            .orNull?.lowercase()?.split(",")?.map { it.trim() } ?: listOf("claude", "copilot")
         if (agents.none { it in listOf("codex") }) return
         settings.gradle.rootProject(org.gradle.api.Action { project ->
             if (project.tasks.findByName("codex-exec") != null) return@Action
@@ -278,6 +297,13 @@ class CodexPlugin : Plugin<Settings> {
                 if (project.hasProperty("search")) t.search.set(true)
                 prop("remote")?.let { t.remote.set(it) }
                 prop("remoteAuthTokenEnv")?.let { t.remoteAuthTokenEnv.set(it) }
+                if (project.hasProperty("skipGitRepoCheck")) t.skipGitRepoCheck.set(true)
+                if (project.hasProperty("ephemeral")) t.ephemeral.set(true)
+                prop("outputSchema")?.let { t.outputSchema.set(it) }
+                prop("color")?.let { t.color.set(it) }
+                if (project.hasProperty("json")) t.json.set(true)
+                prop("outputLastMessage")?.let { t.outputLastMessage.set(it) }
+                prop("extraArgs")?.let { t.extraArgs.set(it.split(",").map(String::trim).filter(String::isNotEmpty)) }
             })
 
             project.tasks.register("codex-review", CodexReviewTask::class.java)

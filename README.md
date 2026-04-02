@@ -81,8 +81,14 @@ bash install.sh claude copilot
 # With flags
 bash install.sh --core --agents claude
 
-# Piped (auto-detect latest version)
+# Piped — interactive prompt (reads from /dev/tty)
 curl -fsSL https://raw.githubusercontent.com/ClankerGuru/openspec-gradle/main/install.sh | bash
+
+# Piped — specific agents (no prompt)
+curl -fsSL https://raw.githubusercontent.com/ClankerGuru/openspec-gradle/main/install.sh | bash -s -- claude copilot
+
+# Piped — no terminal (CI) defaults to claude + copilot
+curl -fsSL .../install.sh | bash
 ```
 
 ![Multi-agent install](art/install-multi-agent-2026-04-02.gif)
