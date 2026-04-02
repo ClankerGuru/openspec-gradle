@@ -3,16 +3,20 @@ package zone.clanker.gradle.tasks.execution
 import zone.clanker.gradle.tasks.OPSX_GROUP
 
 import zone.clanker.gradle.generators.AgentCleaner
+import zone.clanker.gradle.generators.ClkxWriter
 import zone.clanker.gradle.generators.GeneratedFile
 import zone.clanker.gradle.generators.GlobalGitignore
 import zone.clanker.gradle.generators.InstructionsGenerator
+import zone.clanker.gradle.generators.MarkerAppender
 import zone.clanker.gradle.generators.SkillGenerator
+import zone.clanker.gradle.generators.SymlinkManager
 import zone.clanker.gradle.generators.TaskReconciler
 import zone.clanker.gradle.generators.ToolAdapterRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
 import java.io.File
@@ -26,6 +30,10 @@ abstract class SyncTask : DefaultTask() {
     @get:Input
     abstract val outputDir: Property<File>
 
+    @get:Input
+    @get:Optional
+    abstract val global: Property<Boolean>
+
     init {
         group = OPSX_GROUP
         description = "[tool] Agent file generator. Generates skill files for configured AI agents. " +
@@ -38,11 +46,44 @@ abstract class SyncTask : DefaultTask() {
         // Ensure generated file patterns are in global gitignore
         GlobalGitignore.ensurePatterns(logger)
 
+        val toolList = tools.get()
+        val isGlobal = global.orNull == true
+
+        if (isGlobal) {
+            syncGlobal(toolList)
+        } else {
+            syncProject(toolList)
+        }
+    }
+
+    /**
+     * Global mode: write skills and instructions to ~/.clkx/ only.
+     * No per-project files are generated.
+     */
+    private fun syncGlobal(toolList: List<String>) {
+        if (toolList.isEmpty()) {
+            logger.lifecycle("OpenSpec: No agents configured (zone.clanker.opsx.agents=none). Nothing to write globally.")
+            return
+        }
+
+        logger.lifecycle("OpenSpec: Global mode — writing skills to ~/.clkx/ for tools: ${toolList.joinToString(", ")}")
+
+        // Load instructions template content for ClkxWriter
+        val instructionsStream = this::class.java.classLoader.getResourceAsStream("templates/instructions.md")
+            ?: error("Missing resource: templates/instructions.md — plugin JAR may be corrupted")
+        val instructionsContent = instructionsStream.bufferedReader().readText()
+
+        val count = ClkxWriter.writeAll(toolList, instructionsContent)
+        logger.lifecycle("OpenSpec: Written $count skills to ~/.clkx/")
+    }
+
+    /**
+     * Default project mode: generate .opsx/ context files and per-project skill files.
+     */
+    private fun syncProject(toolList: List<String>) {
         val buildDir = outputDir.get()
         buildDir.deleteRecursively()
         buildDir.mkdirs()
-
-        val toolList = tools.get()
 
         if (toolList.isEmpty()) {
             logger.lifecycle("OpenSpec: No agents configured (zone.clanker.opsx.agents=none). Cleaning generated files.")
@@ -128,6 +169,37 @@ abstract class SyncTask : DefaultTask() {
                     logger.lifecycle("OpenSpec: Cleaned $cleaned files from deselected agent: $toolId")
                 }
             }
+        }
+
+        // Create symlinks from per-project agent config dirs to ~/.clkx/
+        val symlinkResults = SymlinkManager.createSymlinks(project.projectDir, toolList)
+        var symlinksCreated = 0
+        var symlinksSkipped = 0
+        var realFiles = 0
+        for ((path, result) in symlinkResults) {
+            when (result) {
+                SymlinkManager.LinkResult.CREATED -> symlinksCreated++
+                SymlinkManager.LinkResult.SKIPPED -> symlinksSkipped++
+                SymlinkManager.LinkResult.COPIED -> symlinksCreated++ // treat copy as created
+                SymlinkManager.LinkResult.REAL_FILE -> {
+                    realFiles++
+                    // For real instruction files, append OPSX content via markers
+                    val adapter = toolList.mapNotNull { ToolAdapterRegistry.get(it) }
+                        .firstOrNull { it.getInstructionsFilePath() == path }
+                    if (adapter != null) {
+                        val instrFile = instructionFiles.firstOrNull { it.relativePath == path }
+                        if (instrFile != null) {
+                            val targetFile = File(project.projectDir, path)
+                            val content = instrFile.file.readText()
+                            MarkerAppender.append(targetFile, content)
+                            logger.lifecycle("OpenSpec: Appended OPSX content to existing file: $path")
+                        }
+                    }
+                }
+            }
+        }
+        if (symlinkResults.isNotEmpty()) {
+            logger.lifecycle("OpenSpec: Symlinks — $symlinksCreated created, $symlinksSkipped already up-to-date, $realFiles real files (marker-appended)")
         }
     }
 

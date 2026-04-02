@@ -1,20 +1,11 @@
 Find all usages of a symbol with exact file:line locations.
 
-## Steps
+**Input**: The argument is the symbol name.
 
-1. Run: `./gradlew srcx-usages -Psymbol=ClassName`
-2. Review `.opsx/usages.md` for the full usage report
+```bash
+./gradlew srcx-usages -Psymbol=<name>
+```
 
-## Output Format
+Read `.opsx/usages.md`. Each usage shows **file:line**, **kind** (import, call, type-ref, supertype), and **context** (the line of code).
 
-Each usage shows:
-- **file:line** — exact location
-- **kind** — import, call, type-ref, supertype, self-reference
-- **context** — the line of code
-
-## Use Cases
-
-- Before rename/move: understand impact
-- Dead code detection: symbols with no usages
-- API surface analysis: who depends on this?
-- For multi-module projects: `-Pmodule=:moduleName`
+For multi-module projects: add `-Pmodule=:moduleName` to scope the search.

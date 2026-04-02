@@ -105,6 +105,9 @@ class OpsxPlugin : Plugin<Settings> {
                 override fun execute(task: SyncTask) {
                     task.tools.set(extension.tools)
                     task.outputDir.set(File(project.layout.buildDirectory.asFile.get(), "openspec"))
+                    task.global.set(project.provider {
+                        project.findProperty("global")?.toString()?.lowercase() == "true"
+                    })
                     task.dependsOn("srcx-context", "srcx-tree", "srcx-deps", "srcx-modules", "srcx-devloop", "srcx-arch")
                 }
             })

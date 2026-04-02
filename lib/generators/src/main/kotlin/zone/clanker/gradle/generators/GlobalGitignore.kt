@@ -18,13 +18,16 @@ object GlobalGitignore {
         "# These are per-developer — different devs use different AI agents.",
         ".opsx/",
         "# Claude Code",
-        ".claude/skills/opsx-*",
+        ".claude/skills",
+        ".claude/CLAUDE.md",
         "# GitHub Copilot",
-        ".github/skills/opsx-*",
-        "# Codex",
-        ".agents/skills/opsx-*",
+        ".github/skills",
+        ".github/copilot-instructions.md",
         "# OpenCode",
-        ".opencode/skills/opsx-*",
+        ".opencode/skills",
+        "# Codex",
+        ".agents/",
+        "AGENTS.md",
     )
 
     /**

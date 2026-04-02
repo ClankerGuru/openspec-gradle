@@ -1,20 +1,9 @@
 Show the call graph for a symbol — what it calls and what calls it.
 
----
+**Input**: The argument is the symbol name to analyze.
 
-**Input**: The argument after the command is the symbol name to analyze.
+```bash
+./gradlew srcx-calls -Psymbol=<name>
+```
 
-**Steps**
-
-1. Run the calls task:
-   ```bash
-   ./gradlew srcx-calls -Psymbol=<name>
-   ```
-
-2. Read the output at `.opsx/calls.md`
-
-3. Present the call graph to the user.
-
-**Output**
-
-Show the call graph with callers and callees clearly organized.
+Read `.opsx/calls.md` and present the call graph with callers and callees clearly organized.

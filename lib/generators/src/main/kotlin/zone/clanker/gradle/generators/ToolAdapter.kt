@@ -10,9 +10,8 @@ data class SkillContent(
     val dirName: String,
     val description: String,
     val instructions: String,
-    val license: String = "MIT",
-    val compatibility: String = "Requires Gradle build system.",
-    val metadata: Map<String, String> = mapOf("author" to "openspec-gradle", "version" to VersionInfo.PLUGIN_VERSION),
+    /** Version string for generated-by comments (defaults to plugin version) */
+    val version: String = VersionInfo.PLUGIN_VERSION,
     /** Claude Code: hint shown in autocomplete (e.g., "[symbol-name]") */
     val argumentHint: String? = null,
     /** Claude Code: glob patterns for auto-activation (e.g., "*.kt,*.kts") */
@@ -35,21 +34,14 @@ interface ToolAdapter {
 }
 
 /**
- * Generates skill file content with YAML frontmatter, matching OpenSpec's format.
- * All tools use the same skill format.
+ * Generates skill file content with minimal YAML frontmatter (name + description only).
+ * Used by Copilot, Codex, and OpenCode adapters.
  */
-fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "openspec-gradle:${VersionInfo.PLUGIN_VERSION}"): String {
-    val filteredMetadata = content.metadata.toSortedMap().filterKeys { it != "generatedBy" }
-    val metadataLines = filteredMetadata.entries.joinToString("\n|  ") { (k, v) -> "$k: ${escapeYaml(v)}" }
+fun formatSkillWithFrontmatter(content: SkillContent): String {
     return """
         |---
         |name: ${escapeYaml(content.dirName)}
         |description: ${escapeYaml(content.description)}
-        |license: ${escapeYaml(content.license)}
-        |compatibility: ${escapeYaml(content.compatibility)}
-        |metadata:
-        |  $metadataLines
-        |  generatedBy: ${escapeYaml(generatedBy)}
         |---
         |
         |${content.instructions}
@@ -61,7 +53,7 @@ fun formatSkillWithFrontmatter(content: SkillContent, generatedBy: String = "ope
  * Omits license, compatibility, and metadata which are not part of the Claude Code SKILL.md spec.
  */
 fun formatSkillForClaude(content: SkillContent): String {
-    val version = content.metadata["version"] ?: VersionInfo.PLUGIN_VERSION
+    val version = content.version
     val sb = StringBuilder()
     sb.appendLine("---")
     sb.appendLine("name: ${escapeYaml(content.dirName)}")

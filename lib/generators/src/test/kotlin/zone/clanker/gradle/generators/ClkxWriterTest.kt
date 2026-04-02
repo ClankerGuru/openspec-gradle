@@ -109,10 +109,13 @@ class ClkxWriterTest {
         assertTrue(copilotSkillFile.exists(), "Copilot skill file should exist")
         val copilotContent = copilotSkillFile.readText()
 
-        // Copilot uses YAML frontmatter with license and compatibility
+        // Copilot uses minimal YAML frontmatter (name + description only)
         assertTrue(copilotContent.startsWith("---"), "Copilot skill should start with frontmatter delimiter")
-        assertTrue(copilotContent.contains("license:"), "Copilot skill should contain license field")
-        assertTrue(copilotContent.contains("compatibility:"), "Copilot skill should contain compatibility field")
+        assertTrue(copilotContent.contains("name:"), "Copilot skill should contain name field")
+        assertTrue(copilotContent.contains("description:"), "Copilot skill should contain description field")
+        assertFalse(copilotContent.contains("license:"), "Copilot skill should not contain license field")
+        assertFalse(copilotContent.contains("compatibility:"), "Copilot skill should not contain compatibility field")
+        assertFalse(copilotContent.contains("metadata:"), "Copilot skill should not contain metadata block")
     }
 
     @Test
